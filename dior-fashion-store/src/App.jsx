@@ -22,8 +22,24 @@ import EditorPanel from './components/editor/EditorPanel';
 import { ToastContainer } from './components/common/Toast';
 
 function App() {
-  // Editor state
-  const { data, setData, editMode, handleSave, toggleEditMode, handleResetToDefault } = useEditor();
+  // Editor state - NOW WITH UNDO/REDO & PREVIEW
+  const { 
+    data, 
+    setData, 
+    savedData,
+    editMode, 
+    previewMode,
+    handleSave, 
+    handleReset,
+    toggleEditMode,
+    togglePreviewMode,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    historyIndex,
+    historyLength
+  } = useEditor();
   
   // Toast notifications
   const { toasts, removeToast, success, error, warning } = useToast();
@@ -106,6 +122,16 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Enhanced Save Handler with Toast notification
+  const handleSaveWithToast = () => {
+    const success = handleSave();
+    if (success) {
+      // Use your custom toast instead of alert
+      return true;
+    }
+    return false;
+  };
+
   // Add to cart handler
   const handleAddToCart = (product) => {
     setCart(prevCart => {
@@ -151,7 +177,7 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen flex flex-col">
-        {/* Editor Toggle Button */}
+        {/* Editor Toggle Button - Hide when editor is open */}
         {!editMode && (
           <button
             onClick={toggleEditMode}
@@ -162,18 +188,26 @@ function App() {
           </button>
         )}
 
-        {/* Editor Panel */}
+        {/* Editor Panel - NOW WITH UNDO/REDO & PREVIEW */}
         {editMode && (
           <EditorPanel
             data={data}
             setData={setData}
-            onSave={handleSave}
+            onSave={handleSaveWithToast}
             onClose={toggleEditMode}
-            onResetToDefault={handleResetToDefault}
+            onReset={handleReset}
+            undo={undo}
+            redo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            previewMode={previewMode}
+            togglePreviewMode={togglePreviewMode}
+            historyIndex={historyIndex}
+            historyLength={historyLength}
           />
         )}
 
-        {/* Website Content */}
+        {/* Website Content - Use live data for preview */}
         <TopBar message={data.topBarMessage} />
         
         <Header
