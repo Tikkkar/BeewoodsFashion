@@ -18,10 +18,15 @@ const Header = ({
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/?search=${searchQuery}`);
+      navigate(`/products?search=${searchQuery}`);
       setSearchOpen(false);
       setSearchQuery('');
     }
+  };
+
+  // Convert navigation item to URL-friendly format
+  const getCategoryUrl = (item) => {
+    return item.toLowerCase().replace(/\s+/g, '-');
   };
 
   return (
@@ -100,7 +105,7 @@ const Header = ({
           {navigation?.map((item, index) => (
             <Link
               key={index}
-              to={`/category/${item.toLowerCase()}`}
+              to={`/category/${getCategoryUrl(item)}`}
               className="text-sm font-medium text-gray-700 hover:text-black transition tracking-wide uppercase"
             >
               {item}
@@ -138,7 +143,7 @@ const Header = ({
             {navigation?.map((item, index) => (
               <Link
                 key={index}
-                to={`/category/${item.toLowerCase()}`}
+                to={`/category/${getCategoryUrl(item)}`}
                 onClick={() => setMobileMenuOpen(false)}
                 className="px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition uppercase tracking-wide"
               >

@@ -11,6 +11,7 @@ import Footer from './components/layout/Footer';
 
 // Pages
 import HomePage from './pages/HomePage';
+import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
@@ -124,11 +125,12 @@ function App() {
 
   // Enhanced Save Handler with Toast notification
   const handleSaveWithToast = () => {
-    const success = handleSave();
-    if (success) {
-      // Use your custom toast instead of alert
+    const successResult = handleSave();
+    if (successResult) {
+      success('✅ Đã lưu thay đổi thành công!');
       return true;
     }
+    error('❌ Có lỗi xảy ra khi lưu!');
     return false;
   };
 
@@ -223,6 +225,7 @@ function App() {
 
         {/* Routes */}
         <Routes>
+          {/* Home Page */}
           <Route 
             path="/" 
             element={
@@ -234,15 +237,42 @@ function App() {
               />
             } 
           />
+
+          {/* All Products Page */}
+          <Route 
+            path="/products" 
+            element={
+              <ProductsPage 
+                products={data.products}
+                onAddToCart={handleAddToCart}
+              />
+            } 
+          />
+
+          {/* Category Page - THÊM ROUTE NÀY */}
+          <Route 
+            path="/category/:name" 
+            element={
+              <ProductsPage 
+                products={data.products}
+                onAddToCart={handleAddToCart}
+              />
+            } 
+          />
+
+          {/* Product Detail Page */}
           <Route 
             path="/product/:id" 
             element={
               <ProductDetailPage 
                 products={data.products}
                 onAddToCart={handleAddToCart}
+                brand={data.brand}
               />
             } 
           />
+
+          {/* Checkout Page */}
           <Route 
             path="/checkout" 
             element={
@@ -252,6 +282,8 @@ function App() {
               />
             } 
           />
+
+          {/* Order Success Page */}
           <Route 
             path="/checkout/success" 
             element={<OrderSuccessPage />} 

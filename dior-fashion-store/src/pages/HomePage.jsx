@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import HeroSlider from '../components/hero/HeroSlider';
 import ProductCard from '../components/products/ProductCard';
+import QuickViewModal from '../components/products/QuickViewModal';
 import { Sparkles, TrendingUp, Gift, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -247,6 +248,14 @@ const HomePage = ({ data, onAddToCart }) => {
           </form>
         </div>
       </section>
+
+      {/* Quick View Modal */}
+      <QuickViewModal
+        product={quickViewProduct}
+        isOpen={!!quickViewProduct}
+        onClose={() => setQuickViewProduct(null)}
+        onAddToCart={onAddToCart}
+      />
     </div>
   );
 };

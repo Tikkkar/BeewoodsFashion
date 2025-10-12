@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ShoppingCart, Heart, Star, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, ShoppingCart, Heart, Star, ExternalLink, Minus, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
@@ -7,6 +7,29 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && product) {
+      // Reset state when modal opens
+      setSelectedSize('');
+      setQuantity(1);
+      setImageLoaded(false);
+      
+      // Check wishlist status
+      const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
+      setIsWishlisted(wishlist.some(item => item.id === product.id));
+      
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, product]);
 
   if (!isOpen || !product) return null;
 
@@ -36,8 +59,20 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
   };
 
   const handleToggleWishlist = () => {
-    setIsWishlisted(!isWishlisted);
-    // Thêm logic lưu wishlist nếu cần
+    const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
+    const exists = wishlist.find(item => item.id === product.id);
+    
+    if (exists) {
+      const newWishlist = wishlist.filter(item => item.id !== product.id);
+      localStorage.setItem('dior_wishlist', JSON.stringify(newWishlist));
+      setIsWishlisted(false);
+    } else {
+      wishlist.push(product);
+      localStorage.setItem('dior_wishlist', JSON.stringify(wishlist));
+      setIsWishlisted(true);
+    }
+    
+    window.dispatchEvent(new Event('wishlistUpdated'));
   };
 
   const sizes = ['XS', 'S', 'M', 'L', 'XL'];
@@ -46,91 +81,123 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
     <>
       {/* Overlay */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-[100] transition-opacity"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-300"
         onClick={onClose}
       />
       
       {/* Modal */}
       <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 overflow-y-auto">
         <div 
-          className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full mx-auto my-8 animate-scale-in"
+          className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full mx-auto my-8 animate-in fade-in zoom-in duration-300"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+            className="absolute top-4 right-4 z-10 p-2 bg-white/90 hover:bg-white rounded-full transition-all shadow-md hover:shadow-lg"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 md:p-8">
-            {/* Product Image */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 p-6 md:p-8">
+            
+            {/* Left: Product Image */}
             <div className="relative">
-              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+              <div className="relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden">
+                {/* Skeleton */}
+                {!imageLoaded && (
+                  <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                )}
+                
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    imageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  onLoad={() => setImageLoaded(true)}
                 />
+
+                {/* Sale Badge */}
+                {product.discount && (
+                  <div className="absolute top-4 left-4 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    -{product.discount}%
+                  </div>
+                )}
               </div>
               
               {/* View Full Details Button */}
               <button
                 onClick={handleViewFullDetails}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-3 border-2 border-gray-300 rounded-lg hover:border-black transition-colors text-sm tracking-wide"
+                className="mt-4 w-full flex items-center justify-center gap-2 py-3 border-2 border-gray-300 rounded-lg hover:border-black hover:bg-gray-50 transition-all text-sm font-medium"
               >
-                <Eye size={18} />
+                <ExternalLink size={18} />
                 <span>Xem chi tiết đầy đủ</span>
               </button>
             </div>
 
-            {/* Product Info */}
-            <div className="space-y-4">
-              <div className="text-sm text-gray-500 tracking-widest uppercase">
+            {/* Right: Product Info */}
+            <div className="flex flex-col">
+              
+              {/* Category */}
+              <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
                 {product.category}
               </div>
 
-              <h2 className="text-2xl md:text-3xl font-light tracking-wide">
+              {/* Product Name */}
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
                 {product.name}
               </h2>
 
-              <div className="flex items-center gap-2">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star key={star} size={16} className="fill-black text-black" />
+              {/* Rating */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-1">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
                 <span className="text-sm text-gray-600">(248 đánh giá)</span>
+                <span className="text-sm text-green-600 font-medium">• Còn hàng</span>
               </div>
 
-              <div className="text-2xl font-light tracking-wide">
-                {formatPrice(product.price)}
+              {/* Price */}
+              <div className="flex items-baseline gap-3 mb-4 pb-4 border-b">
+                <span className="text-3xl font-bold text-black">
+                  {formatPrice(product.price)}
+                </span>
+                {product.originalPrice && (
+                  <span className="text-lg text-gray-400 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                )}
               </div>
 
-              <p className="text-gray-700 text-sm leading-relaxed">
-                Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, 
-                chất liệu cao cấp, mang đến sự sang trọng và đẳng cấp.
+              {/* Description */}
+              <p className="text-gray-700 text-sm leading-relaxed mb-6">
+                Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, 
+                mang đến sự sang trọng và đẳng cấp cho người sử dụng.
               </p>
 
               {/* Size Selection */}
-              <div className="space-y-2">
-                <label className="text-sm tracking-widest uppercase font-medium">
-                  Chọn Size
+              <div className="space-y-3 mb-5">
+                <label className="text-sm font-semibold uppercase tracking-wide flex items-center justify-between">
+                  <span>Chọn Size</span>
+                  {selectedSize && (
+                    <span className="text-xs font-normal text-gray-600 normal-case">
+                      Đã chọn: <span className="font-semibold text-black">{selectedSize}</span>
+                    </span>
+                  )}
                 </label>
                 <div className="grid grid-cols-5 gap-2">
                   {sizes.map((size) => (
                     <button
                       key={size}
                       onClick={() => setSelectedSize(size)}
-                      className={`
-                        py-2 rounded-lg border-2 tracking-wide text-sm font-medium
-                        transition-all duration-200
-                        ${selectedSize === size
-                          ? 'border-black bg-black text-white'
-                          : 'border-gray-300 hover:border-black'
-                        }
-                      `}
+                      className={`py-3 rounded-lg border-2 font-medium text-sm transition-all ${
+                        selectedSize === size
+                          ? 'border-black bg-black text-white scale-105 shadow-md'
+                          : 'border-gray-300 hover:border-black hover:scale-105'
+                      }`}
                     >
                       {size}
                     </button>
@@ -139,32 +206,37 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
               </div>
 
               {/* Quantity */}
-              <div className="space-y-2">
-                <label className="text-sm tracking-widest uppercase font-medium">
+              <div className="space-y-3 mb-6">
+                <label className="text-sm font-semibold uppercase tracking-wide">
                   Số lượng
                 </label>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-black transition-colors"
+                    className="w-11 h-11 border-2 border-gray-300 rounded-lg hover:border-black transition flex items-center justify-center"
                   >
-                    -
+                    <Minus size={16} />
                   </button>
-                  <span className="text-lg font-light w-10 text-center">{quantity}</span>
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 h-11 text-center border-2 border-gray-300 rounded-lg focus:border-black focus:outline-none font-medium"
+                  />
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="w-10 h-10 border-2 border-gray-300 rounded-lg hover:border-black transition-colors"
+                    className="w-11 h-11 border-2 border-gray-300 rounded-lg hover:border-black transition flex items-center justify-center"
                   >
-                    +
+                    <Plus size={16} />
                   </button>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 pt-2">
+              <div className="space-y-3 mt-auto">
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-black text-white py-3 rounded-lg tracking-widest uppercase font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-black text-white py-4 rounded-lg font-semibold uppercase tracking-wide hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                 >
                   <ShoppingCart size={20} />
                   Thêm vào giỏ hàng
@@ -172,17 +244,15 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                 
                 <button
                   onClick={handleToggleWishlist}
-                  className={`
-                    w-full py-3 rounded-lg border-2 transition-colors flex items-center justify-center gap-2
-                    ${isWishlisted
-                      ? 'border-red-500 text-red-500 bg-red-50'
-                      : 'border-gray-300 hover:border-black'
-                    }
-                  `}
+                  className={`w-full py-3 rounded-lg border-2 font-medium transition-all flex items-center justify-center gap-2 ${
+                    isWishlisted
+                      ? 'border-red-500 text-red-500 bg-red-50 hover:bg-red-100'
+                      : 'border-gray-300 hover:border-black hover:bg-gray-50'
+                  }`}
                 >
-                  <Heart size={20} className={isWishlisted ? 'fill-red-500' : ''} />
-                  <span className="tracking-wide">
-                    {isWishlisted ? 'Đã thích' : 'Yêu thích'}
+                  <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
+                  <span className="text-sm">
+                    {isWishlisted ? 'Đã thêm vào yêu thích' : 'Thêm vào yêu thích'}
                   </span>
                 </button>
               </div>
@@ -190,6 +260,22 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes animate-in {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        .animate-in {
+          animation: animate-in 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 };
