@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Filter, X, ChevronDown } from 'lucide-react';
 
 const FilterBar = ({ 
-  categories, 
+  categories,  // ⚡ Nhận array of objects từ Supabase: [{id, name, slug}, ...]
   selectedCategory, 
   onSelectCategory,
   priceRange,
@@ -16,7 +16,8 @@ const FilterBar = ({
   const [isPriceOpen, setIsPriceOpen] = useState(true);
   const [isSizeOpen, setIsSizeOpen] = useState(true);
 
-  const allCategories = ['Tất cả', ...categories];
+  // ⚡ Convert categories to names array + add "Tất cả"
+  const categoryNames = ['Tất cả', ...(categories?.map(c => c.name) || [])];
 
   const priceRanges = [
     { label: 'Dưới 500k', min: 0, max: 500000 },
@@ -70,11 +71,11 @@ const FilterBar = ({
             </div>
             
             <div className="space-y-2">
-              {allCategories.map((category) => (
+              {categoryNames.map((categoryName) => (
                 <button
-                  key={category}
+                  key={categoryName}
                   onClick={() => {
-                    onSelectCategory(category);
+                    onSelectCategory(categoryName);
                     if (window.innerWidth < 768) {
                       onToggleMobileFilter?.();
                     }
@@ -82,13 +83,13 @@ const FilterBar = ({
                   className={`
                     w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium
                     transition-all duration-200
-                    ${selectedCategory === category
+                    ${selectedCategory === categoryName
                       ? 'bg-black text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                     }
                   `}
                 >
-                  {category}
+                  {categoryName}
                 </button>
               ))}
             </div>

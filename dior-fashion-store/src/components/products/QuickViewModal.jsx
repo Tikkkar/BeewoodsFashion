@@ -11,16 +11,25 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
 
   useEffect(() => {
     if (isOpen && product) {
-      // Reset state when modal opens
-      setSelectedSize('');
+      // Reset state
       setQuantity(1);
       setImageLoaded(false);
       
-      // Check wishlist status
+      // ⚡ Set default size từ Supabase data
+      if (product.sizes && product.sizes.length > 0) {
+        // Nếu sizes là array of objects: [{size: 'S', stock: 10}, ...]
+        const firstSize = typeof product.sizes[0] === 'object' 
+          ? product.sizes[0].size 
+          : product.sizes[0];
+        setSelectedSize(firstSize);
+      } else {
+        setSelectedSize('');
+      }
+      
+      // Check wishlist
       const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
       setIsWishlisted(wishlist.some(item => item.id === product.id));
       
-      // Prevent body scroll
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -45,17 +54,17 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
       alert('⚠️ Vui lòng chọn size!');
       return;
     }
-    onAddToCart({
-      ...product,
-      size: selectedSize,
-      quantity: quantity
-    });
+    
+    // ⚡ Add multiple times based on quantity
+    for (let i = 0; i < quantity; i++) {
+      onAddToCart(product, selectedSize);  // Pass selectedSize
+    }
     onClose();
   };
 
   const handleViewFullDetails = () => {
     onClose();
-    navigate(`/product/${product.id}`);
+    navigate(`/product/${product.slug}`);  // ⚡ SLUG
   };
 
   const handleToggleWishlist = () => {
@@ -75,7 +84,20 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
     window.dispatchEvent(new Event('wishlistUpdated'));
   };
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  // ⚡ Get sizes array from Supabase data
+  const sizes = product.sizes 
+    ? product.sizes.map(s => typeof s === 'object' ? s.size : s)
+    : ['XS', 'S', 'M', 'L', 'XL'];
+
+  // ⚡ Calculate discount
+  const discount = product.originalPrice && product.originalPrice > product.price
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : null;
+
+  // ⚡ Calculate average rating
+  const avgRating = product.reviews && product.reviews.length > 0
+    ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+    : 5;
 
   return (
     <>
@@ -104,7 +126,6 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
             {/* Left: Product Image */}
             <div className="relative">
               <div className="relative aspect-[3/4] bg-gray-100 rounded-xl overflow-hidden">
-                {/* Skeleton */}
                 {!imageLoaded && (
                   <div className="absolute inset-0 bg-gray-200 animate-pulse" />
                 )}
@@ -118,15 +139,13 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                   onLoad={() => setImageLoaded(true)}
                 />
 
-                {/* Sale Badge */}
-                {product.discount && (
+                {discount && (
                   <div className="absolute top-4 left-4 bg-red-500 text-white text-sm font-bold px-3 py-1.5 rounded-full shadow-lg">
-                    -{product.discount}%
+                    -{discount}%
                   </div>
                 )}
               </div>
               
-              {/* View Full Details Button */}
               <button
                 onClick={handleViewFullDetails}
                 className="mt-4 w-full flex items-center justify-center gap-2 py-3 border-2 border-gray-300 rounded-lg hover:border-black hover:bg-gray-50 transition-all text-sm font-medium"
@@ -139,12 +158,10 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
             {/* Right: Product Info */}
             <div className="flex flex-col">
               
-              {/* Category */}
               <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
                 {product.category}
               </div>
 
-              {/* Product Name */}
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
                 {product.name}
               </h2>
@@ -153,11 +170,19 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
+                    <Star 
+                      key={i} 
+                      size={16} 
+                      className={i < Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-300 text-gray-300'} 
+                    />
                   ))}
                 </div>
-                <span className="text-sm text-gray-600">(248 đánh giá)</span>
-                <span className="text-sm text-green-600 font-medium">• Còn hàng</span>
+                <span className="text-sm text-gray-600">
+                  ({product.reviews?.length || 0} đánh giá)
+                </span>
+                <span className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  • {product.stock > 0 ? 'Còn hàng' : 'Hết hàng'}
+                </span>
               </div>
 
               {/* Price */}
@@ -165,7 +190,7 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                 <span className="text-3xl font-bold text-black">
                   {formatPrice(product.price)}
                 </span>
-                {product.originalPrice && (
+                {product.originalPrice && product.originalPrice > product.price && (
                   <span className="text-lg text-gray-400 line-through">
                     {formatPrice(product.originalPrice)}
                   </span>
@@ -174,8 +199,7 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
 
               {/* Description */}
               <p className="text-gray-700 text-sm leading-relaxed mb-6">
-                Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, 
-                mang đến sự sang trọng và đẳng cấp cho người sử dụng.
+                {product.description || 'Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, mang đến sự sang trọng và đẳng cấp cho người sử dụng.'}
               </p>
 
               {/* Size Selection */}
@@ -236,10 +260,15 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
               <div className="space-y-3 mt-auto">
                 <button
                   onClick={handleAddToCart}
-                  className="w-full bg-black text-white py-4 rounded-lg font-semibold uppercase tracking-wide hover:bg-gray-800 transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                  disabled={product.stock === 0}
+                  className={`w-full py-4 rounded-lg font-semibold uppercase tracking-wide transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${
+                    product.stock === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-black text-white hover:bg-gray-800'
+                  }`}
                 >
                   <ShoppingCart size={20} />
-                  Thêm vào giỏ hàng
+                  {product.stock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
                 </button>
                 
                 <button
@@ -280,4 +309,5 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
   );
 };
 
+// ⚡⚡⚡ THÊM DÒNG NÀY ⚡⚡⚡
 export default QuickViewModal;

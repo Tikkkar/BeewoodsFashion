@@ -13,7 +13,7 @@ const HeroSlider = ({ banners }) => {
 
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
-    }, 5000); // Change slide every 5 seconds
+    }, 5000);
 
     return () => clearInterval(timer);
   }, [isAutoPlaying, banners?.length]);
@@ -21,7 +21,6 @@ const HeroSlider = ({ banners }) => {
   const goToSlide = (index) => {
     setCurrentSlide(index);
     setIsAutoPlaying(false);
-    // Resume auto-play after 10 seconds
     setTimeout(() => setIsAutoPlaying(true), 10000);
   };
 
@@ -59,9 +58,9 @@ const HeroSlider = ({ banners }) => {
               <div className="absolute inset-0 bg-gray-200 animate-pulse" />
             )}
             
-            {/* Actual Image */}
+            {/* ⚡ THAY ĐỔI NÀY: banner.image → banner.image_url */}
             <img
-              src={banner.image}
+              src={banner.image_url || banner.image}
               alt={banner.title || `Slide ${index + 1}`}
               className={`w-full h-full object-cover transition-opacity duration-500 ${
                 imageLoaded[index] ? 'opacity-100' : 'opacity-0'
@@ -95,12 +94,12 @@ const HeroSlider = ({ banners }) => {
                 )}
 
                 {/* CTA Button */}
-                {banner.buttonText && (
+                {(banner.buttonText || banner.title) && (
                   <Link
-                    to={banner.buttonLink || '/products'}
+                    to={banner.link_url || banner.buttonLink || '/products'}
                     className="inline-block bg-white text-black px-6 md:px-8 py-3 md:py-4 text-sm md:text-base font-medium tracking-wide uppercase hover:bg-black hover:text-white transition-all duration-300 shadow-lg"
                   >
-                    {banner.buttonText}
+                    {banner.buttonText || 'Xem Ngay'}
                   </Link>
                 )}
               </div>

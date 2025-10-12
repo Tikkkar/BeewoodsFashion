@@ -1,22 +1,78 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { TrendingUp, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
 import HeroSlider from '../components/hero/HeroSlider';
 import ProductCard from '../components/products/ProductCard';
 import QuickViewModal from '../components/products/QuickViewModal';
-import { TrendingUp, ShoppingBag, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useProducts, useBanners } from '../hooks/useProducts';
 
-const HomePage = ({ data, onAddToCart }) => {
+const HomePage = ({ onAddToCart }) => {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
-  // Get featured/best seller products
-  const featuredProducts = data?.products?.filter(p => p.isFeatured) || data?.products?.slice(0, 8) || [];
-  const todayProducts = data?.products?.slice(0, 4) || [];
+  // =============================================
+  // FETCH DATA TỪ SUPABASE
+  // =============================================
+  
+  // Fetch featured products (sản phẩm bán chạy)
+  const { products: allProducts, loading: productsLoading, error: productsError } = useProducts({
+    featured: true,
+  });
 
+  // Fetch banners cho Hero Slider
+  const { banners, loading: bannersLoading, error: bannersError } = useBanners();
+
+  // =============================================
+  // XỬ LÝ DỮ LIỆU - THÊM KIỂM TRA AN TOÀN
+  // =============================================
+  
+  // ⚡ Kiểm tra allProducts có tồn tại không
+  const featuredProducts = Array.isArray(allProducts) ? allProducts.slice(0, 8) : [];
+  const todayProducts = Array.isArray(allProducts) ? allProducts.slice(0, 4) : [];
+
+  // =============================================
+  // ERROR STATE
+  // =============================================
+  if (productsError || bannersError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">❌ Lỗi khi tải dữ liệu</p>
+          <p className="text-gray-600 text-sm">{productsError || bannersError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =============================================
+  // LOADING STATE
+  // =============================================
+  const isLoading = productsLoading || bannersLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-black" />
+          <p className="text-gray-600">Đang tải sản phẩm...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // =============================================
+  // RENDER
+  // =============================================
   return (
     <div className="min-h-screen bg-white">
       
       {/* 1. Hero Banner */}
-      <HeroSlider banners={data?.banners || []} />
+      <HeroSlider banners={banners || []} />
 
       {/* 2. Sản Phẩm Bán Chạy */}
       <section className="py-12 md:py-16">

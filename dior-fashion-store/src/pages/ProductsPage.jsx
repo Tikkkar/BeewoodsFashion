@@ -1,35 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
-import { Search, X, ChevronDown, ChevronUp, SlidersHorizontal } from 'lucide-react';
+import { Search, X, ChevronDown, ChevronUp, SlidersHorizontal, Loader2 } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard';
 import QuickViewModal from '../components/products/QuickViewModal';
+import { useProducts, useCategories } from '../hooks/useProducts';
 
-const ProductsPage = ({ products, onAddToCart }) => {
+const ProductsPage = ({ onAddToCart }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { name: categoryFromUrl } = useParams();
 
-  // Category name mapping - Maps navigation items to actual product categories
-  const CATEGORY_MAPPING = {
-    'bags': ['Bags', 'Handbags'],
-    'handbags': ['Bags', 'Handbags'],
-    'ready-to-wear': ['Ready-to-Wear'],
-    'haute-couture': ['Haute Couture'],
-    'accessories': ['Accessories'],
-    // Navigation categories that should show multiple product categories
-    'women': ['Ready-to-Wear', 'Haute Couture', 'Bags', 'Handbags', 'Accessories'],
-    'men': ['Ready-to-Wear', 'Accessories']
-  };
-
-  // State from URL params
+  // =============================================
+  // UI STATE
+  // =============================================
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(() => {
-    // Priority: URL path > URL query param > default
     if (categoryFromUrl) {
-      // Convert URL to proper category name - return as STRING
-      const normalized = categoryFromUrl.toLowerCase().replace(/\s+/g, '-');
-      
-      // Return the capitalized category name for display
       return categoryFromUrl.split('-').map(word => 
         word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
       ).join(' ');
@@ -41,19 +27,42 @@ const ProductsPage = ({ products, onAddToCart }) => {
   });
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'default');
   const [priceRange, setPriceRange] = useState(null);
-  
-  // UI State
   const [showSearch, setShowSearch] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [searchFocused, setSearchFocused] = useState(false);
 
-  // Extract unique categories
-  const categories = useMemo(() => {
-    return [...new Set(products.map(p => p.category))];
-  }, [products]);
+  // =============================================
+  // FETCH DATA FROM SUPABASE
+  // =============================================
+  
+  // Get category slug from selectedCategory
+  const categorySlug = selectedCategory !== 'Tất cả' 
+    ? selectedCategory.toLowerCase().replace(/\s+/g, '-')
+    : '';
 
-  // Price ranges
+  // Fetch products with filters
+  const { products: allProducts, loading: productsLoading } = useProducts({
+    category: categorySlug,
+    search: searchQuery,
+    sortBy: sortBy,
+    minPrice: priceRange?.min,
+    maxPrice: priceRange?.max,
+  });
+
+  // Fetch categories for filter
+  const { categories: supabaseCategories, loading: categoriesLoading } = useCategories();
+
+  // =============================================
+  // PROCESS CATEGORIES
+  // =============================================
+  const categories = useMemo(() => {
+    return supabaseCategories.map(cat => cat.name);
+  }, [supabaseCategories]);
+
+  // =============================================
+  // PRICE RANGES
+  // =============================================
   const priceRanges = [
     { label: 'Dưới 50 triệu', min: 0, max: 50000000 },
     { label: '50tr - 100tr', min: 50000000, max: 100000000 },
@@ -61,12 +70,13 @@ const ProductsPage = ({ products, onAddToCart }) => {
     { label: 'Trên 150tr', min: 150000000, max: Infinity }
   ];
 
-  // Update URL when filters change (but NOT category if from URL path)
+  // =============================================
+  // UPDATE URL WHEN FILTERS CHANGE
+  // =============================================
   useEffect(() => {
     const params = new URLSearchParams();
     if (searchQuery) params.set('search', searchQuery);
     
-    // Only set category query param if NOT from URL path
     if (!categoryFromUrl && selectedCategory !== 'Tất cả') {
       params.set('category', selectedCategory);
     }
@@ -75,91 +85,9 @@ const ProductsPage = ({ products, onAddToCart }) => {
     setSearchParams(params);
   }, [searchQuery, selectedCategory, sortBy, setSearchParams, categoryFromUrl]);
 
-  // Filter products
-  const filteredProducts = useMemo(() => {
-    let filtered = [...products];
-
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(query) ||
-        p.category.toLowerCase().includes(query)
-      );
-    }
-
-    // Category filter - Handle both direct categories and mapped ones (Women/Men)
-    if (selectedCategory !== 'Tất cả') {
-      filtered = filtered.filter(p => {
-        const productCat = p.category.toLowerCase();
-        const selectedCat = selectedCategory.toLowerCase();
-        
-        // Check if selectedCategory maps to multiple categories (like Women/Men)
-        const mappedCategories = CATEGORY_MAPPING[selectedCat];
-        if (Array.isArray(mappedCategories)) {
-          // Filter by any of the mapped categories
-          return mappedCategories.some(cat => {
-            const mappedCat = cat.toLowerCase();
-            if (mappedCat === productCat) return true;
-            // Handle Bags/Handbags equivalence
-            if ((mappedCat === 'bags' || mappedCat === 'handbags') && 
-                (productCat === 'bags' || productCat === 'handbags')) {
-              return true;
-            }
-            return false;
-          });
-        }
-        
-        // Direct match
-        if (productCat === selectedCat) return true;
-        
-        // Special case: Handbags == Bags
-        if ((productCat === 'handbags' || productCat === 'bags') && 
-            (selectedCat === 'handbags' || selectedCat === 'bags')) {
-          return true;
-        }
-        
-        return false;
-      });
-    }
-
-    // Price range filter
-    if (priceRange) {
-      filtered = filtered.filter(p => 
-        p.price >= priceRange.min && p.price <= priceRange.max
-      );
-    }
-
-    return filtered;
-  }, [products, searchQuery, selectedCategory, priceRange]);
-
-  // Sort products
-  const sortedProducts = useMemo(() => {
-    let sorted = [...filteredProducts];
-
-    switch (sortBy) {
-      case 'price-asc':
-        sorted.sort((a, b) => a.price - b.price);
-        break;
-      case 'price-desc':
-        sorted.sort((a, b) => b.price - a.price);
-        break;
-      case 'name-asc':
-        sorted.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'name-desc':
-        sorted.sort((a, b) => b.name.localeCompare(a.name));
-        break;
-      case 'newest':
-        sorted.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        break;
-      default:
-        break;
-    }
-
-    return sorted;
-  }, [filteredProducts, sortBy]);
-
+  // =============================================
+  // HANDLERS
+  // =============================================
   const handleSearchSubmit = (e) => {
     e.preventDefault();
   };
@@ -170,7 +98,7 @@ const ProductsPage = ({ products, onAddToCart }) => {
 
   const handleCategoryChange = (category) => {
     setSelectedCategory(category);
-    // If changing category, redirect to proper URL
+    
     if (category !== 'Tất cả') {
       const categoryUrl = category.toLowerCase().replace(/\s+/g, '-');
       navigate(`/category/${categoryUrl}`);
@@ -187,6 +115,14 @@ const ProductsPage = ({ products, onAddToCart }) => {
     navigate('/products');
   };
 
+  // =============================================
+  // LOADING STATE
+  // =============================================
+  const isLoading = productsLoading || categoriesLoading;
+
+  // =============================================
+  // RENDER
+  // =============================================
   return (
     <div className="min-h-screen bg-white flex flex-col">
       
@@ -197,7 +133,7 @@ const ProductsPage = ({ products, onAddToCart }) => {
             Bộ Sưu Tập Sản Phẩm
           </h1>
           <p className="text-gray-300 text-sm">
-            {sortedProducts.length} sản phẩm
+            {isLoading ? 'Đang tải...' : `${allProducts.length} sản phẩm`}
           </p>
         </div>
       </div>
@@ -349,9 +285,20 @@ const ProductsPage = ({ products, onAddToCart }) => {
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto px-4 py-6">
           
-          {sortedProducts.length > 0 ? (
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex justify-center items-center py-20">
+              <div className="text-center">
+                <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-black" />
+                <p className="text-gray-600">Đang tải sản phẩm...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Products Grid */}
+          {!isLoading && allProducts.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {sortedProducts.map((product) => (
+              {allProducts.map((product) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -360,8 +307,10 @@ const ProductsPage = ({ products, onAddToCart }) => {
                 />
               ))}
             </div>
-          ) : (
-            /* No Results */
+          )}
+
+          {/* No Results */}
+          {!isLoading && allProducts.length === 0 && (
             <div className="text-center py-16">
               <div className="text-gray-400 mb-6">
                 <svg className="w-32 h-32 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">

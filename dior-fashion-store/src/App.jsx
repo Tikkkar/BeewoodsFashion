@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { testSupabaseConnection } from './lib/testConnection';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Edit3 } from 'lucide-react';
 import { useEditor } from './hooks/useEditor';
 import { useToast } from './hooks/useToast';
-
+import { AuthProvider } from './hooks/useAuth'; // ⚡ THÊM DÒNG NÀY
 // Layout Components
 import TopBar from './components/layout/TopBar';
 import Header from './components/layout/Header';
@@ -21,6 +22,10 @@ import ShippingPolicyPage from './pages/ShippingPolicyPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import PaymentPolicyPage from './pages/PaymentPolicyPage';
 import TermsPage from './pages/TermsPage';
+// AUTH PAGES
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 // Cart & Editor
 import CartSidebar from './components/cart/CartSidebar';
 import WishlistSidebar from './components/cart/WishlistSidebar';
@@ -28,7 +33,16 @@ import EditorPanel from './components/editor/EditorPanel';
 import { ToastContainer } from './components/common/Toast';
 
 function App() {
-  // Editor state - NOW WITH UNDO/REDO & PREVIEW
+  // =============================================
+  // TEST SUPABASE CONNECTION ON MOUNT
+  // =============================================
+  useEffect(() => {
+    testSupabaseConnection();
+  }, []);
+
+  // =============================================
+  // EDITOR STATE (for brands/settings only - NOT products)
+  // =============================================
   const { 
     data, 
     setData, 
@@ -47,16 +61,21 @@ function App() {
     historyLength
   } = useEditor();
   
-  // Toast notifications
+  // =============================================
+  // TOAST NOTIFICATIONS
+  // =============================================
   const { toasts, removeToast, success, error, warning } = useToast();
 
-  // UI State
+  // =============================================
+  // UI STATE
+  // =============================================
   const [menuOpen, setMenuOpen] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [wishlistOpen, setWishlistOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false); // ⚡ CHỈ DÙNG MỘT STATE
+  const [wishlistOpen, setWishlistOpen] = useState(false); // ⚡ CHỈ DÙNG MỘT STATE
 
-  // Cart State (with localStorage)
+  // =============================================
+  // CART STATE (localStorage)
+  // =============================================
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('dior_cart');
@@ -66,7 +85,14 @@ function App() {
     }
   });
 
-  // Wishlist State - Used in Header for badge count
+  // Save cart to localStorage
+  useEffect(() => {
+    localStorage.setItem('dior_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  // =============================================
+  // WISHLIST STATE (localStorage)
+  // =============================================
   const [wishlist, setWishlist] = useState(() => {
     try {
       const savedWishlist = localStorage.getItem('dior_wishlist');
@@ -76,7 +102,12 @@ function App() {
     }
   });
 
-  // Listen to wishlist changes from other components
+  // Save wishlist to localStorage
+  useEffect(() => {
+    localStorage.setItem('dior_wishlist', JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  // Listen to wishlist changes
   useEffect(() => {
     const handleWishlistChange = () => {
       try {
@@ -87,10 +118,7 @@ function App() {
       }
     };
 
-    // Listen to storage events
     window.addEventListener('storage', handleWishlistChange);
-    
-    // Custom event for same-tab updates
     window.addEventListener('wishlistUpdated', handleWishlistChange);
 
     return () => {
@@ -99,12 +127,9 @@ function App() {
     };
   }, []);
 
-  // Save cart to localStorage
-  useEffect(() => {
-    localStorage.setItem('dior_cart', JSON.stringify(cart));
-  }, [cart]);
-
-  // Disable scroll when editor is open
+  // =============================================
+  // DISABLE SCROLL WHEN EDITOR IS OPEN
+  // =============================================
   useEffect(() => {
     if (editMode) {
       document.body.style.overflow = 'hidden';
@@ -116,7 +141,9 @@ function App() {
     };
   }, [editMode]);
 
-  // Close menu on desktop resize
+  // =============================================
+  // CLOSE MENU ON DESKTOP RESIZE
+  // =============================================
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -128,7 +155,11 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Enhanced Save Handler with Toast notification
+  // =============================================
+  // HANDLERS
+  // =============================================
+
+  // Save handler with toast
   const handleSaveWithToast = () => {
     const successResult = handleSave();
     if (successResult) {
@@ -139,28 +170,89 @@ function App() {
     return false;
   };
 
-  // Add to cart handler
-  const handleAddToCart = (product) => {
+  // ⚡ ADD TO CART - FIXED
+  const handleAddToCart = (product, selectedSize = null) => {
+    // Create unique cartId
+    const cartId = `${product.id}-${selectedSize || 'default'}-${Date.now()}`;
+    
+    const cartItem = {
+      id: product.id,
+      cartId: cartId,
+      name: product.name,
+      price: product.price,
+      image: product.image,
+      selectedSize: selectedSize || product.sizes?.[0] || 'One Size',
+      quantity: 1
+    };
+
     setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
+      // Check if product with same size already exists
+      const existingItemIndex = prevCart.findIndex(
+        item => item.id === product.id && item.selectedSize === cartItem.selectedSize
+      );
       
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
+      if (existingItemIndex > -1) {
+        // Increase quantity if exists
+        const updatedCart = [...prevCart];
+        updatedCart[existingItemIndex].quantity += 1;
+        return updatedCart;
       }
+      
+      // Add new item
+      return [...prevCart, cartItem];
     });
     
     success(`Đã thêm "${product.name}" vào giỏ hàng!`);
+    setCartOpen(true); // Auto-open cart
   };
 
-  // Remove from cart handler
-  const handleRemoveFromCart = (productId) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+  // ⚡ REMOVE FROM CART - FIXED
+  const handleRemoveFromCart = (itemId, selectedSize) => {
+    setCart(prevCart => {
+      // If itemId is cartId (contains '-')
+      if (typeof itemId === 'string' && itemId.includes('-')) {
+        return prevCart.filter(item => item.cartId !== itemId);
+      }
+      
+      // If has selectedSize, remove by id + size
+      if (selectedSize) {
+        return prevCart.filter(
+          item => !(item.id === itemId && item.selectedSize === selectedSize)
+        );
+      }
+      
+      // Fallback: remove by id
+      return prevCart.filter(item => item.id !== itemId);
+    });
+  };
+
+  // ⚡ UPDATE QUANTITY - NEW FUNCTION
+  const handleUpdateQuantity = (itemId, newQuantity, selectedSize) => {
+    if (newQuantity <= 0) {
+      handleRemoveFromCart(itemId, selectedSize);
+      return;
+    }
+
+    setCart(prevCart => {
+      return prevCart.map(item => {
+        // Match by cartId
+        if (item.cartId === itemId) {
+          return { ...item, quantity: newQuantity };
+        }
+        
+        // Match by id + size
+        if (item.id === itemId && item.selectedSize === selectedSize) {
+          return { ...item, quantity: newQuantity };
+        }
+        
+        // Match by id only (fallback)
+        if (item.id === itemId && !selectedSize) {
+          return { ...item, quantity: newQuantity };
+        }
+        
+        return item;
+      });
+    });
   };
 
   // Remove from wishlist handler
@@ -177,14 +269,20 @@ function App() {
     localStorage.removeItem('dior_cart');
   };
 
+  // Menu toggle
   const handleMenuToggle = () => {
     setMenuOpen(!menuOpen);
   };
 
+  // =============================================
+  // RENDER
+  // =============================================
   return (
     <Router>
+       <AuthProvider> {/* ⚡ WRAP VỚI AuthProvider */}
       <div className="min-h-screen flex flex-col">
-        {/* Editor Toggle Button - Hide when editor is open */}
+        
+        {/* Editor Toggle Button */}
         {!editMode && (
           <button
             onClick={toggleEditMode}
@@ -195,7 +293,7 @@ function App() {
           </button>
         )}
 
-        {/* Editor Panel - NOW WITH UNDO/REDO & PREVIEW */}
+        {/* Editor Panel - FOR BRAND SETTINGS ONLY */}
         {editMode && (
           <EditorPanel
             data={data}
@@ -214,9 +312,10 @@ function App() {
           />
         )}
 
-        {/* Website Content - Use live data for preview */}
+        {/* Top Bar */}
         <TopBar message={data.topBarMessage} />
         
+        {/* Header */}
         <Header
           brandName={data.brand.name}
           cart={cart}
@@ -228,51 +327,48 @@ function App() {
           navigation={data.navigation}
         />
 
-        {/* Routes */}
+        {/* Main Routes */}
         <Routes>
-          {/* Home Page */}
+          {/* Home Page - NOW USES SUPABASE */}
           <Route 
             path="/" 
             element={
               <HomePage 
-                data={data}
-                currentSlide={currentSlide}
-                setCurrentSlide={setCurrentSlide}
                 onAddToCart={handleAddToCart}
               />
             } 
           />
 
-          {/* All Products Page */}
+          {/* All Products Page - NOW USES SUPABASE */}
           <Route 
             path="/products" 
             element={
               <ProductsPage 
-                products={data.products}
                 onAddToCart={handleAddToCart}
+                wishlist={wishlist}
               />
             } 
           />
 
-          {/* Category Page - THÊM ROUTE NÀY */}
+          {/* Category Page - NOW USES SUPABASE */}
           <Route 
-            path="/category/:name" 
+            path="/category/:slug" 
             element={
               <ProductsPage 
-                products={data.products}
                 onAddToCart={handleAddToCart}
+                wishlist={wishlist}
               />
             } 
           />
 
-          {/* Product Detail Page */}
+          {/* Product Detail Page - NOW USES SUPABASE */}
           <Route 
-            path="/product/:id" 
+            path="/product/:slug" 
             element={
               <ProductDetailPage 
-                products={data.products}
                 onAddToCart={handleAddToCart}
                 brand={data.brand}
+                wishlist={wishlist}
               />
             } 
           />
@@ -293,20 +389,41 @@ function App() {
             path="/checkout/success" 
             element={<OrderSuccessPage />} 
           />
-          {/* About Page */}
+           {/* Protected Route Example */}
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <div className="min-h-screen flex items-center justify-center">
+                    <h1 className="text-2xl">Profile Page (Protected)</h1>
+                  </div>
+                </ProtectedRoute>
+              } 
+            />
+            {/* Admin Route Example */}
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <div className="min-h-screen flex items-center justify-center">
+                    <h1 className="text-2xl">Admin Dashboard (Admin Only)</h1>
+                  </div>
+                </ProtectedRoute>
+              } 
+            />
+          {/* Policy Pages - Keep using data from editor */}
           <Route path="/about" element={<AboutPage brand={data.brand} />} />
-          {/* Return & Refund Policy Page */}
           <Route path="/return-policy" element={<ReturnPolicyPage brand={data.brand} />} />
-          {/* Shipping Policy Page */}
           <Route path="/shipping-policy" element={<ShippingPolicyPage brand={data.brand} />} />
-          {/* Privacy Policy Page */}
           <Route path="/privacy-policy" element={<PrivacyPolicyPage brand={data.brand} />} />
-          {/* Payment Policy Page */}
           <Route path="/payment-policy" element={<PaymentPolicyPage brand={data.brand} />} />
-          {/* TermsPage Route */}
           <Route path="/terms" element={<TermsPage brand={data.brand} />} />
+          {/* Auth Pages */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
         </Routes>
 
+        {/* Footer */}
         <Footer 
           brand={data.brand} 
           sections={data.footerSections} 
@@ -318,6 +435,7 @@ function App() {
           onClose={() => setCartOpen(false)}
           cart={cart}
           onRemoveItem={handleRemoveFromCart}
+          onUpdateQuantity={handleUpdateQuantity}
         />
 
         {/* Wishlist Sidebar */}
@@ -332,6 +450,7 @@ function App() {
         {/* Toast Notifications */}
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </div>
+       </AuthProvider>
     </Router>
   );
 }

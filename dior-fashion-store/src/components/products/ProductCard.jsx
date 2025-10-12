@@ -52,9 +52,10 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
     setIsWishlisted(wishlist.some(item => item.id === product.id));
   }, [product.id]);
 
+  // ⚡ THAY ĐỔI: Dùng slug thay vì id
   return (
     <Link 
-      to={`/product/${product.id}`} 
+      to={`/product/${product.slug}`}  // ← THAY ĐỔI NÀY
       className="group block"
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
@@ -78,14 +79,14 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             loading="lazy"
           />
 
-          {/* Sale Badge */}
-          {product.discount && (
+          {/* Sale Badge - ⚡ THAY ĐỔI: Tính discount từ originalPrice */}
+          {product.originalPrice && product.originalPrice > product.price && (
             <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
-              -{product.discount}%
+              -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
             </div>
           )}
 
-          {/* Wishlist Button - Always visible on mobile, hover on desktop */}
+          {/* Wishlist Button */}
           <button
             onClick={handleWishlist}
             className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10 md:opacity-0 md:group-hover:opacity-100 ${
@@ -97,13 +98,12 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
           </button>
 
-          {/* Quick Actions - Show on Hover (Desktop only) */}
+          {/* Quick Actions - Desktop */}
           <div className={`hidden md:flex absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent p-4 transition-all duration-300 ${
             showActions ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <div className="flex items-center gap-2 w-full">
               
-              {/* Add to Cart */}
               <button
                 onClick={handleAddToCart}
                 className="flex-1 bg-white text-black py-2.5 px-3 rounded-lg text-sm font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md"
@@ -112,7 +112,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
                 <span>Thêm vào giỏ</span>
               </button>
 
-              {/* Quick View */}
               {onQuickView && (
                 <button
                   onClick={handleQuickView}
@@ -162,41 +161,27 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             <span className="text-base font-bold text-black">
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice && (
+            {product.originalPrice && product.originalPrice > product.price && (
               <span className="text-xs text-gray-400 line-through">
                 {formatPrice(product.originalPrice)}
               </span>
             )}
           </div>
 
-          {/* Rating (Optional) */}
-          {product.rating && (
+          {/* Rating - ⚡ THAY ĐỔI: Tính từ reviews array */}
+          {product.reviews && product.reviews.length > 0 && (
             <div className="flex items-center gap-1 mt-2">
               <div className="flex items-center">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className={`text-xs ${i < product.rating ? 'text-yellow-400' : 'text-gray-300'}`}>
-                    ★
-                  </span>
-                ))}
+                {[...Array(5)].map((_, i) => {
+                  const avgRating = product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length;
+                  return (
+                    <span key={i} className={`text-xs ${i < Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-300'}`}>
+                      ★
+                    </span>
+                  );
+                })}
               </div>
-              <span className="text-xs text-gray-500">({product.reviews || 0})</span>
-            </div>
-          )}
-
-          {/* Colors */}
-          {product.colors && product.colors.length > 0 && (
-            <div className="flex items-center gap-1.5 mt-2">
-              {product.colors.slice(0, 5).map((color, index) => (
-                <div
-                  key={index}
-                  className="w-4 h-4 rounded-full border border-gray-300 shadow-sm"
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
-              {product.colors.length > 5 && (
-                <span className="text-xs text-gray-500 ml-1">+{product.colors.length - 5}</span>
-              )}
+              <span className="text-xs text-gray-500">({product.reviews.length})</span>
             </div>
           )}
 

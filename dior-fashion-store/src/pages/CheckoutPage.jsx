@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CreditCard, Truck, ShieldCheck } from 'lucide-react';
+import { createOrder } from '../lib/api/orders';
 
 const CheckoutPage = ({ cart, onClearCart }) => {
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false); // ⚡ THÊM DÒNG NÀY
+  
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -11,6 +14,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
     address: '',
     city: '',
     district: '',
+    ward: '', // ⚡ THÊM DÒNG NÀY
     note: '',
     paymentMethod: 'cod',
   });
@@ -37,7 +41,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
       ...prev,
       [name]: value
     }));
-    // Clear error khi user nhập
+    
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -76,36 +80,59 @@ const CheckoutPage = ({ cart, onClearCart }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
+    // Validate form
     if (!validateForm()) {
-      alert('⚠️ Vui lòng điền đầy đủ thông tin!');
       return;
     }
 
-    // Tạo đơn hàng
-    const order = {
-      id: Date.now(),
-      ...formData,
-      items: cart,
-      subtotal: calculateSubtotal(),
-      shippingFee,
-      total,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+    setLoading(true);
 
-    // Lưu đơn hàng vào localStorage
-    const orders = JSON.parse(localStorage.getItem('dior_orders') || '[]');
-    orders.push(order);
-    localStorage.setItem('dior_orders', JSON.stringify(orders));
+    try {
+      // Prepare order data
+      const orderData = {
+        cartItems: cart,
+        customerInfo: {
+          name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          notes: formData.note // ⚡ SỬA: notes → note
+        },
+        shippingInfo: {
+          address: formData.address,
+          city: formData.city,
+          district: formData.district,
+          ward: formData.ward || ''
+        },
+        total: calculateSubtotal() // ⚡ SỬA: dùng calculateSubtotal() thay vì total
+      };
 
-    // Clear cart
-    onClearCart();
+      // Create order in Supabase
+      const { data: order, error } = await createOrder(orderData);
 
-    // Chuyển sang trang success
-    navigate('/checkout/success', { state: { order } });
+      if (error) {
+        throw new Error(error);
+      }
+
+      // Clear cart
+      onClearCart();
+
+      // Navigate to success page with order info
+      navigate('/checkout/success', { 
+        state: { 
+          orderNumber: order.order_number,
+          orderId: order.id 
+        } 
+      });
+
+    } catch (error) {
+      console.error('Order creation failed:', error);
+      alert('Đặt hàng thất bại. Vui lòng thử lại!');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -356,13 +383,13 @@ const CheckoutPage = ({ cart, onClearCart }) => {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg p-6 shadow-sm sticky top-24">
               <h2 className="text-xl font-light tracking-widest mb-6">
-                ĐỀN HÀNG CỦA BẠN
+                ĐƠN HÀNG CỦA BẠN
               </h2>
 
               {/* Products List */}
               <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex gap-3">
+                  <div key={item.cartId || item.id} className="flex gap-3">
                     <img
                       src={item.image}
                       alt={item.name}
@@ -396,10 +423,15 @@ const CheckoutPage = ({ cart, onClearCart }) => {
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                className="w-full mt-6 bg-black text-white py-4 rounded-lg tracking-widest uppercase font-medium hover:bg-gray-800 transition-colors flex items-center justify-center gap-2"
+                disabled={loading}
+                className={`w-full mt-6 py-4 rounded-lg tracking-widest uppercase font-medium transition-colors flex items-center justify-center gap-2 ${
+                  loading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-black text-white hover:bg-gray-800'
+                }`}
               >
                 <ShieldCheck size={20} />
-                Đặt hàng
+                {loading ? 'Đang xử lý...' : 'Đặt hàng'}
               </button>
 
               {/* Trust Badges */}

@@ -43,9 +43,19 @@ const ProductGrid = ({
       window.dispatchEvent(new Event('wishlistUpdated'));
     };
 
+    // ⚡ Tính discount
+    const discount = product.originalPrice && product.originalPrice > product.price
+      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+      : null;
+
+    // ⚡ Tính average rating
+    const avgRating = product.reviews && product.reviews.length > 0
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+      : 0;
+
     return (
       <div className="group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-        <Link to={`/product/${product.id}`} className="flex flex-col sm:flex-row gap-4 p-4">
+        <Link to={`/product/${product.slug}`} className="flex flex-col sm:flex-row gap-4 p-4">  {/* ⚡ SLUG */}
           {/* Image */}
           <div className="relative w-full sm:w-48 h-64 sm:h-48 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
             <img
@@ -53,9 +63,9 @@ const ProductGrid = ({
               alt={product.name}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-            {product.discount && (
+            {discount && (
               <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                -{product.discount}%
+                -{discount}%
               </div>
             )}
           </div>
@@ -70,20 +80,20 @@ const ProductGrid = ({
                 {product.name}
               </h3>
               <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp.
+                {product.description || 'Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp.'}
               </p>
               
               {/* Rating */}
-              {product.rating && (
+              {product.reviews && product.reviews.length > 0 && (
                 <div className="flex items-center gap-2 mb-3">
                   <div className="flex items-center">
                     {[...Array(5)].map((_, i) => (
-                      <span key={i} className={`text-sm ${i < product.rating ? 'text-yellow-400' : 'text-gray-300'}`}>
+                      <span key={i} className={`text-sm ${i < Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-300'}`}>
                         ★
                       </span>
                     ))}
                   </div>
-                  <span className="text-sm text-gray-500">({product.reviews || 0} đánh giá)</span>
+                  <span className="text-sm text-gray-500">({product.reviews.length} đánh giá)</span>
                 </div>
               )}
             </div>
@@ -94,7 +104,7 @@ const ProductGrid = ({
                 <span className="text-xl font-bold text-black">
                   {formatPrice(product.price)}
                 </span>
-                {product.originalPrice && (
+                {product.originalPrice && product.originalPrice > product.price && (
                   <span className="text-sm text-gray-400 line-through">
                     {formatPrice(product.originalPrice)}
                   </span>
