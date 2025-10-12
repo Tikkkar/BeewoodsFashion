@@ -1,12 +1,36 @@
 export const INITIAL_DATA = {
   brand: {
-    name: 'DIOR',
-    tagline: 'The House of Dior embodies timeless elegance and exceptional craftsmanship.'
+    name: 'BeeWo',
+    tagline: 'The House of BeeWo embodies timeless elegance and exceptional craftsmanship.'
   },
   
   topBarMessage: 'COMPLIMENTARY DELIVERY & RETURNS',
   
-  navigation: ['WOMEN', 'MEN', 'HAUTE COUTURE', 'BAGS', 'ACCESSORIES'],
+// ...
+  navigation: [
+    { text: 'Về BeeWo', 
+      url: '/about' 
+    },
+    { text: 'Bộ Sưu Tập', 
+      url: '/products', 
+      submenu: [
+        { text: 'Tất cả', url: '/products' },
+        { text: 'Handbags', url: '/category/handbags' },
+    ]
+  },
+    { text: 'Tất Cả Sản Phẩm', 
+      url: '/category/haute-couture',
+      submenu: [
+        { text: 'Haute Couture', url: '/category/haute-couture' },
+        { text: 'Accessories', url: '/category/accessories' },
+      ]
+    },
+    { text: 'Ưu Đãi Độc Quyền', url: '/category/bags' },
+    // Ví dụ về một link hoàn toàn tùy chỉnh:
+    { text: 'Tin Tức', url: '/sale-off' },
+    { text: 'Tuyển Dụng', url: '/recruitment' }
+  ],
+// ...
   
   products: [
     { 

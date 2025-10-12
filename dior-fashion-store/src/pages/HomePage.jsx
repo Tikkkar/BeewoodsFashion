@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import HeroSlider from '../components/hero/HeroSlider';
 import ProductCard from '../components/products/ProductCard';
 import QuickViewModal from '../components/products/QuickViewModal';
-import { Sparkles, TrendingUp, Gift, ArrowRight } from 'lucide-react';
+import { TrendingUp, ShoppingBag, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const HomePage = ({ data, onAddToCart }) => {
@@ -10,69 +10,15 @@ const HomePage = ({ data, onAddToCart }) => {
 
   // Get featured/best seller products
   const featuredProducts = data?.products?.filter(p => p.isFeatured) || data?.products?.slice(0, 8) || [];
-  const newArrivals = data?.products?.slice(0, 4) || [];
+  const todayProducts = data?.products?.slice(0, 4) || [];
 
   return (
     <div className="min-h-screen bg-white">
       
-      {/* Hero Slider */}
+      {/* 1. Hero Banner */}
       <HeroSlider banners={data?.banners || []} />
 
-      {/* Free Shipping Banner */}
-      <div className="bg-red-50 border-y border-red-100">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-center gap-2 text-sm text-red-700">
-            <Gift size={18} />
-            <p className="font-medium">
-              MIỄN PHÍ VẬN CHUYỂN cho đơn hàng từ 2 sản phẩm - 
-              <span className="ml-1 font-bold">Áp dụng toàn quốc</span>
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Categories Grid */}
-      {data?.categories && data.categories.length > 0 && (
-        <section className="py-12 md:py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-8 md:mb-12">
-              <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
-                Danh Mục Sản Phẩm
-              </h2>
-              <p className="text-gray-600">Khám phá bộ sưu tập của chúng tôi</p>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {data.categories.map((category, index) => (
-                <Link
-                  key={index}
-                  to={`/category/${category.name.toLowerCase()}`}
-                  className="group relative aspect-square overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-all duration-300"
-                >
-                  <img
-                    src={category.img}
-                    alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
-                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
-                      <h3 className="text-lg md:text-xl font-bold tracking-wide uppercase">
-                        {category.name}
-                      </h3>
-                      <div className="flex items-center gap-1 text-sm mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span>Xem ngay</span>
-                        <ArrowRight size={16} />
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Featured Products Section */}
+      {/* 2. Sản Phẩm Bán Chạy */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
           
@@ -106,9 +52,50 @@ const HomePage = ({ data, onAddToCart }) => {
               <p>Không có sản phẩm nào</p>
             </div>
           )}
+        </div>
+      </section>
 
-          {/* View All Button */}
-          <div className="text-center mt-8 md:mt-12">
+      {/* 3. Mua Gì Hôm Nay */}
+      <section className="py-12 md:py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4">
+          
+          {/* Section Header */}
+          <div className="text-center mb-8 md:mb-12">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <ShoppingBag size={24} className="text-black" />
+              <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase">
+                Mua Gì Hôm Nay
+              </h2>
+            </div>
+            <p className="text-gray-600 text-sm md:text-base">
+              Gợi ý sản phẩm cho bạn
+            </p>
+          </div>
+
+          {/* Products Grid */}
+          {todayProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {todayProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onAddToCart={onAddToCart}
+                  onQuickView={setQuickViewProduct}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <p>Không có sản phẩm nào</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 4. View All Button */}
+      <section className="py-8 md:py-12 bg-white">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center">
             <Link
               to="/products"
               className="inline-flex items-center gap-2 bg-black text-white px-8 py-3 rounded-lg hover:bg-gray-800 transition-colors font-medium"
@@ -120,41 +107,8 @@ const HomePage = ({ data, onAddToCart }) => {
         </div>
       </section>
 
-      {/* New Arrivals Section */}
-      {newArrivals.length > 0 && (
-        <section className="py-12 md:py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4">
-            
-            {/* Section Header */}
-            <div className="text-center mb-8 md:mb-12">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Sparkles size={24} className="text-yellow-500" />
-                <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase">
-                  Hàng Mới Về
-                </h2>
-              </div>
-              <p className="text-gray-600 text-sm md:text-base">
-                Cập nhật xu hướng thời trang mới nhất
-              </p>
-            </div>
-
-            {/* Products Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {newArrivals.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={onAddToCart}
-                  onQuickView={setQuickViewProduct}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Customer Feedback Section (Hagoo Style) */}
-      <section className="py-12 md:py-16 bg-white">
+      {/* 5. Customer Feedback */}
+      <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
             <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
@@ -165,7 +119,7 @@ const HomePage = ({ data, onAddToCart }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Testimonial 1 */}
-            <div className="bg-gray-50 p-6 rounded-lg">
+            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -184,7 +138,7 @@ const HomePage = ({ data, onAddToCart }) => {
             </div>
 
             {/* Testimonial 2 */}
-            <div className="bg-gray-50 p-6 rounded-lg">
+            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -203,7 +157,7 @@ const HomePage = ({ data, onAddToCart }) => {
             </div>
 
             {/* Testimonial 3 */}
-            <div className="bg-gray-50 p-6 rounded-lg">
+            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
                   <span key={i} className="text-yellow-400">★</span>
@@ -221,31 +175,6 @@ const HomePage = ({ data, onAddToCart }) => {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Newsletter Section */}
-      <section className="py-12 md:py-16 bg-black text-white">
-        <div className="max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4">
-            Đăng Ký Nhận Thông Tin
-          </h2>
-          <p className="text-gray-300 mb-8">
-            Nhận thông tin về sản phẩm mới và ưu đãi đặc biệt
-          </p>
-          <form className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Email của bạn"
-              className="flex-1 px-4 py-3 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-white"
-            />
-            <button
-              type="submit"
-              className="bg-white text-black px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition whitespace-nowrap"
-            >
-              Đăng Ký
-            </button>
-          </form>
         </div>
       </section>
 

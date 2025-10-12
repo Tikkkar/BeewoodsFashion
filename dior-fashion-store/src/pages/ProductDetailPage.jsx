@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ShoppingCart, Heart, Share2, ChevronLeft, Star, Truck, Shield, RefreshCw, Check, ChevronRight, Ruler, X } from 'lucide-react';
+import { ShoppingCart, Heart, Share2, ChevronLeft, Star, Truck, Shield, RefreshCw, Check, ChevronRight, Ruler, X, Package, CreditCard } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard';
 
 const ProductDetailPage = ({ products, onAddToCart, brand }) => {
@@ -12,6 +12,7 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
   const [activeTab, setActiveTab] = useState('description');
   const [selectedImage, setSelectedImage] = useState(0);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [showShippingPolicy, setShowShippingPolicy] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Wishlist state
@@ -129,6 +130,15 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
   return (
     <div className="min-h-screen bg-white">
       
+      {/* Free Shipping Banner - Sticky (Hagoo Style) */}
+      <div className="sticky top-0 bg-red-50 border-b border-red-100 z-40">
+        <div className="max-w-7xl mx-auto px-4 py-2">
+          <p className="text-center text-sm text-red-700">
+            🎁 <strong>Miễn phí vận chuyển</strong> cho đơn hàng từ 2 sản phẩm - Áp dụng toàn quốc
+          </p>
+        </div>
+      </div>
+
       {/* Breadcrumb */}
       <div className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -150,7 +160,6 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           
-          {/* ========== START: MODIFIED IMAGE AREA ========== */}
           {/* Left: Images */}
           <div className="flex flex-col-reverse md:flex-row gap-4">
             {/* Thumbnail Gallery (Vertical) */}
@@ -182,7 +191,7 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
               <img
                 src={productImages[selectedImage]}
                 alt={product.name}
-                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                className={`w-full h-full object-cover transition-all duration-300 group-hover:scale-105 ${
                   imageLoaded ? 'opacity-100' : 'opacity-0'
                 }`}
                 onLoad={() => setImageLoaded(true)}
@@ -214,32 +223,14 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
               )}
             </div>
           </div>
-          {/* ========== END: MODIFIED IMAGE AREA ========== */}
-
 
           {/* Right: Product Info */}
           <div className="space-y-6">
             
-            {/* Category */}
-            <div className="text-xs uppercase tracking-widest text-gray-500">
-              {product.category}
-            </div>
-
             {/* Product Name */}
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               {product.name}
             </h1>
-
-            {/* Rating */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <span className="text-sm text-gray-600">(248 đánh giá)</span>
-              <span className="text-sm text-green-600 font-medium">• Còn hàng</span>
-            </div>
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
@@ -253,11 +244,30 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
               )}
             </div>
 
-            {/* Description */}
-            <p className="text-gray-700 leading-relaxed text-sm">
-              Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, 
-              mang đến sự sang trọng và đẳng cấp cho người sử dụng. Phù hợp cho mọi dịp từ 
-              công sở đến dự tiệc.
+            {/* Product Code (Hagoo Style) */}
+            <div className="text-sm text-gray-600">
+              Mã sản phẩm: <span className="font-medium">SP{product.id.toString().padStart(3, '0')}</span>
+            </div>
+
+            {/* Policy Badge (Hagoo Style) - IMPORTANT */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center gap-2 text-green-700">
+                <Package size={20} />
+                <span className="font-semibold">Được kiểm tra hàng trước</span>
+              </div>
+              <button 
+                onClick={() => setShowShippingPolicy(true)}
+                className="text-sm text-green-600 hover:text-green-800 underline mt-1"
+              >
+                Nhấp để xem chính sách
+              </button>
+            </div>
+
+            {/* Short Description (Hagoo Style) */}
+            <p className="text-gray-700 leading-relaxed text-sm border-l-4 border-gray-300 pl-4 italic">
+              {product.name} là một thiết kế hiện đại, tinh giản nhưng đầy điểm nhấn. 
+              Với thiết kế sang trọng, sản phẩm này không chỉ dễ phối đồ mà còn khéo léo 
+              tôn lên phong cách của người mặc.
             </p>
 
             <div className="border-t pt-6 space-y-5">
@@ -327,7 +337,7 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
                   className="w-full bg-black text-white py-4 rounded-lg font-semibold uppercase tracking-wide hover:bg-gray-800 transition flex items-center justify-center gap-2"
                 >
                   <ShoppingCart size={20} />
-                  Thêm vào giỏ hàng
+                  Mua ngay
                 </button>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -354,42 +364,32 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
               </div>
             </div>
 
-            {/* Features */}
-            <div className="border-t pt-6 space-y-4">
-              <div className="flex items-start gap-3 text-sm">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Truck size={20} className="text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Miễn phí vận chuyển</h3>
-                  <p className="text-gray-600">Đơn hàng từ 2 sản phẩm - Giao toàn quốc</p>
-                </div>
+            {/* Features (Hagoo Style - Simpler) */}
+            <div className="border-t pt-6 space-y-3">
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Check size={16} className="text-green-600" />
+                <span>Miễn phí vận chuyển từ 2 sản phẩm</span>
               </div>
               
-              <div className="flex items-start gap-3 text-sm">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <Shield size={20} className="text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Chính hãng 100%</h3>
-                  <p className="text-gray-600">Cam kết sản phẩm chính hãng, chất lượng</p>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Check size={16} className="text-green-600" />
+                <span>Đổi trả trong 7 ngày nếu không vừa ý</span>
               </div>
               
-              <div className="flex items-start gap-3 text-sm">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <RefreshCw size={20} className="text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="font-semibold mb-1">Đổi trả dễ dàng</h3>
-                  <p className="text-gray-600">Đổi trả trong 30 ngày nếu không vừa ý</p>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Check size={16} className="text-green-600" />
+                <span>Được kiểm tra hàng trước khi thanh toán</span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-sm text-gray-700">
+                <Check size={16} className="text-green-600" />
+                <span>Hỗ trợ thanh toán COD toàn quốc</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs Section */}
+        {/* Tabs Section - (Hagoo Style Content) */}
         <div className="mt-16 md:mt-20">
           <div className="border-b border-gray-200">
             <div className="flex gap-6 md:gap-8 overflow-x-auto scrollbar-hide">
@@ -416,54 +416,82 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
 
           <div className="py-8">
             {activeTab === 'description' && (
-              <div className="max-w-3xl mx-auto prose prose-sm lg:prose-base text-gray-700 leading-relaxed">
-                {/* 📝 Text 1 (Intro) */}
-                <p className="text-lg text-center italic">
-                  Chào mừng bạn đến với thế giới của sự thanh lịch và tinh tế. <strong>{product.name}</strong> không chỉ là một sản phẩm, mà là một tuyên ngôn về phong cách.
-                </p>
-
-                {/* 📷 Image 1 (Main lifestyle) */}
-                <figure>
-                  <img src={productImages[1]} alt={`Lifestyle image for ${product.name}`} className="rounded-lg shadow-md" />
-                  <figcaption>Phong cách sống động cùng {product.name}</figcaption>
-                </figure>
-
-                {/* 📝 Text 2 (Feature 1) */}
-                <h3>Chất liệu Vượt trội</h3>
-                <p>
-                  Chúng tôi tin rằng sự sang trọng đến từ những điều cơ bản nhất. Đó là lý do sản phẩm này được chế tác từ chất liệu Cotton cao cấp, pha thêm spandex để tạo nên sự co giãn và thoải mái tuyệt đối. Bề mặt vải mềm mại, thoáng khí, mang lại cảm giác dễ chịu suốt cả ngày.
-                </p>
-
-                {/* 📷 Image 2 (Detail close-up) */}
-                <figure>
-                  <img src={productImages[2]} alt={`Close-up detail of ${product.name}`} className="rounded-lg shadow-md" />
-                  <figcaption>Từng đường kim mũi chỉ được chăm chút tỉ mỉ</figcaption>
-                </figure>
-
-                {/* 📝 Text 3 (Feature 2 + Bullet points) */}
-                <h3>Thiết kế Tôn vinh Vóc dáng</h3>
-                <p>
-                  Mỗi đường cắt may trên <strong>{product.name}</strong> đều được tính toán kỹ lưỡng để tôn lên vóc dáng người mặc. Form dáng chuẩn, ôm vừa vặn nhưng không gây khó chịu, giúp bạn luôn tự tin và nổi bật.
-                </p>
-                <ul>
-                    <li>Form dáng hiện đại, dễ dàng phối đồ.</li>
-                    <li>Màu sắc bền đẹp, không phai sau nhiều lần giặt.</li>
-                    <li>Phù hợp cho mọi hoạt động: đi làm, dạo phố, hay những buổi tiệc nhẹ.</li>
-                </ul>
-                
-                {/* 📷 Image 3 (Styling inspiration) */}
-                <figure>
-                  <img src={productImages[3]} alt={`Styling inspiration for ${product.name}`} className="rounded-lg shadow-md" />
-                  <figcaption>Dễ dàng tạo nên bộ trang phục hoàn hảo</figcaption>
-                </figure>
-                
-                {/* 📝 Text 4 (Closing + Quote) */}
-                <div className="text-center border-t border-b py-6 my-8 not-prose">
-                  <p className="mb-4 text-gray-700">
-                    Hãy để <strong>{product.name}</strong> trở thành người bạn đồng hành, giúp bạn kể nên câu chuyện phong cách của riêng mình.
+              <div className="max-w-4xl mx-auto space-y-8">
+                {/* Intro paragraph (Hagoo style) */}
+                <div className="text-center space-y-4">
+                  <p className="text-lg leading-relaxed text-gray-800">
+                    <strong>{product.name}</strong> là một thiết kế hiện đại, tinh giản nhưng đầy điểm nhấn. 
+                    Sản phẩm không chỉ dễ phối cùng nhiều kiểu trang phục khác nhau mà còn khéo léo tôn lên 
+                    phong cách riêng của người mặc.
                   </p>
-                  <p className="font-semibold text-gray-900 text-base">
-                    "Thời trang là cách bạn thể hiện mình mà không cần phải nói một lời."
+                  
+                  <p className="text-gray-700 leading-relaxed">
+                    Có những món đồ mà chỉ qua ánh nhìn đầu tiên, bạn có thể cảm nhận ngay sự duyên dáng tinh tế. 
+                    <strong> {product.name}</strong> chính là một trong số đó.
+                  </p>
+                </div>
+
+                {/* Product image with caption */}
+                <figure className="my-8">
+                  <img 
+                    src={productImages[0]} 
+                    alt={product.name} 
+                    className="w-full rounded-lg shadow-md"
+                  />
+                  <figcaption className="text-center text-sm text-gray-500 mt-3 italic">
+                    {product.name} - Thiết kế sang trọng, tinh tế
+                  </figcaption>
+                </figure>
+
+                {/* Feature sections (Hagoo style) */}
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-bold mb-3">Kiểu dáng duyên dáng, tạo chiều sâu</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      Đường cắt tinh tế và chi tiết phối hợp khéo léo, vừa tạo cảm giác thanh mảnh hơn 
+                      cho vóc dáng, vừa giúp outfit trở nên cuốn hút mà không cần quá cầu kỳ. Thiết kế 
+                      này không chỉ đẹp mà còn rất dễ ứng dụng trong nhiều hoàn cảnh.
+                    </p>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold mb-3">Dễ dàng phối đồ, linh hoạt trong nhiều phong cách</h3>
+                    <p className="text-gray-700 leading-relaxed mb-4">
+                      Sản phẩm có thể kết hợp với nhiều kiểu áo khác nhau - từ áo sơ mi công sở đến áo thun 
+                      basic, hay những chiếc áo crop top cá tính. Màu sắc trung tính giúp bạn dễ dàng mix-match 
+                      với các items khác trong tủ đồ.
+                    </p>
+                    
+                    {/* Mix & Match suggestions (Hagoo style) */}
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <span>💡</span>
+                        Gợi ý phối đồ cùng {product.name}:
+                      </h4>
+                      <ul className="space-y-2 text-sm text-gray-700">
+                        <li>✓ Áo sơ mi trắng + giày cao gót → phong cách công sở thanh lịch</li>
+                        <li>✓ Áo thun basic + sneakers → outfit dạo phố năng động</li>
+                        <li>✓ Áo ôm cổ lọ + boots → look sang trọng cho buổi tối</li>
+                        <li>✓ Áo kiểu phối lụa + sandals → vẻ ngoài nữ tính, dịu dàng</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-bold mb-3">Đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt</h3>
+                    <p className="text-gray-700 leading-relaxed">
+                      <strong>{product.name}</strong> là minh chứng cho triết lý thời trang "ít mà chất": 
+                      đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt. Đây là item không thể thiếu 
+                      trong tủ đồ của những người yêu phong cách tinh tế, dễ ứng dụng nhưng vẫn có chiều sâu riêng.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Closing statement */}
+                <div className="text-center py-6 my-8 border-t border-b border-gray-200">
+                  <p className="text-gray-700 italic text-lg">
+                    Nếu bạn đang tìm kiếm một sản phẩm để nhẹ nhàng làm mới bản thân và style của mình, 
+                    đây chính là món đồ đáng để "đặt ngay".
                   </p>
                 </div>
               </div>
@@ -641,6 +669,64 @@ const ProductDetailPage = ({ products, onAddToCart, brand }) => {
                   <li>• Nếu bạn đang ở giữa 2 size, hãy chọn size lớn hơn</li>
                   <li>• Liên hệ hotline nếu cần tư vấn thêm: 0983.918.411</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Shipping Policy Modal (Hagoo Style - NEW) */}
+      {showShippingPolicy && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowShippingPolicy(false)}>
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold">Chính Sách Giao Hàng COD</h3>
+              <button onClick={() => setShowShippingPolicy(false)} className="p-1 hover:bg-gray-100 rounded">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-gray-700">
+                Bạn có thể thanh toán cho người giao hàng mà không cần chịu phí thu tiền hộ (COD).
+              </p>
+              
+              <div className="bg-green-50 p-4 rounded-lg space-y-3">
+                <h4 className="font-semibold text-green-800 mb-2">Tóm tắt chính sách:</h4>
+                
+                <div className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                  <p className="text-sm text-gray-700 flex-1">
+                    Chúng tôi hỗ trợ <strong>được kiểm tra hàng trước khi thanh toán</strong> nhưng không mặc thử đồ
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                  <p className="text-sm text-gray-700 flex-1">
+                    Chúng tôi không gửi đơn hàng COD nếu bạn có đơn hàng khác sử dụng COD mà chưa nhận hàng
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  <p className="text-sm text-gray-700 flex-1">
+                    Người giao hàng (bưu tá) không phải là nhân viên của chúng tôi, vui lòng liên hệ theo số hotline trên bì hàng để được hỗ trợ
+                  </p>
+                </div>
+                
+                <div className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</span>
+                  <p className="text-sm text-gray-700 flex-1">
+                    Sản phẩm đúng với hình ảnh và mô tả nhưng nếu không ưng ý hoặc vì lý do nào khác khiến bạn từ chối nhận hàng, 
+                    vui lòng hỗ trợ 30.000đ cước phí vận chuyển chiều về qua nhân viên phát hàng
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-sm text-gray-600 italic">
+                  Rất mong nhận được sự thông cảm và hợp tác từ quý khách hàng! 🙏
+                </p>
               </div>
             </div>
           </div>

@@ -15,7 +15,12 @@ import ProductsPage from './pages/ProductsPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderSuccessPage from './pages/OrderSuccessPage';
-
+import AboutPage from './pages/AboutPage';
+import ReturnPolicyPage from './pages/ReturnPolicyPage';
+import ShippingPolicyPage from './pages/ShippingPolicyPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import PaymentPolicyPage from './pages/PaymentPolicyPage';
+import TermsPage from './pages/TermsPage';
 // Cart & Editor
 import CartSidebar from './components/cart/CartSidebar';
 import WishlistSidebar from './components/cart/WishlistSidebar';
@@ -288,6 +293,18 @@ function App() {
             path="/checkout/success" 
             element={<OrderSuccessPage />} 
           />
+          {/* About Page */}
+          <Route path="/about" element={<AboutPage brand={data.brand} />} />
+          {/* Return & Refund Policy Page */}
+          <Route path="/return-policy" element={<ReturnPolicyPage brand={data.brand} />} />
+          {/* Shipping Policy Page */}
+          <Route path="/shipping-policy" element={<ShippingPolicyPage brand={data.brand} />} />
+          {/* Privacy Policy Page */}
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage brand={data.brand} />} />
+          {/* Payment Policy Page */}
+          <Route path="/payment-policy" element={<PaymentPolicyPage brand={data.brand} />} />
+          {/* TermsPage Route */}
+          <Route path="/terms" element={<TermsPage brand={data.brand} />} />
         </Routes>
 
         <Footer 

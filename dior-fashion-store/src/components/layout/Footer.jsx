@@ -15,7 +15,7 @@ const Footer = ({ brand }) => {
           {/* Company Info */}
           <div>
             <h3 className="text-white text-xl font-bold tracking-widest uppercase mb-4">
-              {brand?.name || 'DIOR STORE'}
+              {brand?.name || 'BEEWO STORE'}
             </h3>
             <p className="text-sm leading-relaxed mb-4">
               {brand?.tagline || 'Thời trang thiết kế hiện đại, thanh lịch. Chất lượng - Dịch vụ tận tâm.'}
@@ -70,25 +70,25 @@ const Footer = ({ brand }) => {
                 </Link>
               </li>
               <li>
-                <Link to="/shipping" className="hover:text-white transition">
+                <Link to="/shipping-policy" className="hover:text-white transition">
                   Chính sách giao nhận
                 </Link>
               </li>
               <li>
-                <Link to="/payment" className="hover:text-white transition">
+                <Link to="/payment-policy" className="hover:text-white transition">
                   Chính sách thanh toán
                 </Link>
               </li>
               <li>
-                <Link to="/privacy" className="hover:text-white transition">
+                <Link to="/privacy-policy" className="hover:text-white transition">
                   Chính sách bảo mật
                 </Link>
               </li>
               <li>
                 <Link to="/terms" className="hover:text-white transition">
-                  Điều khoản sử dụng
+                  Điều khoản WebSite
                 </Link>
-              </li>
+              </li> 
             </ul>
           </div>
 
