@@ -5,9 +5,12 @@
   "private": true,
   "dependencies": {
     "@supabase/supabase-js": "^2.75.0",
+    "browser-image-compression": "^2.0.2",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-dropzone": "^14.3.8",
+    "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {

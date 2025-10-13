@@ -106,7 +106,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
           district: formData.district,
           ward: formData.ward || ''
         },
-        total: calculateSubtotal() // ⚡ SỬA: dùng calculateSubtotal() thay vì total
+        total_amount: calculateSubtotal() // ⚡ SỬA: dùng calculateSubtotal() thay vì total
       };
 
       // Create order in Supabase

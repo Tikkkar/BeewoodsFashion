@@ -52,11 +52,14 @@ const updateProductStock = async (cartItems) => {
 };
 
 // =============================================
-// CREATE ORDER
+// CREATE ORDER (FIXED - Use total_amount)
 // =============================================
 export const createOrder = async (orderData) => {
   try {
-    const { cartItems, customerInfo, shippingInfo, total } = orderData;
+    const { cartItems, customerInfo, shippingInfo, total_amount } = orderData;
+
+    const shippingFee = 30000; // Fixed shipping fee
+    const finalTotal = total_amount + shippingFee;
 
     // 1. Create order
     const { data: order, error: orderError } = await supabase
@@ -70,9 +73,9 @@ export const createOrder = async (orderData) => {
         shipping_city: shippingInfo.city,
         shipping_district: shippingInfo.district,
         shipping_ward: shippingInfo.ward || '',
-        subtotal: total,
-        shipping_fee: 30000, // Fixed shipping fee
-        total: total + 30000,
+        subtotal: total_amount,
+        shipping_fee: shippingFee,
+        total_amount: finalTotal, // ✅ FIXED: Use total_amount
         status: 'pending',
         payment_method: 'cod',
         payment_status: 'unpaid',
@@ -81,7 +84,10 @@ export const createOrder = async (orderData) => {
       .select()
       .single();
 
-    if (orderError) throw orderError;
+    if (orderError) {
+      console.error('Order creation error:', orderError);
+      throw orderError;
+    }
 
     // 2. Create order items
     const orderItems = cartItems.map(item => ({
@@ -99,14 +105,19 @@ export const createOrder = async (orderData) => {
       .from('order_items')
       .insert(orderItems);
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+      console.error('Order items error:', itemsError);
+      throw itemsError;
+    }
 
     // 3. Update product stock
     await updateProductStock(cartItems);
 
+    console.log('✅ Order created successfully:', order.order_number);
     return { data: order, error: null };
+    
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error('❌ Error creating order:', error);
     return { data: null, error: error.message };
   }
 };

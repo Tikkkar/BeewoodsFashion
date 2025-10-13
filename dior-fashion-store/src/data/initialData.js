@@ -21,8 +21,18 @@ export const INITIAL_DATA = {
     { text: 'Tất Cả Sản Phẩm', 
       url: '/category/haute-couture',
       submenu: [
-        { text: 'Haute Couture', url: '/category/haute-couture' },
-        { text: 'Accessories', url: '/category/accessories' },
+        { text: 'Áo', 
+          url: '/category/haute-couture', 
+           submenu: [
+          { text: 'Áo Khoác', url: '/category/haute-couture' },
+          { text: 'Áo Sơ Mi', url: '/category/haute-couture' },
+          { text: 'Áo Thun', url: '/category/haute-couture' },
+        ]
+        },
+        { text: 'Blazer', url: '/category/accessories' },
+        { text: 'Quần', url: '/category/accessories' },
+        { text: 'Chân Váy', url: '/category/accessories' },
+        { text: 'Bộ', url: '/category/accessories' },
       ]
     },
     { text: 'Ưu Đãi Độc Quyền', url: '/category/bags' },

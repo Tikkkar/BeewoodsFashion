@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signIn } from '../../lib/api/auth';
-import { useAuth } from '../../hooks/useAuth'; // ⚡ THÊM
+import { useAuth } from '../../hooks/useAuth';
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth(); // ⚡ THÊM
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,7 +18,8 @@ const LoginPage = () => {
   // ⚡ REDIRECT IF ALREADY LOGGED IN
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      console.log('✅ Already authenticated, redirecting...');
+      navigate('/', { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -36,20 +37,27 @@ const LoginPage = () => {
     setError('');
 
     try {
+      console.log('🔐 Attempting login...');
+      
       const { data, error } = await signIn(formData.email, formData.password);
 
       if (error) {
+        console.error('❌ Login failed:', error);
         setError(error);
         setLoading(false);
         return;
       }
 
       if (data?.user) {
-        // ⚡ KHÔNG NAVIGATE NGAY - ĐỂ useEffect XỬ LÝ
-        console.log('Login successful:', data.user.email);
+        console.log('✅ Login successful:', data.user.email);
+        
+        // ⚡ WAIT A BIT FOR AUTH STATE TO UPDATE
+        setTimeout(() => {
+          navigate('/', { replace: true });
+        }, 500);
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       setError('Có lỗi xảy ra. Vui lòng thử lại!');
       setLoading(false);
     }
@@ -88,6 +96,7 @@ const LoginPage = () => {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  autoComplete="email"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100"
                   placeholder="email@example.com"
                 />
@@ -108,6 +117,7 @@ const LoginPage = () => {
                   onChange={handleChange}
                   required
                   disabled={loading}
+                  autoComplete="current-password"
                   className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:bg-gray-100"
                   placeholder="••••••••"
                 />

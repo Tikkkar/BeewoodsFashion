@@ -13,24 +13,14 @@ export const signUp = async (email, password, fullName) => {
         data: {
           full_name: fullName
         },
-        // ⚡ THÊM DÒNG NÀY - Không cần confirm email
         emailRedirectTo: window.location.origin
       }
     });
 
     if (authError) throw authError;
 
-    // ⚡ CHECK NẾU CẦN CONFIRM EMAIL
-    if (authData.user && !authData.user.confirmed_at) {
-      return { 
-        data: authData, 
-        error: null,
-        needsConfirmation: true 
-      };
-    }
-
-    // 2. Create user profile
-    if (authData.user) {
+    // 2. Create user profile (using service role bypass RLS)
+   if (authData.user) {
       const { error: profileError } = await supabase
         .from('users')
         .insert([{
@@ -38,9 +28,10 @@ export const signUp = async (email, password, fullName) => {
           email: email,
           full_name: fullName,
           role: 'customer'
-        }]);
+        }])
+        .select();
 
-      // ⚡ IGNORE CONFLICT ERROR (user đã tồn tại)
+      // Ignore conflict errors (trigger already created it)
       if (profileError && !profileError.message.includes('duplicate')) {
         console.error('Profile creation error:', profileError);
       }
@@ -63,37 +54,12 @@ export const signIn = async (email, password) => {
       password
     });
 
-    if (error) {
-      console.error('Sign in error details:', error); // ⚡ LOG CHI TIẾT
-      throw error;
-    }
-
-    // ⚡ CHECK USER PROFILE EXISTS
-    if (data.user) {
-      const { data: profile, error: profileError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      // ⚡ TẠO PROFILE NẾU CHƯA CÓ
-      if (profileError && profileError.code === 'PGRST116') {
-        await supabase
-          .from('users')
-          .insert([{
-            id: data.user.id,
-            email: data.user.email,
-            full_name: data.user.user_metadata?.full_name || 'User',
-            role: 'customer'
-          }]);
-      }
-    }
+    if (error) throw error;
 
     return { data, error: null };
   } catch (error) {
     console.error('Sign in error:', error);
     
-    // ⚡ BETTER ERROR MESSAGES
     let errorMessage = 'Đăng nhập thất bại';
     
     if (error.message.includes('Invalid login credentials')) {
@@ -121,7 +87,7 @@ export const signOut = async () => {
 };
 
 // =============================================
-// GET CURRENT USER
+// GET CURRENT USER - SIMPLIFIED
 // =============================================
 export const getCurrentUser = async () => {
   try {
@@ -130,36 +96,31 @@ export const getCurrentUser = async () => {
     if (error) throw error;
     if (!user) return { data: null, error: null };
 
-    // Get user profile with role
-    const { data: profile, error: profileError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    // ⚡ TẠO PROFILE NẾU CHƯA CÓ
-    if (profileError && profileError.code === 'PGRST116') {
-      const { data: newProfile } = await supabase
+    // ⚡ TRY TO GET PROFILE, BUT DON'T FAIL IF NOT EXISTS
+    let profile = null;
+    try {
+      const { data: profileData, error: profileError } = await supabase
         .from('users')
-        .insert([{
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || 'User',
-          role: 'customer'
-        }])
-        .select()
-        .single();
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle(); // ⚡ USE maybeSingle() INSTEAD OF single()
 
-      return { 
-        data: { 
-          ...user, 
-          profile: newProfile 
-        }, 
-        error: null 
-      };
+      if (!profileError) {
+        profile = profileData;
+      }
+    } catch (err) {
+      console.log('Could not fetch profile:', err);
     }
 
-    if (profileError) throw profileError;
+    // ⚡ IF NO PROFILE, USE DEFAULT
+    if (!profile) {
+      profile = {
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || 'User',
+        role: 'customer'
+      };
+    }
 
     return { 
       data: { 
@@ -170,7 +131,7 @@ export const getCurrentUser = async () => {
     };
   } catch (error) {
     console.error('Get current user error:', error);
-    return { data: null, error: error.message };
+    return { data: null, error: null }; // ⚡ RETURN NULL, NOT ERROR
   }
 };
 

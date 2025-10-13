@@ -7,6 +7,17 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
 
+  // ⚡ DEBUG - XÓA SAU KHI XONG
+  console.log('🔒 ProtectedRoute Check:', {
+    pathname: location.pathname,
+    loading: loading,
+    hasUser: !!user,
+    userEmail: user?.email,
+    userRole: user?.profile?.role,
+    isAdmin: isAdmin,
+    requiredRole: requiredRole
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -19,15 +30,16 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (!user) {
-    // ⚡ REDIRECT VỀ LOGIN VỚI STATE
+    console.log('❌ No user, redirect to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (requiredRole === 'admin' && !isAdmin) {
-    // ⚡ KHÔNG CHO PHÉP CUSTOMER VÀO ADMIN
+    console.log('❌ Not admin, redirect to home');
     return <Navigate to="/" replace />;
   }
 
+  console.log('✅ Access granted');
   return children;
 };
 
