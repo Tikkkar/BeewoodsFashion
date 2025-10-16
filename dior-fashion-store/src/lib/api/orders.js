@@ -91,7 +91,7 @@ export const createOrder = async (orderData) => {
 
         status: 'pending',
         payment_method: 'cod',
-        payment_status: 'unpaid',
+        payment_status: 'pending',
     };
 
     // 3. Chèn đơn hàng vào bảng 'orders'

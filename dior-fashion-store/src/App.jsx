@@ -40,6 +40,7 @@ import AdminBanners from './pages/admin/AdminBanners';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import SEOManagerPage from './pages/admin/SEOManager';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
 // User Pages
 import ProfileLayout from './pages/user/ProfileLayout';
 import ProfilePage from './pages/user/ProfilePage';
@@ -349,7 +350,7 @@ function App() {
               >
                 <Route index element={<Navigate to="dashboard" replace />} />
                 <Route path="dashboard" element={<AdminDashboard />} />
-
+                <Route path="analytics" element={<AdminAnalytics />} />
                 {/* Products */}
                 <Route path="products" element={<AdminProducts />} />
                 <Route path="products/new" element={<AdminProductForm />} />

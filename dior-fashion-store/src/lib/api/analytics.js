@@ -56,12 +56,8 @@ export const getTopProducts = async (limit = 10, startDate, endDate) => {
         quantity,
         price,
         product_id,
-        products (
-          name,
-          image_url,
-          category_id,
-          categories (name)
-        ),
+        product_name,
+        product_image,
         orders!inner (
           created_at,
           status
@@ -80,9 +76,9 @@ export const getTopProducts = async (limit = 10, startDate, endDate) => {
       if (!productStats[productId]) {
         productStats[productId] = {
           id: productId,
-          name: item.products.name,
-          image: item.products.image_url,
-          category: item.products.categories?.name || 'Uncategorized',
+          name: item.product_name,
+          image: item.product_image,
+          category: 'N/A', // We'll get this from products table if needed
           quantity: 0,
           revenue: 0
         };
@@ -102,21 +98,16 @@ export const getTopProducts = async (limit = 10, startDate, endDate) => {
   }
 };
 
-// Get category performance
+// Get category performance - FIXED for many-to-many relationship
 export const getCategoryPerformance = async (startDate, endDate) => {
   try {
+    // Step 1: Get all order items
     const { data: orderItems, error } = await supabase
       .from('order_items')
       .select(`
         quantity,
         price,
-        products!inner (
-          category_id,
-          categories (
-            id,
-            name
-          )
-        ),
+        product_id,
         orders!inner (
           created_at,
           status
@@ -127,36 +118,73 @@ export const getCategoryPerformance = async (startDate, endDate) => {
       .lte('orders.created_at', endDate);
 
     if (error) throw error;
+    if (!orderItems || orderItems.length === 0) return [];
 
-    // Group by category
-    const categoryStats = {};
-    orderItems.forEach(item => {
-      const category = item.products.categories;
-      if (!category) return;
+    // Step 2: Get unique product IDs
+    const productIds = [...new Set(orderItems.map(item => item.product_id))];
 
-      const categoryId = category.id;
-      if (!categoryStats[categoryId]) {
-        categoryStats[categoryId] = {
-          id: categoryId,
-          name: category.name,
-          quantity: 0,
-          revenue: 0,
-          orders: new Set()
-        };
-      }
-      
-      categoryStats[categoryId].quantity += item.quantity;
-      categoryStats[categoryId].revenue += item.price * item.quantity;
+    // Step 3: Get product-category relationships from junction table
+    const { data: productCategories, error: pcError } = await supabase
+      .from('product_categories')
+      .select('product_id, category_id')
+      .in('product_id', productIds);
+
+    if (pcError) throw pcError;
+
+    // Step 4: Get category names
+    const categoryIds = [...new Set(productCategories.map(pc => pc.category_id))];
+    const { data: categories, error: catError } = await supabase
+      .from('categories')
+      .select('id, name')
+      .in('id', categoryIds);
+
+    if (catError) throw catError;
+
+    // Step 5: Create mappings
+    const categoryMap = {};
+    categories.forEach(cat => {
+      categoryMap[cat.id] = cat.name;
     });
 
-    // Convert to array and add order count
-    return Object.values(categoryStats).map(cat => ({
-      ...cat,
-      orders: cat.orders.size
-    })).sort((a, b) => b.revenue - a.revenue);
+    const productToCategoriesMap = {};
+    productCategories.forEach(pc => {
+      if (!productToCategoriesMap[pc.product_id]) {
+        productToCategoriesMap[pc.product_id] = [];
+      }
+      productToCategoriesMap[pc.product_id].push(pc.category_id);
+    });
+
+    // Step 6: Aggregate by category
+    const categoryStats = {};
+    
+    orderItems.forEach(item => {
+      const categoryIds = productToCategoriesMap[item.product_id] || [];
+      
+      categoryIds.forEach(categoryId => {
+        const categoryName = categoryMap[categoryId];
+        if (!categoryName) return;
+
+        if (!categoryStats[categoryId]) {
+          categoryStats[categoryId] = {
+            id: categoryId,
+            name: categoryName,
+            quantity: 0,
+            revenue: 0
+          };
+        }
+        
+        categoryStats[categoryId].quantity += item.quantity;
+        categoryStats[categoryId].revenue += item.price * item.quantity;
+      });
+    });
+
+    // Step 7: Convert to array and sort
+    return Object.values(categoryStats)
+      .sort((a, b) => b.revenue - a.revenue);
+      
   } catch (error) {
     console.error('Error fetching category performance:', error);
-    throw error;
+    return []; // Return empty instead of throwing
   }
 };
 

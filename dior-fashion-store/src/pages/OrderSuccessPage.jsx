@@ -121,17 +121,24 @@ const OrderSuccessPage = () => {
           {/* Order Total */}
           <div className="border-t pt-4">
             <div className="flex justify-between mb-2">
-              <span>Tạm tính:</span>
-              <span>{formatPrice(order.subtotal)}</span>
-            </div>
+            <span>Tạm tính:</span>
+            <span>{formatPrice(order.subtotal || 0)}</span>
+          </div>
+          <div className="flex justify-between mb-2">
+            <span>Phí vận chuyển:</span>
+            <span>{formatPrice(order.shipping_fee || 0)}</span>
+          </div>
+          {order.discount_amount > 0 && (
             <div className="flex justify-between mb-2">
-              <span>Phí vận chuyển:</span>
-              <span>{formatPrice(order.shipping_fee)}</span>
+              <span>Giảm giá:</span>
+              <span>- {formatPrice(order.discount_amount || 0)}</span>
             </div>
-            <div className="flex justify-between text-xl font-bold">
-              <span>Tổng cộng:</span>
-              <span className="text-red-600">{formatPrice(order.total)}</span>
-            </div>
+          )}
+          <div className="flex justify-between text-xl font-bold">
+            <span>Tổng cộng:</span>
+            <span className="text-red-600">{formatPrice(order.total_amount || 0)}</span>
+          </div>
+
           </div>
         </div>
 

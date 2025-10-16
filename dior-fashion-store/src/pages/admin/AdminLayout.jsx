@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { signOut } from '../../lib/api/auth';
+import { BarChart3 } from 'lucide-react'; // Add this import
 import {
   LayoutDashboard,
   Package,
@@ -57,6 +58,12 @@ const AdminLayout = () => {
       title: 'Orders',
       icon: ShoppingBag,
       path: '/admin/orders'
+    },
+    // Add this to your navigation array (after Dashboard)
+    {
+      name: 'Analytics',
+      path: '/admin/analytics',
+      icon: BarChart3
     }
   ];
 

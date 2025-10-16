@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { BarChart3 } from 'lucide-react';
 import {
   TrendingUp,
   ShoppingBag,
@@ -164,7 +165,23 @@ const AdminDashboard = () => {
           <p className="text-2xl font-bold">{stats.totalOrders}</p>
           <p className="text-xs text-gray-500 mt-1">{stats.completedOrders} completed</p>
         </div>
-
+        {/* Analytics Card - NEW */}
+        <Link
+          to="/admin/analytics"
+          className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 p-6 hover:border-purple-400 hover:shadow-lg transition-all group"
+        >
+          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
+            <BarChart3 className="text-purple-600" size={28} />
+          </div>
+          <h3 className="text-lg font-bold mb-2 text-gray-900">Analytics</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Detailed reports and insights
+          </p>
+          <div className="flex items-center justify-between text-xs text-purple-600 font-medium">
+            <span>View Reports</span>
+            <TrendingUp size={14} />
+          </div>
+        </Link>
         {/* Pending Orders */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
