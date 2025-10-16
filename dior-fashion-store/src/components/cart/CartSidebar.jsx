@@ -3,6 +3,7 @@ import { X, Trash2, ShoppingBag, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CartSidebar = ({ isOpen, onClose, cart, onRemoveItem, onUpdateQuantity }) => {
+  console.log("Dữ liệu trong giỏ hàng:", cart); // <-- THÊM DÒNG NÀY ĐỂ DEBUG
   const navigate = useNavigate();
 
   const formatPrice = (price) => {
@@ -95,7 +96,7 @@ const CartSidebar = ({ isOpen, onClose, cart, onRemoveItem, onUpdateQuantity }) 
                 return (
                   <div key={itemKey} className="flex gap-4 border-b pb-4">
                     <img 
-                      src={item.image} 
+                      src={item.imagePrimary} 
                       alt={item.name}
                       className="w-20 h-20 object-cover rounded"
                     />

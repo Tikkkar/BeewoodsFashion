@@ -52,20 +52,27 @@ const updateProductStock = async (cartItems) => {
 };
 
 // =============================================
-// CREATE ORDER (FIXED - Use total_amount)
+// CREATE ORDER (Đã cập nhật để xử lý giảm giá)
 // =============================================
 export const createOrder = async (orderData) => {
-  try {
-    const { cartItems, customerInfo, shippingInfo, total_amount } = orderData;
+ try {
+    // ✨ THAY ĐỔI: Thêm `discountInfo` vào destructuring
+    const { cartItems, customerInfo, shippingInfo, discountInfo } = orderData;
 
-    const shippingFee = 30000; // Fixed shipping fee
-    const finalTotal = total_amount + shippingFee;
+    // 1. Tính toán lại các giá trị tổng để đảm bảo chính xác
+    const originalSubtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const shippingFee = 30000; // Phí vận chuyển cố định
+    
+    // ✨ THAY ĐỔI: Lấy thông tin giảm giá từ discountInfo
+    const appliedDiscountCode = discountInfo?.code || null;
+    const discountAmount = discountInfo?.discountAmount || 0;
+    
+    const totalAfterDiscount = originalSubtotal - discountAmount;
+    const finalTotal = totalAfterDiscount + shippingFee;
 
-    // 1. Create order
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert([{
-        user_id: null, // For guest checkout
+    // 2. Tạo đối tượng payload để chèn vào DB
+    const orderPayload = {
+        user_id: customerInfo.userId || null, // Hỗ trợ cả guest và user đã đăng nhập
         customer_name: customerInfo.name,
         customer_email: customerInfo.email,
         customer_phone: customerInfo.phone,
@@ -73,53 +80,65 @@ export const createOrder = async (orderData) => {
         shipping_city: shippingInfo.city,
         shipping_district: shippingInfo.district,
         shipping_ward: shippingInfo.ward || '',
-        subtotal: total_amount,
-        shipping_fee: shippingFee,
-        total_amount: finalTotal, // ✅ FIXED: Use total_amount
+        notes: customerInfo.notes || null,
+        
+        // ✨ THAY ĐỔI: Cập nhật các trường về tiền tệ
+        subtotal: originalSubtotal,          // Tổng tiền gốc của sản phẩm
+        discount_amount: discountAmount,       // Số tiền được giảm
+        applied_discount_code: appliedDiscountCode, // Mã giảm giá đã áp dụng
+        shipping_fee: shippingFee,             // Phí vận chuyển
+        total_amount: finalTotal,              // Tổng tiền cuối cùng khách phải trả
+
         status: 'pending',
         payment_method: 'cod',
         payment_status: 'unpaid',
-        notes: customerInfo.notes || null
-      }])
-      .select()
-      .single();
+    };
+
+    // 3. Chèn đơn hàng vào bảng 'orders'
+    const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert([orderPayload])
+        .select()
+        .single();
 
     if (orderError) {
-      console.error('Order creation error:', orderError);
-      throw orderError;
+        console.error('Lỗi khi tạo đơn hàng:', orderError);
+        throw orderError;
     }
 
-    // 2. Create order items
+    // 4. Chèn các sản phẩm của đơn hàng vào 'order_items'
     const orderItems = cartItems.map(item => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name,
-      product_image: item.image,
-      size: item.selectedSize || 'One Size',
-      quantity: item.quantity,
-      price: item.price,
-      subtotal: item.price * item.quantity
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name,
+        product_image: item.imagePrimary,
+        size: item.selectedSize || 'One Size',
+        quantity: item.quantity,
+        price: item.price,
+        subtotal: item.price * item.quantity
     }));
 
     const { error: itemsError } = await supabase
-      .from('order_items')
-      .insert(orderItems);
+        .from('order_items')
+        .insert(orderItems);
 
     if (itemsError) {
-      console.error('Order items error:', itemsError);
-      throw itemsError;
+        console.error('Lỗi khi tạo chi tiết đơn hàng:', itemsError);
+        // Cân nhắc xóa đơn hàng vừa tạo để tránh rác DB
+        await supabase.from('orders').delete().eq('id', order.id);
+        throw itemsError;
     }
 
-    // 3. Update product stock
+    // 5. Cập nhật số lượng tồn kho
     await updateProductStock(cartItems);
 
-    console.log('✅ Order created successfully:', order.order_number);
+    console.log('✅ Đã tạo đơn hàng thành công:', order.order_number);
     return { data: order, error: null };
     
-  } catch (error) {
-    console.error('❌ Error creating order:', error);
+ } catch (error) {
+    console.error('❌ Lỗi nghiêm trọng khi tạo đơn hàng:', error);
     return { data: null, error: error.message };
-  }
+ }
 };
 
 // =============================================

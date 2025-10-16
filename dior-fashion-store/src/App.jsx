@@ -4,6 +4,9 @@ import { testSupabaseConnection } from './lib/testConnection';
 import { AuthProvider } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 
+// ✨ Dữ liệu tĩnh giờ được import từ một file riêng
+import { brandData } from './data'; 
+
 // Layout Components
 import TopBar from './components/layout/TopBar';
 import Header from './components/layout/Header';
@@ -21,7 +24,7 @@ import ShippingPolicyPage from './pages/ShippingPolicyPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import PaymentPolicyPage from './pages/PaymentPolicyPage';
 import TermsPage from './pages/TermsPage';
-
+import CareersPage from './pages/CareersPage';
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -70,66 +73,6 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
 
-  // =============================================
-  // BRAND DATA (Static - no editor needed)
-  // =============================================
-  const brandData = {
-    brand: {
-      name: 'BEEWO',
-      tagline: 'Luxury Fashion',
-      description: 'Premium quality fashion for modern lifestyle'
-    },
-    topBarMessage: 'Free Shipping on Orders Over 1,000,000đ',
-   navigation: [
-    { text: 'Về BeeWo', 
-      url: '/about' 
-    },
-    { text: 'Bộ Sưu Tập', 
-      url: '/products', 
-      submenu: [
-        { text: 'Tất cả', url: '/products' },
-        { text: 'Handbags', url: '/category/handbags' },
-      ]
-    },
-    { text: 'Tất Cả Sản Phẩm', 
-      url: '/category/haute-couture',
-      submenu: [
-        { text: 'Áo', 
-          url: '/category/haute-couture', 
-          submenu: [
-            { text: 'Áo Khoác', url: '/category/haute-couture' },
-            { text: 'Áo Sơ Mi', url: '/category/haute-couture' },
-            { text: 'Áo Thun', url: '/category/haute-couture' },
-          ]
-        },
-        { text: 'Blazer', url: '/category/accessories' },
-        { text: 'Quần', url: '/category/accessories' },
-        { text: 'Chân Váy', url: '/category/accessories' },
-        { text: 'Bộ', url: '/category/accessories' },
-      ]
-    },
-    { text: 'Ưu Đãi Độc Quyền', url: '/category/bags' },
-    { text: 'Tin Tức', url: '/sale-off' },
-    { text: 'Tuyển Dụng', url: '/recruitment' }
-  ],
-    footerSections: [
-      {
-        title: 'Shop',
-        links: [
-          { name: 'All Products', path: '/products' },
-          { name: 'New Arrivals', path: '/products?featured=true' }
-        ]
-      },
-      {
-        title: 'Support',
-        links: [
-          { name: 'Shipping Policy', path: '/shipping-policy' },
-          { name: 'Return Policy', path: '/return-policy' },
-          { name: 'Privacy Policy', path: '/privacy-policy' }
-        ]
-      }
-    ]
-  };
 
   // =============================================
   // CART STATE
@@ -195,12 +138,13 @@ function App() {
   const handleAddToCart = (product, selectedSize = null) => {
     const cartId = `${product.id}-${selectedSize || 'default'}-${Date.now()}`;
     
+    // ✅ SỬA LỖI: Lấy đúng thuộc tính imagePrimary
     const cartItem = {
       id: product.id,
       cartId: cartId,
       name: product.name,
       price: product.price,
-      image: product.image,
+      imagePrimary: product.imagePrimary, // Sửa ở đây
       selectedSize: selectedSize || product.sizes?.[0] || 'One Size',
       quantity: 1
     };
@@ -367,7 +311,7 @@ function App() {
               <Route path="/privacy-policy" element={<PrivacyPolicyPage brand={brandData.brand} />} />
               <Route path="/payment-policy" element={<PaymentPolicyPage brand={brandData.brand} />} />
               <Route path="/terms" element={<TermsPage brand={brandData.brand} />} />
-
+               <Route path="/careers" element={<CareersPage />} />   
               {/* =============================================
                   AUTH ROUTES
                   ============================================= */}

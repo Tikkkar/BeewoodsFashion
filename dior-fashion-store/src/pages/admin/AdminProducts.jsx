@@ -21,6 +21,7 @@ const AdminProducts = () => {
   }, []);
 
   const handleDelete = async (id) => {
+    // Lưu ý: window.confirm có thể được thay thế bằng một modal tùy chỉnh để đẹp hơn trong tương lai
     if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
       await deleteProduct(id);
       loadProducts();
@@ -67,7 +68,15 @@ const AdminProducts = () => {
               {products.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium">{product.name}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{product.categories?.name || 'N/A'}</td>
+                  
+                  {/* ✨ SỬA LỖI: Hiển thị danh sách các danh mục */}
+                  <td className="px-6 py-4 text-sm text-gray-600">
+                    {(product.categories && product.categories.length > 0)
+                      ? product.categories.map(cat => cat.name).join(', ')
+                      : 'N/A'
+                    }
+                  </td>
+                  
                   <td className="px-6 py-4 font-medium">{formatPrice(product.price)}</td>
                   <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

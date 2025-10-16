@@ -140,9 +140,6 @@ const Header = ({
                     <Link to="/profile/orders" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
                       <ShoppingCart size={16} />Đơn hàng của tôi
                     </Link>
-                    <Link to="/profile/wishlist" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition">
-                      <Heart size={16} />Danh sách yêu thích
-                    </Link>
                   </div>
                   {isAdmin && (
                     <div className="border-t border-gray-100 py-2">
@@ -170,19 +167,6 @@ const Header = ({
                 <User size={20} />
               </Link>
             )}
-
-            <button 
-              onClick={onWishlistClick} 
-              className="relative p-2 hover:bg-gray-100 rounded-lg transition" 
-              title="Yêu thích"
-            >
-              <Heart size={20} />
-              {wishlist?.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
-                  {wishlist.length}
-                </span>
-              )}
-            </button>
             
             <button 
               onClick={onCartClick} 

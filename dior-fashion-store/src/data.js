@@ -1,86 +1,60 @@
 // src/data.js
+// File này chứa tất cả dữ liệu tĩnh cho trang web,
+// giúp dễ dàng quản lý và chỉnh sửa menu, thông tin thương hiệu, v.v.
 
-export const INITIAL_DATA = {
+export const brandData = {
   brand: {
-    name: 'BeeWo',
-    tagline: 'The House of BeeWo embodies timeless elegance and exceptional craftsmanship.'
+    name: 'BeWo',
+    tagline: 'Luxury Fashion',
+    description: 'Premium quality fashion for modern lifestyle'
   },
+  topBarMessage: 'Free Shipping on Orders Over 1,000,000đ',
   
-  topBarMessage: 'COMPLIMENTARY DELIVERY & RETURNS',
-  
+  // Cấu trúc menu đã được sửa lại với các URL slug duy nhất
   navigation: [
-    { text: 'Về BeeWo', 
-      url: '/about' 
-    },
-    { text: 'Bộ Sưu Tập', 
-      url: '/products', 
+    { text: 'Về BeWo', url: '/about' },
+    { text: 'Bộ Sưu Tập', url: '/products' },
+    { 
+      text: 'Tất Cả Sản Phẩm', 
+      url: '/products', // Link cha trỏ đến trang tất cả sản phẩm
       submenu: [
-        { text: 'Tất cả', url: '/products' },
-        { text: 'Handbags', url: '/category/handbags' },
-      ]
-    },
-    { text: 'Tất Cả Sản Phẩm', 
-      url: '/category/haute-couture',
-      submenu: [
-        { text: 'Áo', 
-          url: '/category/haute-couture', 
+        { 
+          text: 'Áo', 
+          url: '/category/ao', // Link đến danh mục cha "Áo"
           submenu: [
-            { text: 'Áo Khoác', url: '/category/haute-couture' },
-            { text: 'Áo Sơ Mi', url: '/category/haute-couture' },
-            { text: 'Áo Thun', url: '/category/haute-couture' },
+            // Mỗi loại áo có một URL (slug) riêng biệt
+            { text: 'Áo Khoác', url: '/category/ao-khoac' },
+            { text: 'Áo Sơ Mi', url: '/category/ao-so-mi' },
+            { text: 'Áo Thun', url: '/category/ao-thun' },
           ]
         },
-        { text: 'Blazer', url: '/category/accessories' },
-        { text: 'Quần', url: '/category/accessories' },
-        { text: 'Chân Váy', url: '/category/accessories' },
-        { text: 'Bộ', url: '/category/accessories' },
+        { text: 'Váy', url: '/category/blazer' },
+        { text: 'Quần', url: '/category/quan' },
+        { text: 'Setvest', url: '/category/chan-vay' },
+        { text: 'Bộ', url: '/category/bo-do' },
       ]
     },
-    { text: 'Ưu Đãi Độc Quyền', url: '/category/bags' },
-    { text: 'Tin Tức', url: '/sale-off' },
+    { text: 'Cửa Hàng', url: '/stores' },
+    { text: 'Ưu Đãi Độc Quyền', url: '/sale-off' },
+    { text: 'Tin Tức', url: '/news' },
     { text: 'Tuyển Dụng', url: '/recruitment' }
-  ],
-  
-  products: [
-    { 
-      id: 1, 
-      name: 'Bar Jacket', 
-      price: 85000000,
-      image: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=600',
-    },
-    // ... Dữ liệu sản phẩm khác của bạn
-  ],
-  
-  banners: [
-    { 
-      id: 1, 
-      title: 'SPRING 2025', 
-      subtitle: 'The New Collection',
-      image: 'https://images.unsplash.com/photo-1483985988355-763728e1935b?w=1200',
-    },
-     // ... Dữ liệu banner khác của bạn
-  ],
-  
-  categories: [
-    { 
-      name: 'Ready-to-Wear', 
-      img: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400' 
-    },
-    // ... Dữ liệu danh mục khác của bạn
   ],
   
   footerSections: [
     {
-      title: 'CLIENT SERVICES',
-      links: ['Contact Us', 'FAQ', 'Store Locator', 'Book an Appointment']
+      title: 'Shop',
+      links: [
+        { name: 'All Products', path: '/products' },
+        { name: 'New Arrivals', path: '/products?featured=true' }
+      ]
     },
     {
-      title: 'THE HOUSE',
-      links: ['Our Heritage', 'Savoir-Faire', 'Careers', 'Press']
-    },
-    {
-      title: 'LEGAL',
-      links: ['Privacy Policy', 'Terms of Use', 'Cookies', 'Accessibility']
+      title: 'Support',
+      links: [
+        { name: 'Shipping Policy', path: '/shipping-policy' },
+        { name: 'Return Policy', path: '/return-policy' },
+        { name: 'Privacy Policy', path: '/privacy-policy' }
+      ]
     }
   ]
 };

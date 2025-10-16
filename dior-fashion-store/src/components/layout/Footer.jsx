@@ -122,7 +122,7 @@ const Footer = ({ brand }) => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/recruitment" className="hover:text-white transition">
+                  <Link to="/careers" className="hover:text-white transition">
                     Tuyển dụng
                   </Link>
                 </li>
@@ -164,8 +164,8 @@ const Footer = ({ brand }) => {
 
                 <div className="flex items-center gap-2">
                   <Mail size={14} />
-                  <a href="mailto:support@diorstore.vn" className="hover:text-white transition">
-                    support@diorstore.vn
+                  <a href="mailto:support@beewostore.vn" className="hover:text-white transition">
+                    support@beewo.vn
                   </a>
                 </div>
 

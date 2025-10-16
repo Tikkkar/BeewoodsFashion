@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Filter, X, ChevronDown } from 'lucide-react';
 
 const FilterBar = ({ 
-  categories,  // ⚡ Nhận array of objects từ Supabase: [{id, name, slug}, ...]
-  selectedCategory, 
+  categories,
+  selectedCategory, // ⚡️ selectedCategory bây giờ sẽ là SLUG, ví dụ: "ao-thun"
   onSelectCategory,
   priceRange,
   onPriceRangeChange,
@@ -16,8 +16,15 @@ const FilterBar = ({
   const [isPriceOpen, setIsPriceOpen] = useState(true);
   const [isSizeOpen, setIsSizeOpen] = useState(true);
 
-  // ⚡ Convert categories to names array + add "Tất cả"
-  const categoryNames = ['Tất cả', ...(categories?.map(c => c.name) || [])];
+  // ==================================================================
+  // ✨ SỬA LỖI LOGIC DANH MỤC TẠI ĐÂY
+  // ==================================================================
+  // 1. Tạo một object cho "Tất cả" với slug là null
+  const allCategoriesOption = { id: 'all', name: 'Tất cả', slug: null };
+
+  // 2. Kết hợp "Tất cả" với danh sách categories từ props
+  const categoriesWithOptions = [allCategoriesOption, ...(categories || [])];
+  // ==================================================================
 
   const priceRanges = [
     { label: 'Dưới 500k', min: 0, max: 500000 },
@@ -71,11 +78,13 @@ const FilterBar = ({
             </div>
             
             <div className="space-y-2">
-              {categoryNames.map((categoryName) => (
+              {/* ✨ SỬA LỖI: Lặp qua `categoriesWithOptions` */}
+              {categoriesWithOptions.map((category) => (
                 <button
-                  key={categoryName}
+                  key={category.id}
                   onClick={() => {
-                    onSelectCategory(categoryName);
+                    // ✨ SỬA LỖI: Gửi đi `category.slug` thay vì `category.name`
+                    onSelectCategory(category.slug); 
                     if (window.innerWidth < 768) {
                       onToggleMobileFilter?.();
                     }
@@ -83,19 +92,19 @@ const FilterBar = ({
                   className={`
                     w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium
                     transition-all duration-200
-                    ${selectedCategory === categoryName
+                    ${selectedCategory === category.slug // ✨ SỬA LỖI: So sánh với `category.slug`
                       ? 'bg-black text-white shadow-md'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                     }
                   `}
                 >
-                  {categoryName}
+                  {category.name}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Price Range Filter */}
+          {/* Price Range Filter (Phần này đã đúng, không cần sửa) */}
           {onPriceRangeChange && (
             <div className="border-t pt-6">
               <button
@@ -143,7 +152,7 @@ const FilterBar = ({
             </div>
           )}
 
-          {/* Size Filter */}
+          {/* Size Filter (Phần này đã đúng, không cần sửa) */}
           {onSizeToggle && (
             <div className="border-t pt-6">
               <button
@@ -184,7 +193,7 @@ const FilterBar = ({
           <div className="border-t pt-6">
             <button
               onClick={() => {
-                onSelectCategory('Tất cả');
+                onSelectCategory(null); // ✨ SỬA LỖI: Gửi đi `null` cho "Tất cả"
                 onPriceRangeChange?.(null);
                 selectedSizes?.forEach(size => onSizeToggle?.(size));
               }}

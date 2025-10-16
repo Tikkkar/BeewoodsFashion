@@ -5,10 +5,6 @@ import { toast } from 'react-hot-toast';
  * -----------------------------------------------------------------------------
  * Reusable Image Uploader
  * -----------------------------------------------------------------------------
- * Uploads a file to a specified Supabase Storage bucket.
- * @param {File} file - The file to upload.
- * @param {string} bucket - The name of the storage bucket (e.g., 'products', 'categories', 'banners').
- * @returns {Promise<string>} The public URL of the uploaded file.
  */
 export const uploadImage = async (file, bucket = 'products') => {
   const fileName = `${Date.now()}_${file.name.replace(/\s/g, '_')}`;
@@ -30,29 +26,32 @@ export const uploadImage = async (file, bucket = 'products') => {
 
 /**
  * -----------------------------------------------------------------------------
- * Products Management (CRUD)
+ * Products Management (CRUD) - ĐÃ CẬP NHẬT CHO NHIỀU DANH MỤC
  * -----------------------------------------------------------------------------
  */
 export const getAdminProducts = async () => {
+  // ✨ SỬA LỖI: Chỉ định rõ quan hệ thông qua bảng trung gian
   const { data, error } = await supabase
     .from('products')
-    .select('*, categories(name)')
+    .select('*, categories!product_categories(name)')
     .order('created_at', { ascending: false });
   if (error) toast.error('Failed to fetch products.');
   return { data, error };
 };
 
 export const getAdminProductById = async (id) => {
+  // ✨ SỬA LỖI: Chỉ định rõ quan hệ và lấy đầy đủ thông tin categories
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_images(*), product_sizes(*)')
+    .select('*, product_images(*), product_sizes(*), categories!product_categories(*)')
     .eq('id', id)
     .single();
   if (error) toast.error('Failed to fetch product details.');
   return { data, error };
 };
 
-export const createProduct = async (productData, images, sizes) => {
+export const createProduct = async (productData, images, sizes, categoryIds) => {
+  // ✨ THAY ĐỔI: Nhận thêm categoryIds
   const { data: newProduct, error } = await supabase
     .from('products')
     .insert(productData)
@@ -60,25 +59,38 @@ export const createProduct = async (productData, images, sizes) => {
     .single();
   if (error) throw error;
 
+  // Xử lý ảnh và size (như cũ)
   if (images.length > 0) {
-    const imagePayload = images.map((url, i) => ({ product_id: newProduct.id, image_url: url, is_primary: i === 0 }));
+    const imagePayload = images.map((url, i) => ({ product_id: newProduct.id, image_url: url, is_primary: i === 0, display_order: i }));
     await supabase.from('product_images').insert(imagePayload);
   }
   if (sizes.length > 0) {
     const sizePayload = sizes.map(s => ({ product_id: newProduct.id, ...s }));
     await supabase.from('product_sizes').insert(sizePayload);
   }
+
+  // ✨ MỚI: Liên kết sản phẩm với các danh mục trong bảng trung gian
+  if (categoryIds && categoryIds.length > 0) {
+      const productCategoriesPayload = categoryIds.map(catId => ({
+          product_id: newProduct.id,
+          category_id: catId,
+      }));
+      const { error: catError } = await supabase.from('product_categories').insert(productCategoriesPayload);
+      if (catError) throw catError;
+  }
+
   return newProduct;
 };
 
-export const updateProduct = async (id, productData, newImages, newSizes) => {
+export const updateProduct = async (id, productData, newImages, newSizes, categoryIds) => {
+  // ✨ THAY ĐỔI: Nhận thêm categoryIds
   const { error } = await supabase.from('products').update(productData).eq('id', id);
   if (error) throw error;
 
-  // Simple approach: replace all images and sizes for simplicity
+  // Xử lý ảnh và size (như cũ)
   await supabase.from('product_images').delete().eq('product_id', id);
   if (newImages.length > 0) {
-    const imagePayload = newImages.map((url, i) => ({ product_id: id, image_url: url, is_primary: i === 0 }));
+    const imagePayload = newImages.map((url, i) => ({ product_id: id, image_url: url, is_primary: i === 0, display_order: i }));
     await supabase.from('product_images').insert(imagePayload);
   }
 
@@ -87,9 +99,22 @@ export const updateProduct = async (id, productData, newImages, newSizes) => {
     const sizePayload = newSizes.map(s => ({ product_id: id, ...s }));
     await supabase.from('product_sizes').insert(sizePayload);
   }
+
+  // ✨ MỚI: Cập nhật lại liên kết danh mục
+  // Cách đơn giản nhất: Xóa hết liên kết cũ và tạo lại liên kết mới
+  await supabase.from('product_categories').delete().eq('product_id', id);
+  if (categoryIds && categoryIds.length > 0) {
+      const productCategoriesPayload = categoryIds.map(catId => ({
+          product_id: id,
+          category_id: catId,
+      }));
+      const { error: catError } = await supabase.from('product_categories').insert(productCategoriesPayload);
+      if (catError) throw catError;
+  }
 };
 
 export const deleteProduct = async (id) => {
+  // Hàm này không thay đổi vì ON DELETE CASCADE đã được cài đặt trong CSDL
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) {
     toast.error(`Failed to delete product: ${error.message}`);
@@ -98,6 +123,7 @@ export const deleteProduct = async (id) => {
   toast.success('Product deleted successfully.');
 };
 
+// ... (Các hàm còn lại từ Categories, Banners, Orders, Dashboard không thay đổi)
 /**
  * -----------------------------------------------------------------------------
  * Categories Management (CRUD)
@@ -295,10 +321,9 @@ export const getRecentOrders = async (limit = 5) => {
 export const getBestSellingProducts = async (limit = 5) => {
   const { data, error } = await supabase
     .from('order_items')
-    .select('product_id, quantity, products(id, name, price, product_images(image_url))')
+    .select('product_id, quantity, products!inner(id, name, price, product_images(image_url))')
     .order('quantity', { ascending: false })
-    .limit(limit);
-
+    
   if (error) {
     console.error('Error fetching best selling products:', error);
     return [];
@@ -307,6 +332,7 @@ export const getBestSellingProducts = async (limit = 5) => {
   // Aggregate quantities by product
   const productMap = {};
   data?.forEach(item => {
+    if (!item.products) return;
     const productId = item.product_id;
     if (!productMap[productId]) {
       productMap[productId] = {

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { TrendingUp, ShoppingBag, ArrowRight, Loader2 } from 'lucide-react';
+import { TrendingUp, ShoppingBag, ArrowRight, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import HeroSlider from '../components/hero/HeroSlider';
 import ProductCard from '../components/products/ProductCard';
 import QuickViewModal from '../components/products/QuickViewModal';
@@ -10,34 +10,68 @@ const HomePage = ({ onAddToCart }) => {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   // =============================================
+  // LOGIC CHO SLIDER SẢN PHẨM BÁN CHẠY
+  // =============================================
+  const featuredScrollRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const handleScroll = (direction) => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      const scrollAmount = container.clientWidth * 0.8;
+      const newScrollLeft = direction === 'right'
+        ? container.scrollLeft + scrollAmount
+        : container.scrollLeft - scrollAmount;
+      container.scrollTo({
+        left: newScrollLeft,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isHovered) return;
+
+    const timer = setInterval(() => {
+      const container = featuredScrollRef.current;
+      if (container) {
+        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+          container.scrollTo({ left: 0, behavior: 'smooth' });
+        } else {
+          handleScroll('right');
+        }
+      }
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [isHovered]);
+
+  // =============================================
   // FETCH DATA TỪ SUPABASE
   // =============================================
-  
-  // Fetch featured products (sản phẩm bán chạy)
-  const { products: allProducts, loading: productsLoading, error: productsError } = useProducts({
-    featured: true,
+  const { products: featuredProducts, loading: featuredLoading, error: featuredError } = useProducts({ 
+    featured: true, 
+    limit: 12 
   });
 
-  // Fetch banners cho Hero Slider
+  const { products: todayProducts, loading: todayLoading, error: todayError } = useProducts({ 
+    limit: 4 
+  });
+
   const { banners, loading: bannersLoading, error: bannersError } = useBanners();
 
   // =============================================
-  // XỬ LÝ DỮ LIỆU - THÊM KIỂM TRA AN TOÀN
+  // KẾT HỢP CÁC TRẠNG THÁI LOADING VÀ ERROR
   // =============================================
-  
-  // ⚡ Kiểm tra allProducts có tồn tại không
-  const featuredProducts = Array.isArray(allProducts) ? allProducts.slice(0, 8) : [];
-  const todayProducts = Array.isArray(allProducts) ? allProducts.slice(0, 4) : [];
+  const isLoading = featuredLoading || todayLoading || bannersLoading;
+  const combinedError = featuredError || todayError || bannersError;
 
-  // =============================================
-  // ERROR STATE
-  // =============================================
-  if (productsError || bannersError) {
+  if (combinedError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">❌ Lỗi khi tải dữ liệu</p>
-          <p className="text-gray-600 text-sm">{productsError || bannersError}</p>
+          <p className="text-gray-600 text-sm">{combinedError}</p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
@@ -48,11 +82,6 @@ const HomePage = ({ onAddToCart }) => {
       </div>
     );
   }
-
-  // =============================================
-  // LOADING STATE
-  // =============================================
-  const isLoading = productsLoading || bannersLoading;
 
   if (isLoading) {
     return (
@@ -74,11 +103,10 @@ const HomePage = ({ onAddToCart }) => {
       {/* 1. Hero Banner */}
       <HeroSlider banners={banners || []} />
 
-      {/* 2. Sản Phẩm Bán Chạy */}
+      {/* 2. Sản Phẩm Bán Chạy - DẠNG SLIDER */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
           
-          {/* Section Header */}
           <div className="text-center mb-8 md:mb-12">
             <div className="flex items-center justify-center gap-2 mb-3">
               <TrendingUp size={24} className="text-red-500" />
@@ -90,32 +118,55 @@ const HomePage = ({ onAddToCart }) => {
               Những sản phẩm được yêu thích nhất
             </p>
           </div>
+          
+          <div
+            className="relative group" // Thêm class 'group' để điều khiển hiển thị nút bấm
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            <button
+              onClick={() => handleScroll('left')}
+              className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black rounded-full p-2 shadow-md transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Previous Product"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            
+            <div
+              ref={featuredScrollRef}
+              className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
+            >
+              {featuredProducts.length > 0 ? (
+                featuredProducts.map((product) => (
+                  <div key={product.id} className="flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 snap-start px-2">
+                    <ProductCard
+                      product={product}
+                      onAddToCart={onAddToCart}
+                      onQuickView={setQuickViewProduct}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="text-center w-full py-12 text-gray-500">
+                  <p>Không có sản phẩm nổi bật nào</p>
+                </div>
+              )}
+            </div>
 
-          {/* Products Grid */}
-          {featuredProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {featuredProducts.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onAddToCart={onAddToCart}
-                  onQuickView={setQuickViewProduct}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-gray-500">
-              <p>Không có sản phẩm nào</p>
-            </div>
-          )}
+            <button
+              onClick={() => handleScroll('right')}
+              className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black rounded-full p-2 shadow-md transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Next Product"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
         </div>
       </section>
 
       {/* 3. Mua Gì Hôm Nay */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
-          
-          {/* Section Header */}
           <div className="text-center mb-8 md:mb-12">
             <div className="flex items-center justify-center gap-2 mb-3">
               <ShoppingBag size={24} className="text-black" />
@@ -127,8 +178,6 @@ const HomePage = ({ onAddToCart }) => {
               Gợi ý sản phẩm cho bạn
             </p>
           </div>
-
-          {/* Products Grid */}
           {todayProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {todayProducts.map((product) => (
@@ -172,9 +221,7 @@ const HomePage = ({ onAddToCart }) => {
             </h2>
             <p className="text-gray-600">Những phản hồi tích cực từ khách hàng</p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Testimonial 1 */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
@@ -192,8 +239,6 @@ const HomePage = ({ onAddToCart }) => {
                 </div>
               </div>
             </div>
-
-            {/* Testimonial 2 */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (
@@ -211,8 +256,6 @@ const HomePage = ({ onAddToCart }) => {
                 </div>
               </div>
             </div>
-
-            {/* Testimonial 3 */}
             <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
               <div className="flex items-center gap-1 mb-4">
                 {[...Array(5)].map((_, i) => (

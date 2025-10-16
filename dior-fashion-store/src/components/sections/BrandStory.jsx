@@ -7,7 +7,7 @@ const BrandStory = () => (
         <div>
           <img 
             src="https://images.unsplash.com/photo-1558769132-cb1aea48f8a5?w=800" 
-            alt="Dior Atelier"
+            alt="BeeWo"
             className="w-full h-[600px] object-cover"
           />
         </div>

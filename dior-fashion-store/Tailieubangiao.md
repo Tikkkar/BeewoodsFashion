@@ -1,4 +1,4 @@
-# 🤖 DIOR STORE - AI CONTEXT DOCUMENT
+# 🤖 BeWo STORE - AI CONTEXT DOCUMENT
 
 > **Purpose:** Essential context for AI to understand and improve the project
 > **Last Updated:** 2025-01-15 (Phase 3 Complete)
@@ -8,7 +8,7 @@
 
 ## 🎯 PROJECT OVERVIEW
 
-**Type:** E-commerce Fashion Store (DIOR-inspired luxury brand)
+**Type:** E-commerce Fashion Store (BeWo-inspired luxury brand)
 **Status:** 98% Complete (Frontend: 98% | Backend: 95% | Auth: 100% | Admin: 100% | User: 100%)
 **Goal:** Premium online shopping experience with full admin dashboard and user features
 
@@ -41,6 +41,7 @@
 10. `src/hooks/useProducts.js` - Custom hooks for data fetching
 11. `src/hooks/useAuth.js` - Auth context and hooks
 12. `src/hooks/useToast.js` - Toast notifications system
+13. `src/lib/api/discounts.js` - Discount code API ✨ NEW
 
 ### **Styling:**
 13. `src/index.css` - Global styles, Tailwind imports, custom animations
@@ -95,6 +96,7 @@
 ✅ Product Detail Page (sizes, quantity, reviews) (Supabase)
 ✅ Quick View Modal (Supabase)
 ✅ Checkout Flow (Supabase orders integration)
+✅ Discount Code application on Checkout page ✨ NEW
 ✅ Order Success Page (Supabase data)
 ✅ Toast Notifications (replaced alerts)
 ✅ Responsive Design (mobile-friendly)
@@ -112,6 +114,7 @@
 ✅ Categories API fully integrated
 ✅ Banners API fully integrated
 ✅ Orders API (create, get by ID, get by number)
+✅ Discount code verification system ✨ NEW
 ✅ Order Items creation
 ✅ Stock management after order
 ✅ Product images management
@@ -262,6 +265,7 @@ Tables:
 9. reviews - Product reviews (rating, comment, is_verified_purchase)
 10. wishlists - User wishlist items
 11. banners - Homepage slider banners (title, subtitle, image_url, display_order)
+12. discounts - Stores discount codes and rules (code, type, value, is_active) -- NEW
 
 Key Features:
 - UUID primary keys
@@ -284,6 +288,7 @@ PUBLIC ACCESS (Anonymous Users):
 ✅ View reviews
 ✅ Create orders (guest checkout)
 ✅ Create order items
+✅ View active discount codes -- NEW
 
 AUTHENTICATED USERS:
 ✅ All of above
@@ -391,6 +396,7 @@ User:     █████████████████████ 100% �
 ✅ **Addresses CRUD** ✨
 ✅ **Reviews System** ✨
 ✅ **Wishlist Management** ✨
+✅ Discount Code System ✨ NEW
 
 ### Next Up:
 🔥 Phase 4 - Optional Enhancements (Payment, Email, Shipping, etc.)
@@ -559,7 +565,16 @@ When user says: **"Add Shipping Integration"**
 8. ✅ **24 API Functions** - Complete user feature set
 9. ✅ **Beautiful UI/UX** - Consistent design, mobile responsive
 10. ✅ **Security** - RLS policies, user data protection
+Phase 3.5 - Enhancements (COMPLETE): ✨ NEW
+✅ Discount Code System - Full-featured discount code integration.
 
+✅ Checkout UI Update - Added input for discount codes with real-time validation.
+
+✅ Dynamic Price Calculation - Order summary updates automatically with discounts.
+
+✅ Backend Verification - Securely validates codes against the database.
+
+✅ Order Integration - Applied discounts are saved with the final order.
 ### Files Created in Phase 2:
 - `AdminBanners.jsx` - Banners CRUD
 - `ImageUpload.jsx` - Reusable uploader
@@ -569,7 +584,12 @@ When user says: **"Add Shipping Integration"**
 - **API:** `user.js`, `reviews.js`, `wishlist.js`
 - **Pages:** `ProfileLayout.jsx`, `ProfilePage.jsx`, `OrderHistoryPage.jsx`, `OrderDetailPage.jsx`, `AddressesPage.jsx`, `WishlistPage.jsx`
 - **Components:** `StarRating.jsx`, `ReviewForm.jsx`
+Files Created/Enhanced in this phase 3.5:
+API (New): discounts.js
 
+API (Enhanced): orders.js
+
+Pages (Enhanced): CheckoutPage.jsx
 ---
 
 **END OF AI CONTEXT**

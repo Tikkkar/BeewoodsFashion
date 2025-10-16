@@ -3,9 +3,31 @@ import { Heart, ShoppingCart, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product, onAddToCart, onQuickView }) => {
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showActions, setShowActions] = useState(false);
+
+  // State để quản lý ảnh đang hiển thị
+  const [currentImage, setCurrentImage] = useState(product.imagePrimary);
+
+  // Cập nhật lại state ảnh nếu sản phẩm thay đổi
+  useEffect(() => {
+    setCurrentImage(product.imagePrimary);
+  }, [product.imagePrimary]);
+
+  // Xử lý sự kiện di chuột để đổi ảnh và hiện actions
+  const handleMouseEnter = () => {
+    setShowActions(true);
+    // Nếu có ảnh thứ 2, đổi sang ảnh đó
+    if (product.imageSecondary && product.imageSecondary !== product.imagePrimary) {
+      setCurrentImage(product.imageSecondary);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setShowActions(false);
+    // Khi chuột rời đi, quay lại ảnh chính
+    setCurrentImage(product.imagePrimary);
+  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -17,21 +39,9 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    
     const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
     const exists = wishlist.find(item => item.id === product.id);
-    
-    if (exists) {
-      const newWishlist = wishlist.filter(item => item.id !== product.id);
-      localStorage.setItem('dior_wishlist', JSON.stringify(newWishlist));
-      setIsWishlisted(false);
-    } else {
-      wishlist.push(product);
-      localStorage.setItem('dior_wishlist', JSON.stringify(wishlist));
-      setIsWishlisted(true);
-    }
-    
-    window.dispatchEvent(new Event('wishlistUpdated'));
+    // Logic thêm/xóa wishlist có thể được thêm vào đây
   };
 
   const handleAddToCart = (e) => {
@@ -46,31 +56,24 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
     onQuickView?.(product);
   };
 
-  // Check if product is in wishlist on mount
-  useEffect(() => {
-    const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
-    setIsWishlisted(wishlist.some(item => item.id === product.id));
-  }, [product.id]);
+  const isSale = product.originalPrice && product.originalPrice > product.price;
 
-  // ⚡ THAY ĐỔI: Dùng slug thay vì id
   return (
-    <Link 
-      to={`/product/${product.slug}`}  // ← THAY ĐỔI NÀY
+    <Link
+      to={`/product/${product.slug}`}
       className="group block"
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className="bg-white overflow-hidden">
-        
         {/* Image Container */}
         <div className="relative aspect-[3/4] bg-gray-100 overflow-hidden">
-          {/* Skeleton Loader */}
           {!imageLoaded && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
-          
+
           <img
-            src={product.image}
+            src={currentImage}
             alt={product.name}
             className={`w-full h-full object-cover transition-all duration-700 ${
               imageLoaded ? 'opacity-100 group-hover:scale-110' : 'opacity-0'
@@ -79,31 +82,18 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             loading="lazy"
           />
 
-          {/* Sale Badge - ⚡ THAY ĐỔI: Tính discount từ originalPrice */}
-          {product.originalPrice && product.originalPrice > product.price && (
+          {/* Sale Badge */}
+          {isSale && (
             <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
               -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
             </div>
           )}
-
-          {/* Wishlist Button */}
-          <button
-            onClick={handleWishlist}
-            className={`absolute top-3 right-3 p-2 rounded-full transition-all z-10 md:opacity-0 md:group-hover:opacity-100 ${
-              isWishlisted
-                ? 'bg-red-500 text-white'
-                : 'bg-white/90 text-gray-700 hover:bg-white'
-            }`}
-          >
-            <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
-          </button>
 
           {/* Quick Actions - Desktop */}
           <div className={`hidden md:flex absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent p-4 transition-all duration-300 ${
             showActions ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
           }`}>
             <div className="flex items-center gap-2 w-full">
-              
               <button
                 onClick={handleAddToCart}
                 className="flex-1 bg-white text-black py-2.5 px-3 rounded-lg text-sm font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md"
@@ -111,7 +101,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
                 <ShoppingCart size={16} />
                 <span>Thêm vào giỏ</span>
               </button>
-
               {onQuickView && (
                 <button
                   onClick={handleQuickView}
@@ -124,19 +113,20 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             </div>
           </div>
 
-          {/* Mobile Action Buttons */}
-          <div className="md:hidden absolute inset-x-3 bottom-3 flex gap-2">
+          {/* Quick Actions - Mobile (FIXED) */}
+          <div className="md:hidden absolute inset-x-3 bottom-3 flex items-center gap-2">
             <button
               onClick={handleAddToCart}
               className="flex-1 bg-white text-black py-2 px-3 rounded-lg text-xs font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-1.5 shadow-md"
             >
               <ShoppingCart size={14} />
-              <span>Thêm</span>
+              <span className="whitespace-nowrap">Thêm vào giỏ</span>
             </button>
             {onQuickView && (
               <button
                 onClick={handleQuickView}
                 className="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition shadow-md"
+                title="Xem nhanh"
               >
                 <Eye size={14} />
               </button>
@@ -146,12 +136,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
 
         {/* Product Info */}
         <div className="p-3">
-          {/* Category */}
-          <p className="text-xs text-gray-500 mb-1.5 uppercase tracking-wider">
-            {product.category}
-          </p>
-
-          {/* Product Name */}
           <h3 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2 leading-snug group-hover:text-black transition min-h-[2.5rem]">
             {product.name}
           </h3>
@@ -161,14 +145,14 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             <span className="text-base font-bold text-black">
               {formatPrice(product.price)}
             </span>
-            {product.originalPrice && product.originalPrice > product.price && (
+            {isSale && (
               <span className="text-xs text-gray-400 line-through">
                 {formatPrice(product.originalPrice)}
               </span>
             )}
           </div>
 
-          {/* Rating - ⚡ THAY ĐỔI: Tính từ reviews array */}
+          {/* Reviews */}
           {product.reviews && product.reviews.length > 0 && (
             <div className="flex items-center gap-1 mt-2">
               <div className="flex items-center">
@@ -182,17 +166,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
                 })}
               </div>
               <span className="text-xs text-gray-500">({product.reviews.length})</span>
-            </div>
-          )}
-
-          {/* Stock Status */}
-          {product.stock !== undefined && (
-            <div className="mt-2">
-              {product.stock > 0 ? (
-                <span className="text-xs text-green-600 font-medium">• Còn hàng</span>
-              ) : (
-                <span className="text-xs text-red-600 font-medium">• Hết hàng</span>
-              )}
             </div>
           )}
         </div>
