@@ -95,59 +95,103 @@ export const fetchProducts = async (filters = {}) => {
   }
 };
 
-// =============================================
-// FETCH SINGLE PRODUCT BY SLUG
-// =============================================
 export const fetchProductBySlug = async (slug) => {
   try {
+    console.log('🔍 Fetching product by slug:', slug);
+    
     const { data, error } = await supabase
-        .from('products')
-        .select(`
-            id, name, slug, description, price, original_price, stock, is_featured, view_count,
-            categories!inner(id, name, slug),
-            product_images (image_url, is_primary, display_order),
-            product_sizes (size, stock)
-        `)
-        .eq('slug', slug)
-        .eq('is_active', true)
-        .single();
+      .from('products')
+      .select(`
+        *,
+        product_images (
+          id,
+          image_url,
+          is_primary,
+          display_order
+        ),
+        product_sizes (
+          id,
+          size,
+          stock
+        ),
+        reviews (
+          id,
+          rating,
+          comment,
+          user_id,
+          is_verified_purchase,
+          created_at
+        )
+      `)
+      .eq('slug', slug)
+      .eq('is_active', true)
+      .single();
 
     if (error) {
-      console.error('❌ Product fetch error:', error);
-      throw error;
+      console.error('❌ Error fetching product:', error);
+      return { data: null, error: error.message };
     }
 
-    const sortedImages = data.product_images?.sort((a, b) => (a.display_order || 99) - (b.display_order || 99));
-    const primaryImage = sortedImages?.find(img => img.is_primary) || sortedImages?.[0];
+    if (!data) {
+      return { data: null, error: 'Product not found' };
+    }
 
-    const product = {
-      id: data.id,
-      name: data.name,
-      slug: data.slug,
-      description: data.description,
-      price: parseFloat(data.price),
-      originalPrice: data.original_price ? parseFloat(data.original_price) : null,
-      category: data.categories.name,
-      categorySlug: data.categories.slug,
-      image: (primaryImage?.image_url || '/placeholder.png'),
-      images: sortedImages?.map(img => img.image_url) || [],
-      sizes: data.product_sizes?.map(s => ({ size: s.size, stock: s.stock })) || [],
-      stock: data.stock,
-      featured: data.is_featured,
-      viewCount: data.view_count || 0
+    console.log('✅ Raw product data:', data);
+    console.log('📦 Raw attributes:', data.attributes);
+    console.log('📦 Attributes type:', typeof data.attributes);
+
+    // ✅ PARSE ATTRIBUTES NẾU LÀ STRING
+    if (data.attributes) {
+      if (typeof data.attributes === 'string') {
+        try {
+          data.attributes = JSON.parse(data.attributes);
+          console.log('✅ Parsed attributes from string');
+        } catch (e) {
+          console.error('❌ Error parsing attributes:', e);
+          data.attributes = {};
+        }
+      }
+    } else {
+      data.attributes = {};
+    }
+
+    console.log('📝 Parsed attributes:', data.attributes);
+    console.log('📝 Content blocks:', data.attributes?.content_blocks);
+    console.log('📝 Content blocks length:', data.attributes?.content_blocks?.length || 0);
+
+    // ✅ UPDATE VIEW COUNT (optional - comment nếu không cần)
+    /*
+    if (data.id) {
+      supabase
+        .from('products')
+        .update({ 
+          view_count: (data.view_count || 0) + 1 
+        })
+        .eq('id', data.id)
+        .then(() => console.log('✅ View count updated'))
+        .catch(err => console.error('❌ View count failed:', err));
+    }
+    */
+
+    // Transform data
+    const transformedData = {
+      ...data,
+      images: data.product_images
+        ?.sort((a, b) => a.display_order - b.display_order)
+        .map(img => img.image_url) || [],
+      sizes: data.product_sizes
+        ?.map(s => s.size)
+        .filter(Boolean) || [],
+      reviews: data.reviews || []
     };
 
-    // Tăng view count
-    supabase
-      .rpc('increment_view_count', { product_id_to_inc: data.id })
-      .then(({ error: rpcError }) => {
-        if (rpcError) console.error('View count update failed:', rpcError);
-      });
+    console.log('✅ Final transformed data:', transformedData);
+    console.log('📦 Final attributes:', transformedData.attributes);
+    console.log('📝 Final content blocks:', transformedData.attributes?.content_blocks);
 
-    return { data: product, error: null };
-
+    return { data: transformedData, error: null };
   } catch (error) {
-    console.error('❌ Fetch product error:', error);
+    console.error('❌ Exception in fetchProductBySlug:', error);
     return { data: null, error: error.message };
   }
 };

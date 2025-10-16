@@ -7,7 +7,8 @@ import {
   Package,
   DollarSign,
   Clock,
-  Loader2
+  Loader2,
+  Search
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -18,7 +19,8 @@ const AdminDashboard = () => {
     pendingOrders: 0,
     completedOrders: 0,
     totalProducts: 0,
-    activeProducts: 0
+    activeProducts: 0,
+    productsWithSEO: 0
   });
   const [recentOrders, setRecentOrders] = useState([]);
 
@@ -58,13 +60,21 @@ const AdminDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
+      // Get products with SEO data
+      const { data: productsWithSEO } = await supabase
+        .from('products')
+        .select('id')
+        .not('seo_title', 'is', null)
+        .not('seo_description', 'is', null);
+
       setStats({
         totalRevenue,
         totalOrders,
         pendingOrders,
         completedOrders,
         totalProducts: totalProducts || 0,
-        activeProducts: activeProducts || 0
+        activeProducts: activeProducts || 0,
+        productsWithSEO: productsWithSEO?.length || 0
       });
 
       // Recent orders (already limited above)
@@ -252,43 +262,123 @@ const AdminDashboard = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Link
-          to="/admin/products/new"
-          className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black transition"
-        >
-          <Package className="mb-4" size={32} />
-          <h3 className="text-lg font-bold mb-2">Add Product</h3>
-          <p className="text-sm text-gray-600">Create a new product listing</p>
-        </Link>
+      <div>
+        <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          
+          {/* SEO Manager - NEW & FEATURED */}
+          <Link
+            to="/admin/seo-manager"
+            className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 p-6 hover:border-blue-400 hover:shadow-lg transition-all group relative overflow-hidden"
+          >
+            <div className="absolute top-2 right-2">
+              <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                NEW
+              </span>
+            </div>
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-200 transition">
+              <Search className="text-blue-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2 text-gray-900">SEO Manager</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Optimize SEO and content for products
+            </p>
+            <div className="flex items-center justify-between text-xs text-blue-600 font-medium">
+              <span>{stats.productsWithSEO} / {stats.totalProducts} optimized</span>
+              <TrendingUp size={14} />
+            </div>
+          </Link>
 
-        <Link
-          to="/admin/orders"
-          className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black transition"
-        >
-          <ShoppingBag className="mb-4" size={32} />
-          <h3 className="text-lg font-bold mb-2">Manage Orders</h3>
-          <p className="text-sm text-gray-600">View and update order status</p>
-        </Link>
+          <Link
+            to="/admin/products/new"
+            className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black hover:shadow-md transition-all group"
+          >
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-200 transition">
+              <Package className="text-purple-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Add Product</h3>
+            <p className="text-sm text-gray-600">Create a new product listing</p>
+          </Link>
 
-        <Link
-          to="/admin/categories"
-          className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black transition"
-        >
-          <Package className="mb-4" size={32} />
-          <h3 className="text-lg font-bold mb-2">Categories</h3>
-          <p className="text-sm text-gray-600">Manage product categories</p>
-        </Link>
+          <Link
+            to="/admin/orders"
+            className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black hover:shadow-md transition-all group"
+          >
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-200 transition">
+              <ShoppingBag className="text-green-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Manage Orders</h3>
+            <p className="text-sm text-gray-600">View and update order status</p>
+          </Link>
 
-        <Link
-          to="/admin/banners"
-          className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black transition"
-        >
-          <TrendingUp className="mb-4" size={32} />
-          <h3 className="text-lg font-bold mb-2">Banners</h3>
-          <p className="text-sm text-gray-600">Manage homepage banners</p>
-        </Link>
+          <Link
+            to="/admin/categories"
+            className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black hover:shadow-md transition-all group"
+          >
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-200 transition">
+              <Package className="text-orange-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Categories</h3>
+            <p className="text-sm text-gray-600">Manage product categories</p>
+          </Link>
+
+          <Link
+            to="/admin/banners"
+            className="bg-white rounded-lg border border-gray-200 p-6 hover:border-black hover:shadow-md transition-all group"
+          >
+            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-pink-200 transition">
+              <TrendingUp className="text-pink-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2">Banners</h3>
+            <p className="text-sm text-gray-600">Manage homepage banners</p>
+          </Link>
+
+        </div>
       </div>
+
+      {/* SEO Status Overview */}
+      {stats.totalProducts > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 p-6">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Search className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-bold text-gray-900">SEO Optimization Status</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                {stats.productsWithSEO} out of {stats.totalProducts} products have SEO optimization
+              </p>
+              
+              {/* Progress Bar */}
+              <div className="mb-3">
+                <div className="flex justify-between text-xs text-gray-600 mb-1">
+                  <span>Progress</span>
+                  <span>{Math.round((stats.productsWithSEO / stats.totalProducts) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${(stats.productsWithSEO / stats.totalProducts) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {stats.productsWithSEO < stats.totalProducts && (
+                <p className="text-xs text-blue-600 font-medium">
+                  💡 {stats.totalProducts - stats.productsWithSEO} products still need SEO optimization
+                </p>
+              )}
+            </div>
+
+            <Link
+              to="/admin/seo-manager"
+              className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm whitespace-nowrap"
+            >
+              Optimize Now
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

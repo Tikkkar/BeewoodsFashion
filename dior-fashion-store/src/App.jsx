@@ -39,7 +39,7 @@ import AdminCategories from './pages/admin/AdminCategories';
 import AdminBanners from './pages/admin/AdminBanners';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
-
+import SEOManagerPage from './pages/admin/SEOManager';
 // User Pages
 import ProfileLayout from './pages/user/ProfileLayout';
 import ProfilePage from './pages/user/ProfilePage';
@@ -354,7 +354,7 @@ function App() {
                 <Route path="products" element={<AdminProducts />} />
                 <Route path="products/new" element={<AdminProductForm />} />
                 <Route path="products/:id" element={<AdminProductForm />} />
-                
+                 <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
                 {/* Categories */}
                 <Route path="categories" element={<AdminCategories />} />
                 

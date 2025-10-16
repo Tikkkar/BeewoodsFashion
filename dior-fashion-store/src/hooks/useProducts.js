@@ -10,14 +10,13 @@ export const useProducts = (filters = {}) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    let mounted = true; // ⚡ PREVENT STATE UPDATE AFTER UNMOUNT
+    let mounted = true;
     let timeoutId;
 
     const loadProducts = async () => {
       try {
         console.log('📦 Fetching products with filters:', filters);
         
-        // ⚡ TIMEOUT - FAIL AFTER 10 SECONDS
         timeoutId = setTimeout(() => {
           if (mounted) {
             console.error('⏱️ Products fetch timeout');
@@ -28,9 +27,9 @@ export const useProducts = (filters = {}) => {
 
         const { data, error: fetchError } = await fetchProducts(filters);
         
-        clearTimeout(timeoutId); // ⚡ CLEAR TIMEOUT IF SUCCESS
+        clearTimeout(timeoutId);
 
-        if (!mounted) return; // ⚡ STOP IF UNMOUNTED
+        if (!mounted) return;
 
         if (fetchError) {
           console.error('❌ Products fetch error:', fetchError);
@@ -57,10 +56,10 @@ export const useProducts = (filters = {}) => {
     loadProducts();
 
     return () => {
-      mounted = false; // ⚡ CLEANUP
+      mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [JSON.stringify(filters)]); // ⚡ STRINGIFY FOR DEEP COMPARISON
+  }, [JSON.stringify(filters)]);
 
   return { products, loading, error };
 };
@@ -106,6 +105,45 @@ export const useProductDetail = (slug) => {
           setProduct(null);
         } else {
           console.log('✅ Product loaded:', data?.name);
+          
+          // ✅ PARSE ATTRIBUTES NẾU LÀ STRING
+          if (data && data.attributes) {
+            if (typeof data.attributes === 'string') {
+              try {
+                data.attributes = JSON.parse(data.attributes);
+                console.log('✅ Parsed attributes from string');
+              } catch (e) {
+                console.error('❌ Error parsing attributes:', e);
+                data.attributes = {};
+              }
+            }
+          } else if (data) {
+            // Nếu không có attributes, set default empty object
+            data.attributes = {};
+          }
+
+          // ✅ LOG ĐỂ DEBUG
+          console.group('🔍 Product Debug Info');
+          console.log('Product name:', data?.name);
+          console.log('Has attributes:', !!data?.attributes);
+          console.log('Attributes type:', typeof data?.attributes);
+          console.log('Attributes:', data?.attributes);
+          console.log('Content blocks:', data?.attributes?.content_blocks);
+          console.log('Content blocks length:', data?.attributes?.content_blocks?.length || 0);
+          
+          const hasContentBlocks = 
+            data?.attributes?.content_blocks && 
+            Array.isArray(data.attributes.content_blocks) &&
+            data.attributes.content_blocks.length > 0;
+          
+          console.log('✅ Has valid content blocks?', hasContentBlocks);
+          
+          if (hasContentBlocks) {
+            console.log('📝 Content blocks details:');
+            console.table(data.attributes.content_blocks);
+          }
+          console.groupEnd();
+          
           setProduct(data);
         }
       } catch (err) {

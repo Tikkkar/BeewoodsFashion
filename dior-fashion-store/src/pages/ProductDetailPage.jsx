@@ -50,18 +50,22 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   // Reset state khi sản phẩm thay đổi
   useEffect(() => {
     if (product) {
-      setSelectedImage(0);
-      setQuantity(1);
-      setActiveTab('reviews'); // Luôn mặc định hiển thị reviews
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      console.group('🔍 PRODUCT DETAIL PAGE DEBUG');
+      console.log('1. Product name:', product.name);
+      console.log('2. Has attributes?', !!product.attributes);
+      console.log('3. Attributes type:', typeof product.attributes);
+      console.log('4. Attributes value:', product.attributes);
+      console.log('5. Content blocks:', product.attributes?.content_blocks);
+      console.log('6. Is array?', Array.isArray(product.attributes?.content_blocks));
+      console.log('7. Length:', product.attributes?.content_blocks?.length);
       
-      // Đặt size mặc định
-      if (product.sizes && product.sizes.length > 0) {
-        const firstSize = typeof product.sizes[0] === 'object' 
-          ? product.sizes[0].size 
-          : product.sizes[0];
-        setSelectedSize(firstSize);
-      }
+      const hasContent = 
+        product.attributes?.content_blocks && 
+        Array.isArray(product.attributes.content_blocks) &&
+        product.attributes.content_blocks.length > 0;
+      
+      console.log('8. ✅ Should render custom?', hasContent);
+      console.groupEnd();
     }
   }, [product]);
 
@@ -582,78 +586,122 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
           <div className="py-6 md:py-8">
             {activeTab === 'reviews' && <ReviewsSection />}
             
-            {activeTab === 'description' && (
-              <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-                <div className="text-center space-y-3 md:space-y-4">
-                  <p className="text-base md:text-lg leading-relaxed text-gray-800">
-                    <strong>{product.name}</strong> là một thiết kế hiện đại, tinh giản nhưng đầy điểm nhấn. 
-                    Sản phẩm không chỉ dễ phối cùng nhiều kiểu trang phục khác nhau mà còn khéo léo tôn lên 
-                    phong cách riêng của người mặc.
-                  </p>
-                  <p className="text-gray-700 leading-relaxed text-sm md:text-base">
-                    Có những món đồ mà chỉ qua ánh nhìn đầu tiên, bạn có thể cảm nhận ngay sự duyên dáng tinh tế. 
-                    <strong> {product.name}</strong> chính là một trong số đó.
-                  </p>
-                </div>
-
-                <figure className="my-6 md:my-8">
-                  <img 
-                    src={productImages[0]} 
-                    alt={product.name} 
-                    className="w-full rounded-lg shadow-md"
-                  />
-                  <figcaption className="text-center text-xs md:text-sm text-gray-500 mt-2 md:mt-3 italic">
-                    {product.name} - Thiết kế sang trọng, tinh tế
-                  </figcaption>
-                </figure>
-
-                <div className="space-y-4 md:space-y-6">
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Kiểu dáng duyên dáng, tạo chiều sâu</h3>
-                    <p className="text-gray-700 leading-relaxed text-sm md:text-base">
-                      Đường cắt tinh tế và chi tiết phối hợp khéo léo, vừa tạo cảm giác thanh mảnh hơn 
-                      cho vóc dáng, vừa giúp outfit trở nên cuốn hút mà không cần quá cầu kỳ. Thiết kế 
-                      này không chỉ đẹp mà còn rất dễ ứng dụng trong nhiều hoàn cảnh.
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Dễ dàng phối đồ, linh hoạt trong nhiều phong cách</h3>
-                    <p className="text-gray-700 leading-relaxed text-sm md:text-base mb-3 md:mb-4">
-                      Sản phẩm có thể kết hợp với nhiều kiểu áo khác nhau - từ áo sơ mi công sở đến áo thun 
-                      basic, hay những chiếc áo crop top cá tính. Màu sắc trung tính giúp bạn dễ dàng mix-match 
-                      với các items khác trong tủ đồ.
-                    </p>
-                    <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
-                      <h4 className="font-semibold mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
-                        <span>💡</span>
-                        Gợi ý phối đồ cùng {product.name}:
-                      </h4>
-                      <ul className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-700">
-                        <li>✓ Áo sơ mi trắng + giày cao gót → phong cách công sở thanh lịch</li>
-                        <li>✓ Áo thun basic + sneakers → outfit dạo phố năng động</li>
-                        <li>✓ Áo ôm cổ lọ + boots → look sang trọng cho buổi tối</li>
-                        <li>✓ Áo kiểu phối lụa + sandals → vẻ ngoài nữ tính, dịu dàng</li>
-                      </ul>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt</h3>
-                    <p className="text-gray-700 leading-relaxed text-sm md:text-base">
-                      <strong>{product.name}</strong> là minh chứng cho triết lý thời trang "ít mà chất": 
-                      đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt. Đây là item không thể thiếu 
-                      trong tủ đồ của những người yêu phong cách tinh tế, dễ ứng dụng nhưng vẫn có chiều sâu riêng.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-center py-4 md:py-6 my-6 md:my-8 border-t border-b border-gray-200">
-                  <p className="text-gray-700 italic text-base md:text-lg">
-                    Nếu bạn đang tìm kiếm một sản phẩm để nhẹ nhàng làm mới bản thân và style của mình, 
-                    đây chính là món đồ đáng để "đặt ngay".
-                  </p>
-                </div>
+           {activeTab === 'description' && (
+  <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
+    {/* Kiểm tra xem có custom content từ SEO Manager không */}
+    {product.attributes?.content_blocks && 
+     product.attributes.content_blocks.length > 0 ? (
+      // ✅ RENDER CUSTOM CONTENT TỪ ADMIN
+      <>
+        {product.attributes.content_blocks.map((block) => (
+          <div key={block.id}>
+            {block.type === 'text' ? (
+              <div>
+                {block.title && (
+                  <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">
+                    {block.title}
+                  </h3>
+                )}
+                <p 
+                  className="text-gray-700 leading-relaxed text-sm md:text-base"
+                  dangerouslySetInnerHTML={{ __html: block.content }}
+                />
               </div>
-            )}
+            ) : block.type === 'image' ? (
+              <figure className="my-6 md:my-8">
+                {block.url && (
+                  <img 
+                    src={block.url} 
+                    alt={block.alt || product.name} 
+                    className="w-full rounded-lg shadow-md"
+                    loading="lazy"
+                  />
+                )}
+                {block.caption && (
+                  <figcaption className="text-center text-xs md:text-sm text-gray-500 mt-2 md:mt-3 italic">
+                    {block.caption}
+                  </figcaption>
+                )}
+              </figure>
+            ) : null}
+          </div>
+        ))}
+      </>
+    ) : (
+      // ❌ FALLBACK - NỘI DUNG MẶC ĐỊNH (GIỮ NGUYÊN CODE CŨ)
+      <>
+        <div className="text-center space-y-3 md:space-y-4">
+          <p className="text-base md:text-lg leading-relaxed text-gray-800">
+            <strong>{product.name}</strong> là một thiết kế hiện đại, tinh giản nhưng đầy điểm nhấn. 
+            Sản phẩm không chỉ dễ phối cùng nhiều kiểu trang phục khác nhau mà còn khéo léo tôn lên 
+            phong cách riêng của người mặc.
+          </p>
+          <p className="text-gray-700 leading-relaxed text-sm md:text-base">
+            Có những món đồ mà chỉ qua ánh nhìn đầu tiên, bạn có thể cảm nhận ngay sự duyên dáng tinh tế. 
+            <strong> {product.name}</strong> chính là một trong số đó.
+          </p>
+        </div>
+
+        <figure className="my-6 md:my-8">
+          <img 
+            src={productImages[0]} 
+            alt={product.name} 
+            className="w-full rounded-lg shadow-md"
+          />
+          <figcaption className="text-center text-xs md:text-sm text-gray-500 mt-2 md:mt-3 italic">
+            {product.name} - Thiết kế sang trọng, tinh tế
+          </figcaption>
+        </figure>
+
+        <div className="space-y-4 md:space-y-6">
+          <div>
+            <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Kiểu dáng duyên dáng, tạo chiều sâu</h3>
+            <p className="text-gray-700 leading-relaxed text-sm md:text-base">
+              Đường cắt tinh tế và chi tiết phối hợp khéo léo, vừa tạo cảm giác thanh mảnh hơn 
+              cho vóc dáng, vừa giúp outfit trở nên cuốn hút mà không cần quá cầu kỳ. Thiết kế 
+              này không chỉ đẹp mà còn rất dễ ứng dụng trong nhiều hoàn cảnh.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Dễ dàng phối đồ, linh hoạt trong nhiều phong cách</h3>
+            <p className="text-gray-700 leading-relaxed text-sm md:text-base mb-3 md:mb-4">
+              Sản phẩm có thể kết hợp với nhiều kiểu áo khác nhau - từ áo sơ mi công sở đến áo thun 
+              basic, hay những chiếc áo crop top cá tính. Màu sắc trung tính giúp bạn dễ dàng mix-match 
+              với các items khác trong tủ đồ.
+            </p>
+            <div className="bg-gray-50 p-4 md:p-6 rounded-lg border border-gray-200">
+              <h4 className="font-semibold mb-2 md:mb-3 flex items-center gap-2 text-sm md:text-base">
+                <span>💡</span>
+                Gợi ý phối đồ cùng {product.name}:
+              </h4>
+              <ul className="space-y-1 md:space-y-2 text-xs md:text-sm text-gray-700">
+                <li>✓ Áo sơ mi trắng + giày cao gót → phong cách công sở thanh lịch</li>
+                <li>✓ Áo thun basic + sneakers → outfit dạo phố năng động</li>
+                <li>✓ Áo ôm cổ lọ + boots → look sang trọng cho buổi tối</li>
+                <li>✓ Áo kiểu phối lụa + sandals → vẻ ngoài nữ tính, dịu dàng</li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg md:text-xl font-bold mb-2 md:mb-3">Đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt</h3>
+            <p className="text-gray-700 leading-relaxed text-sm md:text-base">
+              <strong>{product.name}</strong> là minh chứng cho triết lý thời trang "ít mà chất": 
+              đơn giản nhưng duyên dáng, thanh nhã nhưng không mờ nhạt. Đây là item không thể thiếu 
+              trong tủ đồ của những người yêu phong cách tinh tế, dễ ứng dụng nhưng vẫn có chiều sâu riêng.
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center py-4 md:py-6 my-6 md:my-8 border-t border-b border-gray-200">
+          <p className="text-gray-700 italic text-base md:text-lg">
+            Nếu bạn đang tìm kiếm một sản phẩm để nhẹ nhàng làm mới bản thân và style của mình, 
+            đây chính là món đồ đáng để "đặt ngay".
+          </p>
+        </div>
+      </>
+    )}
+  </div>
+)}
 
             {activeTab === 'details' && (
               <div className="max-w-3xl">
