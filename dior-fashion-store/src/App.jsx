@@ -25,6 +25,8 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import PaymentPolicyPage from './pages/PaymentPolicyPage';
 import TermsPage from './pages/TermsPage';
 import CareersPage from './pages/CareersPage';
+import ChatWidget from './components/chatbot/ChatWidget';
+
 // Auth Pages
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -41,6 +43,9 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminOrderDetail from './pages/admin/AdminOrderDetail';
 import SEOManagerPage from './pages/admin/SEOManager';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
+import FacebookSettingsPage from './pages/admin/chatbot/FacebookSettingsPage';
+import ConversationsPage from './pages/admin/chatbot/ConversationsPage';
+import ScenariosTab from './pages/admin/chatbot/ScenariosTab';
 // User Pages
 import ProfileLayout from './pages/user/ProfileLayout';
 import ProfilePage from './pages/user/ProfilePage';
@@ -227,6 +232,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <ChatWidget />
         <div className="min-h-screen flex flex-col">
           
           {/* Top Bar - Hide in admin */}
@@ -297,7 +303,7 @@ function App() {
                   />
                 } 
               />
-
+              
               <Route 
                 path="/checkout/success" 
                 element={<OrderSuccessPage />} 
@@ -365,6 +371,10 @@ function App() {
                 {/* Orders */}
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:id" element={<AdminOrderDetail />} />
+                {/* Facebook Settings for Chatbot */}
+                <Route path="chatbot/facebook" element={<FacebookSettingsPage />} />
+                <Route path="chatbot/conversations" element={<ConversationsPage />} />
+                <Route path="chatbot/scenarios" element={<ScenariosTab />} />
               </Route>
 
               {/* =============================================

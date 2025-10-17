@@ -60,9 +60,13 @@ const Header = ({
   };
 
   const handleLogout = async () => {
+  try {
     await logout();
-    navigate('/'); // Chuyển về trang chủ sau khi đăng xuất
-  };
+    navigate('/');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+};
 
   const toggleMobileSubmenu = (index) => {
     setExpandedMobile(prev => ({

@@ -125,9 +125,29 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const value = {
+ 
+   // ✅ THÊM HÀM LOGOUT
+  const logout = async () => {
+    try {
+      console.log('👋 Logging out...');
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        throw error;
+      }
+      
+      setUser(null);
+      console.log('✅ Logged out successfully');
+    } catch (error) {
+      console.error('❌ Logout failed:', error);
+      throw error;
+    }
+  };
+ const value = {
     user,
     loading,
+    logout,
     isAdmin: user?.profile?.role === 'admin',
     isAuthenticated: !!user
   };

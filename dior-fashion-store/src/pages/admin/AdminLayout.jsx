@@ -3,12 +3,14 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { signOut } from '../../lib/api/auth';
 import { BarChart3 } from 'lucide-react'; // Add this import
+import { ListChecks } from 'lucide-react'; // thay thế Scenarios bằng ListChecksclear
 import {
   LayoutDashboard,
   Package,
   ShoppingBag,
   FolderOpen,
   Image,
+  MessageSquare,
   Settings,
   LogOut,
   Menu,
@@ -61,10 +63,25 @@ const AdminLayout = () => {
     },
     // Add this to your navigation array (after Dashboard)
     {
-      name: 'Analytics',
+      title: 'Analytics',
       path: '/admin/analytics',
       icon: BarChart3
-    }
+    },
+    { 
+      title: 'Chatbot Settings', 
+      path: '/admin/chatbot/facebook', 
+      icon: Settings 
+    },
+    { 
+      title: 'Conversations', 
+      path: '/admin/chatbot/conversations', 
+      icon: MessageSquare 
+    },
+    { 
+      title: 'Scenarios', 
+      path: '/admin/chatbot/scenarios', 
+      icon: ListChecks 
+    },
   ];
 
   const isActive = (path) => {
