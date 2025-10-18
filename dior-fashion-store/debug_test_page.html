@@ -129,7 +129,11 @@
       <h3>⚙️ Configuration</h3>
       <input type="text" id="functionUrl" placeholder="Supabase Function URL" 
              value="https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process">
-      <input type="text" id="anonKey" placeholder="Anon Key (optional for local test)">
+      <input type="password" id="anonKey" placeholder="Supabase Anon Key" 
+             value="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cXdwc2Z0emJhZ2lkb3Vkd29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNjUxOTAsImV4cCI6MjA3NTg0MTE5MH0.Lj0GpMHhxolPsjJJpleXwknaFs5eP0tdSfySZRcHeSQ">
+      <p style="color: #4ade80; font-size: 13px; margin-top: 10px;">
+        ✅ Anon Key đã được cấu hình sẵn
+      </p>
     </div>
 
     <div class="test-section">
@@ -206,6 +210,11 @@
 
       if (!url) {
         output.innerHTML = '<span class="error">❌ Please enter Function URL</span>';
+        return;
+      }
+
+      if (!key) {
+        output.innerHTML = '<span class="error">❌ Anon Key is REQUIRED!</span>\n\n<span class="info">Get it from: Supabase Dashboard → Settings → API → anon public</span>';
         return;
       }
 
