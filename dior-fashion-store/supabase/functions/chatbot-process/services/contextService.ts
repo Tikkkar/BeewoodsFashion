@@ -1,6 +1,9 @@
-// services/contextService.ts - UPDATED
+// ============================================
+// services/contextService.ts - FINAL FIXED
+// ============================================
 
 import { loadCustomerMemory } from './memoryService.ts';
+import { getSavedAddress } from './addressExtractionService.ts';
 
 export async function buildContext(
   supabase: any,
@@ -9,7 +12,9 @@ export async function buildContext(
 ) {
   const context: any = {};
 
+  // ========================================
   // 1. GET CONVERSATION INFO
+  // ========================================
   const { data: conv } = await supabase
     .from('chatbot_conversations')
     .select('*')
@@ -23,7 +28,9 @@ export async function buildContext(
     };
   }
 
-  // 2. ✅ LOAD LONG-TERM MEMORY
+  // ========================================
+  // 2. LOAD LONG-TERM MEMORY
+  // ========================================
   const memory = await loadCustomerMemory(conversationId);
   
   if (memory) {
@@ -34,7 +41,21 @@ export async function buildContext(
     context.key_points = memory.summary?.key_points;
   }
 
-  // 3. GET RECENT MESSAGES (10 tin cuối)
+  // ========================================
+  // 3. LOAD SAVED ADDRESS FROM MEMORY
+  // ========================================
+  const savedAddress = await getSavedAddress(conversationId);
+  if (savedAddress) {
+    context.saved_address = savedAddress;
+    console.log('📍 Loaded address from memory:', savedAddress.address_line);
+  } else {
+    context.saved_address = null;
+    console.log('⚠️ No saved address found');
+  }
+
+  // ========================================
+  // 4. GET RECENT MESSAGES (10 tin cuối)
+  // ========================================
   const { data: messages } = await supabase
     .from('chatbot_messages')
     .select('sender_type, content, created_at')
@@ -44,7 +65,9 @@ export async function buildContext(
 
   context.history = messages || [];
 
-  // 4. GET PRODUCTS
+  // ========================================
+  // 5. GET PRODUCTS
+  // ========================================
   const { data: products } = await supabase
     .from('products')
     .select(`
@@ -67,6 +90,18 @@ export async function buildContext(
   }
 
   context.products = products || [];
+
+  // ========================================
+  // 6. DEBUG LOG
+  // ========================================
+  console.log('📊 Context Summary:', {
+    hasProfile: !!context.profile,
+    hasSavedAddress: !!context.saved_address,
+    addressLine: context.saved_address?.address_line || 'none',
+    historyCount: context.history?.length || 0,
+    productCount: context.products?.length || 0,
+    memoryFactsCount: context.memory_facts?.length || 0
+  });
 
   return context;
 }

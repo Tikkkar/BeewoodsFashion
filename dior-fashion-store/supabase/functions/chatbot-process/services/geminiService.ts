@@ -1,8 +1,9 @@
 // ============================================
-// services/geminiService.ts - Gemini AI integration
+// services/geminiService.ts - WITH FUNCTION CALLING
 // ============================================
 
 import { getSystemPrompt, buildFullPrompt } from '../utils/prompts.ts';
+import { GEMINI_TOOLS } from '../utils/aiTools.ts';
 
 // @ts-ignore - Deno.env is available in Deno runtime
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
@@ -12,19 +13,8 @@ export async function callGemini(context: any, userMessage: string) {
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  // ✅ SỬA: Thêm await cho cả 2 hàm async
   const systemPrompt = await getSystemPrompt();
   const fullPrompt = await buildFullPrompt(context, userMessage);
-  // 🔍 DEBUG - QUAN TRỌNG
-  console.log('=== DEBUG PROMPT ===');
-  console.log('systemPrompt type:', typeof systemPrompt);
-  console.log('systemPrompt preview:', String(systemPrompt).substring(0, 50));
-  
-  console.log('fullPrompt type:', typeof fullPrompt);
-  console.log('fullPrompt preview:', String(fullPrompt).substring(0, 50));
-  console.log('Calling Gemini API...');
-  console.log('Prompt type:', typeof fullPrompt); // ← Debug log
-  console.log('Prompt length:', fullPrompt.length);
 
   try {
     const response = await fetch(
@@ -34,17 +24,20 @@ export async function callGemini(context: any, userMessage: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{
-            role: "user", // ← Thêm role
+            role: "user",
             parts: [{ text: fullPrompt }]
           }],
-          // ✅ KHUYẾN NGHỊ: Tách system instruction riêng
           systemInstruction: {
             parts: [{ text: systemPrompt }]
           },
+          // ⭐ ADD FUNCTION DECLARATIONS
+          tools: [{
+            functionDeclarations: GEMINI_TOOLS
+          }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 1024,
-            responseMimeType: "application/json" // ← Bắt buộc trả JSON
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json"
           }
         })
       }
@@ -57,24 +50,50 @@ export async function callGemini(context: any, userMessage: string) {
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    console.log('Gemini response received:', rawText.substring(0, 100) + '...');
-
-    // Parse response
-    const parsed = parseGeminiResponse(rawText, context.products);
-
-    // Extract product cards
+    
+    // ⭐ HANDLE FUNCTION CALLS
+    const firstCandidate = data.candidates?.[0];
+    const parts = firstCandidate?.content?.parts || [];
+    
+    const functionCalls: any[] = [];
+    let textResponse = '';
+    
+    for (const part of parts) {
+      if (part.functionCall) {
+        functionCalls.push({
+          name: part.functionCall.name,
+          args: part.functionCall.args
+        });
+        console.log(`🔧 AI requested function: ${part.functionCall.name}`, part.functionCall.args);
+      } else if (part.text) {
+        textResponse += part.text;
+      }
+    }
+    
+    // PARSE TEXT RESPONSE
+    let parsed: any;
+    
+    if (textResponse) {
+      parsed = parseGeminiResponse(textResponse, context.products);
+    } else {
+      parsed = {
+        response: '',
+        type: 'none',
+        product_ids: []
+      };
+    }
+    
     const productCards = extractProductsByIds(context.products, parsed.product_ids);
-
-    const tokens = Math.ceil((fullPrompt.length + rawText.length) / 4);
-
+    const tokens = Math.ceil((fullPrompt.length + textResponse.length) / 4);
+    
     return {
       text: parsed.response,
       tokens: tokens,
       type: parsed.type,
-      products: productCards
+      products: productCards,
+      functionCalls: functionCalls
     };
+    
   } catch (error) {
     let errorMessage = "An unknown error occurred.";
 
@@ -90,13 +109,106 @@ export async function callGemini(context: any, userMessage: string) {
       text: 'Xin lỗi, em đang gặp sự cố kỹ thuật. Vui lòng thử lại sau ạ 🌷',
       tokens: 0,
       type: 'none',
-      products: []
+      products: [],
+      functionCalls: []
     };
   }
 }
 
+// ⭐ NEW: Execute function call and get continuation
+export async function callGeminiWithFunctionResult(
+  context: any,
+  userMessage: string,
+  functionName: string,
+  functionResult: any
+) {
+  // @ts-ignore - Deno.env is available
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY not configured');
+  }
+
+  const systemPrompt = await getSystemPrompt();
+  const fullPrompt = await buildFullPrompt(context, userMessage);
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: fullPrompt }]
+            },
+            {
+              role: "model",
+              parts: [{
+                functionCall: {
+                  name: functionName,
+                  args: {}
+                }
+              }]
+            },
+            {
+              role: "user",
+              parts: [{
+                functionResponse: {
+                  name: functionName,
+                  response: functionResult
+                }
+              }]
+            }
+          ],
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          tools: [{
+            functionDeclarations: GEMINI_TOOLS
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+            responseMimeType: "application/json"
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    const parsed = parseGeminiResponse(textResponse, context.products);
+    const productCards = extractProductsByIds(context.products, parsed.product_ids);
+    const tokens = Math.ceil((fullPrompt.length + textResponse.length) / 4);
+    
+    return {
+      text: parsed.response,
+      tokens: tokens,
+      type: parsed.type,
+      products: productCards,
+      functionCalls: []
+    };
+    
+  } catch (error) {
+    console.error('Gemini continuation failed:', error);
+    return {
+      text: 'Dạ em đã lưu thông tin rồi ạ! 📝',
+      tokens: 0,
+      type: 'none',
+      products: [],
+      functionCalls: []
+    };
+  }
+}
+
+// Keep all existing helper functions
 function parseGeminiResponse(rawText: string, availableProducts: any[]) {
-  // Strategy 1: Direct JSON parse
   try {
     const cleaned = rawText.trim();
     if (cleaned.startsWith('{')) {
@@ -107,7 +219,6 @@ function parseGeminiResponse(rawText: string, availableProducts: any[]) {
     console.log('Parse strategy 1 failed');
   }
 
-  // Strategy 2: Extract from code block
   try {
     const match = rawText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
     if (match) {
@@ -118,7 +229,6 @@ function parseGeminiResponse(rawText: string, availableProducts: any[]) {
     console.log('Parse strategy 2 failed');
   }
 
-  // Strategy 3: Find JSON object
   try {
     const start = rawText.indexOf('{');
     const end = rawText.lastIndexOf('}');
@@ -131,7 +241,6 @@ function parseGeminiResponse(rawText: string, availableProducts: any[]) {
     console.log('Parse strategy 3 failed');
   }
 
-  // Strategy 4: Manual fallback
   console.log('Using manual fallback parser');
   return manualParse(rawText, availableProducts);
 }
@@ -165,12 +274,10 @@ function manualParse(text: string, products: any[]) {
 
   let productIds: string[] = [];
   if (type === 'showcase') {
-    // Extract UUIDs
     const uuidMatches = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
     if (uuidMatches && uuidMatches.length > 0) {
       productIds = uuidMatches;
     } else {
-      // Match by product names
       const sortedProducts = [...products].sort((a, b) => b.name.length - a.name.length);
       for (const product of sortedProducts) {
         const productNameLower = product.name.toLowerCase();
@@ -185,7 +292,6 @@ function manualParse(text: string, products: any[]) {
         }
       }
 
-      // Fallback: return top products
       if (productIds.length === 0 && products.length > 0) {
         productIds = products.slice(0, 3).map(p => p.id);
       }

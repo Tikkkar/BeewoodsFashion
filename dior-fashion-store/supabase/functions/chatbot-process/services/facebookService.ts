@@ -22,7 +22,7 @@ export async function sendFacebookMessage(
         {
           type: 'web_url',
           title: 'Xem chi tiet',
-          url: `https://bewo-store.com/products/${p.slug}`
+          url: `https://68f0a8368a61bd13b77fdc25--sweet-croissant-b165fe.netlify.app/product/${p.slug}`
         }
       ]
     }));
