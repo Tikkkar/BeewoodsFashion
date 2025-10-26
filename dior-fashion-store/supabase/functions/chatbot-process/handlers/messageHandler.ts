@@ -20,7 +20,6 @@ import {
   getOrCreateCart,
   addToCart,
   getCartSummary,
-  extractProductsFromMessage
 } from '../services/cartService.ts';
 import { 
   createMessageEmbedding,

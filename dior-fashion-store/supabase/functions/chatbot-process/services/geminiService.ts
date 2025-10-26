@@ -1,329 +1,304 @@
 // ============================================
-// services/geminiService.ts - WITH FUNCTION CALLING
+// services/geminiService.ts - Deno/Supabase Edge Functions Compatible
 // ============================================
 
-import { getSystemPrompt, buildFullPrompt } from '../utils/prompts.ts';
-import { GEMINI_TOOLS } from '../utils/aiTools.ts';
+// @ts-ignore - Deno will resolve this at runtime
+import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.21.0";
+import { buildFullPrompt } from "../utils/prompts.ts";
 
-// @ts-ignore - Deno.env is available in Deno runtime
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+// @ts-ignore - Deno global
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 
-export async function callGemini(context: any, userMessage: string) {
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY not configured');
+if (!GEMINI_API_KEY) {
+  console.error("⚠️ GEMINI_API_KEY not found in environment variables");
+}
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+interface FunctionCall {
+  name: string;
+  args: Record<string, any>;
+}
+
+interface GeminiResponse {
+  text: string;
+  tokens: number;
+  type: "showcase" | "mention" | "none";
+  products: any[];
+  functionCalls: FunctionCall[];
+}
+
+/**
+ * Validate address function call
+ */
+function validateAddressFunctionCall(args: any): boolean {
+  // 1. Check address_line exists
+  if (!args.address_line) {
+    console.warn("⚠️ save_address: Missing address_line");
+    return false;
   }
 
-  const systemPrompt = await getSystemPrompt();
-  const fullPrompt = await buildFullPrompt(context, userMessage);
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [{ text: fullPrompt }]
-          }],
-          systemInstruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          // ⭐ ADD FUNCTION DECLARATIONS
-          tools: [{
-            functionDeclarations: GEMINI_TOOLS
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json"
-          }
-        })
-      }
+  // 2. Check if address_line có số nhà và tên đường
+  if (!/^\d+[A-Z]?\s+.+/.test(args.address_line)) {
+    console.warn(
+      "⚠️ save_address: Invalid address_line format:",
+      args.address_line,
     );
+    return false;
+  }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Gemini API error:', errorText);
-      throw new Error(`Gemini API failed: ${response.status}`);
-    }
+  // 3. Check if address_line is only numbers
+  if (/^[\d\s]+$/.test(args.address_line)) {
+    console.warn(
+      "⚠️ save_address: address_line is only numbers:",
+      args.address_line,
+    );
+    return false;
+  }
 
-    const data = await response.json();
-    
-    // ⭐ HANDLE FUNCTION CALLS
-    const firstCandidate = data.candidates?.[0];
-    const parts = firstCandidate?.content?.parts || [];
-    
-    const functionCalls: any[] = [];
-    let textResponse = '';
-    
-    for (const part of parts) {
-      if (part.functionCall) {
-        functionCalls.push({
-          name: part.functionCall.name,
-          args: part.functionCall.args
-        });
-        console.log(`🔧 AI requested function: ${part.functionCall.name}`, part.functionCall.args);
-      } else if (part.text) {
-        textResponse += part.text;
+  // 4. Validate city
+  if (!args.city) {
+    console.warn("⚠️ save_address: Missing city");
+    return false;
+  }
+
+  // 5. Check if address_line looks like product description
+  const productKeywords = ["cao cấp", "lớp", "set", "vest", "quần", "áo"];
+  if (
+    productKeywords.some((keyword) =>
+      args.address_line.toLowerCase().includes(keyword)
+    )
+  ) {
+    console.warn(
+      "⚠️ save_address: address_line looks like product description:",
+      args.address_line,
+    );
+    return false;
+  }
+
+  console.log("✅ save_address validation passed");
+  return true;
+}
+
+/**
+ * Call Gemini with function calling support
+ */
+export async function callGemini(
+  context: any,
+  userMessage: string,
+): Promise<GeminiResponse> {
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        responseMimeType: "application/json",
+      },
+    });
+
+    const fullPrompt = await buildFullPrompt(context, userMessage);
+
+    console.log("🤖 Calling Gemini with function calling...");
+    console.log("📝 User message:", userMessage.substring(0, 100));
+
+    const result = await model.generateContent(fullPrompt);
+    const response = result.response;
+    const rawText = response.text();
+
+    console.log("📝 Raw Gemini response:", rawText.substring(0, 300));
+
+    // Parse JSON response
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (e) {
+      console.error("❌ JSON parse error:", e);
+      // Fallback: extract JSON từ text
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("Cannot parse Gemini response as JSON");
       }
     }
-    
-    // PARSE TEXT RESPONSE
-    let parsed: any;
-    
-    if (textResponse) {
-      parsed = parseGeminiResponse(textResponse, context.products);
-    } else {
-      parsed = {
-        response: '',
-        type: 'none',
-        product_ids: []
-      };
+
+    // Extract function calls
+    const functionCalls: FunctionCall[] = parsed.function_calls || [];
+
+    // Log function calls for debugging
+    if (functionCalls.length > 0) {
+      console.log(`🔧 Function calls detected: ${functionCalls.length}`);
+      functionCalls.forEach((fc, idx) => {
+        console.log(`  ${idx + 1}. ${fc.name}:`);
+        console.log("     Args:", JSON.stringify(fc.args, null, 2));
+      });
     }
-    
-    const productCards = extractProductsByIds(context.products, parsed.product_ids);
-    const tokens = Math.ceil((fullPrompt.length + textResponse.length) / 4);
-    
+
+    // Validate function calls
+    const validatedFunctionCalls = functionCalls.filter((fc) => {
+      if (fc.name === "save_address") {
+        return validateAddressFunctionCall(fc.args);
+      }
+
+      // Validate other functions if needed
+      if (fc.name === "save_customer_info") {
+        // Basic validation
+        if (!fc.args.full_name && !fc.args.preferred_name && !fc.args.phone) {
+          console.warn("⚠️ save_customer_info: No useful data provided");
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    if (validatedFunctionCalls.length < functionCalls.length) {
+      console.log(
+        `⚠️ Filtered out ${
+          functionCalls.length - validatedFunctionCalls.length
+        } invalid function calls`,
+      );
+    }
+
+    // Extract product recommendations
+    const productIds = parsed.product_ids || [];
+
+    console.log("📦 Product IDs from AI:", productIds);
+    console.log("📦 Type from AI:", parsed.type);
+
+    const products = productIds
+      .map((id: string) => {
+        const product = context.products?.find((p: any) => p.id === id);
+        if (!product) {
+          console.warn(`⚠️ Product not found: ${id}`);
+        }
+        return product;
+      })
+      .filter(Boolean);
+
+    console.log("📦 Matched products:", products.length);
+
+    const tokens = response.usageMetadata?.totalTokenCount || 0;
+
     return {
-      text: parsed.response,
-      tokens: tokens,
-      type: parsed.type,
-      products: productCards,
-      functionCalls: functionCalls
+      text: parsed.response || "Xin lỗi, em chưa hiểu ý chị ạ 😊",
+      tokens,
+      type: parsed.type || "none",
+      products,
+      functionCalls: validatedFunctionCalls,
     };
-    
-  } catch (error) {
-    let errorMessage = "An unknown error occurred.";
+  } catch (error: any) {
+    console.error("❌ Gemini API error:", error);
+    console.error("Error details:", error.message);
 
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
-
-    console.error('Gemini call failed:', errorMessage);
-
+    // Return fallback response
     return {
-      text: 'Xin lỗi, em đang gặp sự cố kỹ thuật. Vui lòng thử lại sau ạ 🌷',
+      text: "Xin lỗi chị, hệ thống đang gặp lỗi. Chị vui lòng thử lại sau ạ 🙏",
       tokens: 0,
-      type: 'none',
+      type: "none",
       products: [],
-      functionCalls: []
+      functionCalls: [],
     };
   }
 }
 
-// ⭐ NEW: Execute function call and get continuation
+/**
+ * Call Gemini after function execution để lấy response tiếp theo
+ */
 export async function callGeminiWithFunctionResult(
   context: any,
   userMessage: string,
   functionName: string,
-  functionResult: any
-) {
-  // @ts-ignore - Deno.env is available
-  if (!GEMINI_API_KEY) {
-    throw new Error('GEMINI_API_KEY not configured');
-  }
-
-  const systemPrompt = await getSystemPrompt();
-  const fullPrompt = await buildFullPrompt(context, userMessage);
-
+  functionResult: any,
+): Promise<{ text: string }> {
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: fullPrompt }]
-            },
-            {
-              role: "model",
-              parts: [{
-                functionCall: {
-                  name: functionName,
-                  args: {}
-                }
-              }]
-            },
-            {
-              role: "user",
-              parts: [{
-                functionResponse: {
-                  name: functionName,
-                  response: functionResult
-                }
-              }]
-            }
-          ],
-          systemInstruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          tools: [{
-            functionDeclarations: GEMINI_TOOLS
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-            responseMimeType: "application/json"
-          }
-        })
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+        responseMimeType: "application/json",
+      },
+    });
+
+    // Build prompt with function result
+    const fullPrompt = await buildFullPrompt(context, userMessage);
+
+    const continuationPrompt = `${fullPrompt}
+
+🔧 FUNCTION EXECUTED: ${functionName}
+📊 RESULT: ${JSON.stringify(functionResult, null, 2)}
+
+⚠️ KẾT QUẢ THỰC THI FUNCTION:
+${functionResult.success ? "✅ Thành công!" : "❌ Thất bại!"}
+${functionResult.message || ""}
+
+NHIỆM VỤ:
+1. Nếu thành công → Thông báo cho khách một cách tự nhiên, thân thiện
+2. Nếu thất bại → Xin lỗi và hướng dẫn khách cung cấp đúng thông tin
+
+VÍ DỤ RESPONSE THÀNH CÔNG (save_address):
+"Dạ em đã ghi nhận địa chỉ của chị rồi ạ! ✨
+Địa chỉ giao hàng: [ĐỊA CHỈ ĐẦY ĐỦ]
+Chị cần em hỗ trợ gì thêm không ạ? 💕"
+
+VÍ DỤ RESPONSE THẤT BẠI:
+"Dạ xin lỗi chị, địa chỉ chưa đầy đủ ạ 😊
+Chị vui lòng cung cấp đầy đủ: số nhà + tên đường + thành phố nhé!"
+
+CHỈ TRẢ JSON:
+{
+  "response": "Câu trả lời phù hợp với kết quả function",
+  "type": "none",
+  "product_ids": []
+}`;
+
+    const result = await model.generateContent(continuationPrompt);
+    const rawText = result.response.text();
+
+    console.log("📝 Continuation response:", rawText.substring(0, 200));
+
+    const parsed = JSON.parse(rawText);
+
+    return {
+      text: parsed.response || "Đã xử lý xong ạ! 💕",
+    };
+  } catch (error: any) {
+    console.error("❌ Continuation call error:", error);
+
+    // Fallback response based on function result
+    if (functionResult.success) {
+      if (functionResult.message) {
+        return { text: functionResult.message };
       }
-    );
-
-    if (!response.ok) {
-      throw new Error(`Gemini API failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
-    const parsed = parseGeminiResponse(textResponse, context.products);
-    const productCards = extractProductsByIds(context.products, parsed.product_ids);
-    const tokens = Math.ceil((fullPrompt.length + textResponse.length) / 4);
-    
-    return {
-      text: parsed.response,
-      tokens: tokens,
-      type: parsed.type,
-      products: productCards,
-      functionCalls: []
-    };
-    
-  } catch (error) {
-    console.error('Gemini continuation failed:', error);
-    return {
-      text: 'Dạ em đã lưu thông tin rồi ạ! 📝',
-      tokens: 0,
-      type: 'none',
-      products: [],
-      functionCalls: []
-    };
-  }
-}
-
-// Keep all existing helper functions
-function parseGeminiResponse(rawText: string, availableProducts: any[]) {
-  try {
-    const cleaned = rawText.trim();
-    if (cleaned.startsWith('{')) {
-      const parsed = JSON.parse(cleaned);
-      return validateParsedResponse(parsed);
-    }
-  } catch (e) {
-    console.log('Parse strategy 1 failed');
-  }
-
-  try {
-    const match = rawText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-    if (match) {
-      const parsed = JSON.parse(match[1]);
-      return validateParsedResponse(parsed);
-    }
-  } catch (e) {
-    console.log('Parse strategy 2 failed');
-  }
-
-  try {
-    const start = rawText.indexOf('{');
-    const end = rawText.lastIndexOf('}');
-    if (start !== -1 && end !== -1) {
-      const jsonStr = rawText.substring(start, end + 1);
-      const parsed = JSON.parse(jsonStr);
-      return validateParsedResponse(parsed);
-    }
-  } catch (e) {
-    console.log('Parse strategy 3 failed');
-  }
-
-  console.log('Using manual fallback parser');
-  return manualParse(rawText, availableProducts);
-}
-
-function validateParsedResponse(parsed: any) {
-  return {
-    response: parsed.response || parsed.text || '',
-    type: ['none', 'mention', 'showcase'].includes(parsed.type) 
-      ? parsed.type 
-      : parsed.response_type || 'none',
-    product_ids: Array.isArray(parsed.product_ids) 
-      ? parsed.product_ids 
-      : parsed.recommended_product_ids || []
-  };
-}
-
-function manualParse(text: string, products: any[]) {
-  const textLower = text.toLowerCase();
-  
-  let type = 'none';
-  const showcaseKeywords = ['cho toi xem', 'goi y', 'khuyen', 'tu van', 'co khong', 'co gi', 'mua gi', 'xem thu'];
-  const hasShowcaseIntent = showcaseKeywords.some(kw => textLower.includes(kw));
-  const hasPrice = /\d{1,3}[.,]?\d{3}/.test(text);
-  const mentionsProduct = /ao|quan|vay|giay|tui|dam|so mi|jean|hoodie|polo/.test(textLower);
-
-  if (hasShowcaseIntent || (mentionsProduct && hasPrice)) {
-    type = 'showcase';
-  } else if (mentionsProduct) {
-    type = 'mention';
-  }
-
-  let productIds: string[] = [];
-  if (type === 'showcase') {
-    const uuidMatches = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi);
-    if (uuidMatches && uuidMatches.length > 0) {
-      productIds = uuidMatches;
+      return {
+        text: "Đã lưu thông tin thành công ạ! ✨",
+      };
     } else {
-      const sortedProducts = [...products].sort((a, b) => b.name.length - a.name.length);
-      for (const product of sortedProducts) {
-        const productNameLower = product.name.toLowerCase();
-        const nameWords = productNameLower.split(' ');
-        const matchCount = nameWords.filter((word: string) => 
-          word.length > 2 && textLower.includes(word)
-        ).length;
-
-        if (matchCount >= nameWords.length * 0.5) {
-          productIds.push(product.id);
-          if (productIds.length >= 3) break;
-        }
+      if (functionResult.message) {
+        return { text: functionResult.message };
       }
-
-      if (productIds.length === 0 && products.length > 0) {
-        productIds = products.slice(0, 3).map(p => p.id);
-      }
+      return {
+        text: "Có lỗi xảy ra, chị vui lòng thử lại nhé 😊",
+      };
     }
   }
-
-  const cleaned = text
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '')
-    .trim();
-
-  return {
-    response: cleaned || text,
-    type: type,
-    product_ids: productIds
-  };
 }
 
-function extractProductsByIds(availableProducts: any[], productIds: string[] = []) {
-  if (!productIds || productIds.length === 0) {
-    return [];
+/**
+ * Health check function
+ */
+export function checkGeminiConfig(): { configured: boolean; message: string } {
+  if (!GEMINI_API_KEY) {
+    return {
+      configured: false,
+      message: "GEMINI_API_KEY is not set in environment variables",
+    };
   }
 
-  const recommendations: any[] = [];
-  for (const id of productIds) {
-    const product = availableProducts.find((p: any) => p.id === id);
-    if (product && !recommendations.find((r: any) => r.id === product.id)) {
-      recommendations.push(product);
-      if (recommendations.length >= 5) break;
-    }
-  }
-
-  console.log(`Extracted ${recommendations.length}/${productIds.length} products`);
-  return recommendations;
+  return {
+    configured: true,
+    message: "Gemini API is properly configured",
+  };
 }

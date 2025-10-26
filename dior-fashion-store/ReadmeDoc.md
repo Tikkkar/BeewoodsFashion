@@ -39,3 +39,12 @@ Bảo mật: Chính sách bảo mật cấp độ hàng (Row Level Security - RL
 Quản lý kho: Hệ thống tự động quản lý số lượng tồn kho sau khi một đơn hàng được tạo.
 
 Hiện toàn bộ đều được quản lý trong 
+
+
+
+
+curl.exe -i -X POST http://127.0.0.1:54321/functions/v1/chatbot-process `
+  -H "Content-Type: application/json" `
+  -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cXdwc2Z0emJhZ2lkb3Vkd29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNjUxOTAsImV4cCI6MjA3NTg0MTE5MH0.Lj0GpMHhxolPsjJJpleXwknaFs5eP0tdSfySZRcHeSQ" `
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cXdwc2Z0emJhZ2lkb3Vkd29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAyNjUxOTAsImV4cCI6MjA3NTg0MTE5MH0.Lj0GpMHhxolPsjJJpleXwknaFs5eP0tdSfySZRcHeSQ" `
+  -d '{\"message_text\": \"Chào shop, tôi muốn xem áo vest\"}'
