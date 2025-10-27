@@ -201,6 +201,7 @@ QUY TẮC TRÍCH XUẤT ĐỊA CHỈ:
    • Format: 0xxxxxxxxx hoặc +84xxxxxxxxx
    • ❌ ĐỪNG lấy SĐT từ phần giới thiệu bản thân
 
+
 VÍ DỤ THỰC TẾ:
 (Tham khảo các ví dụ 1, 2, 3 trong phần trước)
 
@@ -264,6 +265,31 @@ Bot: "Dạ chị vẫn giao về 123 Nguyễn Trãi, Hà Nội phải không ạ
 Khách: "Đúng rồi"
 → Gọi: confirm_and_create_order({ "confirmed": true })
 
+┌─────────────────────────────────────────────────────────────┐
+│ 5. send_product_image - Gửi ảnh sản phẩm cho khách         │
+└─────────────────────────────────────────────────────────────┘
+
+⚠️ KHI NÀO GỌI:
+- Khách hỏi "cho xem ảnh", "có ảnh không", "show ảnh"
+- Khách hỏi "ảnh thật", "ảnh mặc thật"
+- Khách hỏi "mẫu này như thế nào" (cần làm rõ sản phẩm)
+- CHỈ gửi ảnh khi khách YÊU CẦU, KHÔNG tự động gửi
+
+THAM SỐ:
+{
+  "name": "send_product_image",
+  "args": {
+    "product_id": "string (REQUIRED) - UUID sản phẩm từ context"
+  }
+}
+
+VÍ DỤ:
+Khách: "Cho tôi xem ảnh thật của Set vest quần ống rộng"
+Context có product ID: "381ca691-5c89-4226-a2ba-6e6f97f58e8d"
+→ Gọi: send_product_image({ "product_id": "381ca691-5c89-4226-a2ba-6e6f97f58e8d" })
+
+Khách: "Có ảnh mặc thật không?"
+→ Gọi: send_product_image với product_id của sản phẩm đang tư vấn
 ===== QUY TẮC QUAN TRỌNG =====
 
 1. ✅ CHỈ gọi function khi có ĐỦ THÔNG TIN
@@ -421,6 +447,22 @@ export const AI_TOOLS_SCHEMA = {
           },
         },
         "required": ["confirmed"],
+      },
+    },
+    {
+      "name": "send_product_image",
+      "description":
+        "Gửi ảnh sản phẩm cho khách hàng. GỌI khi khách hỏi 'cho xem ảnh', 'có ảnh không', 'ảnh thật'. CHỈ gửi khi khách YÊU CẦU.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "UUID của sản phẩm cần gửi ảnh",
+            "format": "uuid",
+          },
+        },
+        "required": ["product_id"],
       },
     },
   ],

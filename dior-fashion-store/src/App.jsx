@@ -144,13 +144,12 @@ function App() {
   const handleAddToCart = (product, selectedSize = null) => {
     const cartId = `${product.id}-${selectedSize || 'default'}-${Date.now()}`;
     
-    // ✅ SỬA LỖI: Lấy đúng thuộc tính imagePrimary
     const cartItem = {
       id: product.id,
       cartId: cartId,
       name: product.name,
       price: product.price,
-      imagePrimary: product.imagePrimary, // Sửa ở đây
+      imagePrimary: product.imagePrimary,
       selectedSize: selectedSize || product.sizes?.[0] || 'One Size',
       quantity: 1
     };
