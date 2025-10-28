@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { CheckCircle, Package, Truck, Loader2 } from 'lucide-react';
-import { getOrderByNumber } from '../lib/api/orders';
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { CheckCircle, Package, Truck, Loader2 } from "lucide-react";
+import { getOrderByNumber } from "../lib/api/orders";
 
 const OrderSuccessPage = () => {
   const location = useLocation();
@@ -13,19 +13,19 @@ const OrderSuccessPage = () => {
 
   useEffect(() => {
     if (!orderNumber) {
-      navigate('/');
+      navigate("/");
       return;
     }
 
     const fetchOrder = async () => {
       const { data, error } = await getOrderByNumber(orderNumber);
-      
+
       if (error) {
-        console.error('Error fetching order:', error);
+        console.error("Error fetching order:", error);
       } else {
         setOrder(data);
       }
-      
+
       setLoading(false);
     };
 
@@ -33,9 +33,9 @@ const OrderSuccessPage = () => {
   }, [orderNumber, navigate]);
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -52,7 +52,9 @@ const OrderSuccessPage = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-xl text-gray-600 mb-4">Không tìm thấy đơn hàng</p>
-          <Link to="/" className="text-black underline">Quay về trang chủ</Link>
+          <Link to="/" className="text-black underline">
+            Quay về trang chủ
+          </Link>
         </div>
       </div>
     );
@@ -61,7 +63,6 @@ const OrderSuccessPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-3xl mx-auto">
-        
         {/* Success Icon */}
         <div className="text-center mb-8">
           <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
@@ -76,10 +77,13 @@ const OrderSuccessPage = () => {
           <div className="border-b pb-4 mb-4">
             <h2 className="text-xl font-bold mb-2">Thông Tin Đơn Hàng</h2>
             <p className="text-gray-600">
-              Mã đơn hàng: <span className="font-semibold text-black">{order.order_number}</span>
+              Mã đơn hàng:{" "}
+              <span className="font-semibold text-black">
+                {order.order_number}
+              </span>
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              Ngày đặt: {new Date(order.created_at).toLocaleDateString('vi-VN')}
+              Ngày đặt: {new Date(order.created_at).toLocaleDateString("vi-VN")}
             </p>
           </div>
 
@@ -87,10 +91,20 @@ const OrderSuccessPage = () => {
           <div className="mb-6">
             <h3 className="font-semibold mb-3">Thông tin người nhận:</h3>
             <div className="text-sm space-y-1 text-gray-700">
-              <p><strong>Họ tên:</strong> {order.customer_name}</p>
-              <p><strong>Số điện thoại:</strong> {order.customer_phone}</p>
-              <p><strong>Email:</strong> {order.customer_email}</p>
-              <p><strong>Địa chỉ:</strong> {order.shipping_address}, {order.shipping_ward}, {order.shipping_district}, {order.shipping_city}</p>
+              <p>
+                <strong>Họ tên:</strong> {order.customer_name}
+              </p>
+              <p>
+                <strong>Số điện thoại:</strong> {order.customer_phone}
+              </p>
+              <p>
+                <strong>Email:</strong> {order.customer_email}
+              </p>
+              <p>
+                <strong>Địa chỉ:</strong> {order.shipping_address},{" "}
+                {order.shipping_ward}, {order.shipping_district},{" "}
+                {order.shipping_city}
+              </p>
             </div>
           </div>
 
@@ -100,8 +114,8 @@ const OrderSuccessPage = () => {
             <div className="space-y-3">
               {order.items?.map((item) => (
                 <div key={item.id} className="flex gap-4 border-b pb-3">
-                  <img 
-                    src={item.product_image} 
+                  <img
+                    src={item.product_image}
                     alt={item.product_name}
                     className="w-20 h-20 object-cover rounded"
                   />
@@ -111,7 +125,9 @@ const OrderSuccessPage = () => {
                     <p className="text-sm text-gray-600">SL: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">{formatPrice(item.subtotal)}</p>
+                    <p className="font-semibold">
+                      {formatPrice(item.subtotal)}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -121,24 +137,25 @@ const OrderSuccessPage = () => {
           {/* Order Total */}
           <div className="border-t pt-4">
             <div className="flex justify-between mb-2">
-            <span>Tạm tính:</span>
-            <span>{formatPrice(order.subtotal || 0)}</span>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span>Phí vận chuyển:</span>
-            <span>{formatPrice(order.shipping_fee || 0)}</span>
-          </div>
-          {order.discount_amount > 0 && (
-            <div className="flex justify-between mb-2">
-              <span>Giảm giá:</span>
-              <span>- {formatPrice(order.discount_amount || 0)}</span>
+              <span>Tạm tính:</span>
+              <span>{formatPrice(order.subtotal || 0)}</span>
             </div>
-          )}
-          <div className="flex justify-between text-xl font-bold">
-            <span>Tổng cộng:</span>
-            <span className="text-red-600">{formatPrice(order.total_amount || 0)}</span>
-          </div>
-
+            <div className="flex justify-between mb-2">
+              <span>Phí vận chuyển:</span>
+              <span>{formatPrice(order.shipping_fee || 0)}</span>
+            </div>
+            {order.discount_amount > 0 && (
+              <div className="flex justify-between mb-2">
+                <span>Giảm giá:</span>
+                <span>- {formatPrice(order.discount_amount || 0)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-xl font-bold">
+              <span>Tổng cộng:</span>
+              <span className="text-red-600">
+                {formatPrice(order.total_amount || 0)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -153,11 +170,11 @@ const OrderSuccessPage = () => {
               <div>
                 <p className="font-medium">Đơn hàng đã được đặt</p>
                 <p className="text-sm text-gray-500">
-                  {new Date(order.created_at).toLocaleString('vi-VN')}
+                  {new Date(order.created_at).toLocaleString("vi-VN")}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 opacity-50">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                 <Package className="w-5 h-5 text-gray-600" />
@@ -167,7 +184,7 @@ const OrderSuccessPage = () => {
                 <p className="text-sm text-gray-500">Chờ xử lý</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3 opacity-50">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                 <Truck className="w-5 h-5 text-gray-600" />
@@ -199,10 +216,11 @@ const OrderSuccessPage = () => {
         {/* Support Info */}
         <div className="mt-8 text-center text-sm text-gray-600">
           <p className="mb-2">
-            Bạn có thể theo dõi đơn hàng qua email: <strong>{order.customer_email}</strong>
+            Bạn có thể theo dõi đơn hàng qua email:{" "}
+            <strong>{order.customer_email}</strong>
           </p>
           <p>
-            Liên hệ: <strong>0983.918.411</strong> nếu cần hỗ trợ
+            Liên hệ: <strong>0962.209.4195</strong> nếu cần hỗ trợ
           </p>
         </div>
       </div>

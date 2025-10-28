@@ -1,9 +1,11 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import SEOContentEditor from '../../components/admin/SEOContentEditor';
+import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import SEOContentEditor from "../../components/admin/SEOContentEditor";
 
 const SEOManagerPage = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -11,13 +13,19 @@ const SEOManagerPage = () => {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link>to="/admin"
+              <button
+                onClick={() => navigate("/admin")}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
                 <ArrowLeft className="w-5 h-5" />
-              </Link>
+              </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Quản lý SEO & Nội dung</h1>
-                <p className="text-sm text-gray-600">Tối ưu hóa SEO và nội dung chi tiết cho từng sản phẩm</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Quản lý SEO & Nội dung
+                </h1>
+                <p className="text-sm text-gray-600">
+                  Tối ưu hóa SEO và nội dung chi tiết cho từng sản phẩm
+                </p>
               </div>
             </div>
             <Link

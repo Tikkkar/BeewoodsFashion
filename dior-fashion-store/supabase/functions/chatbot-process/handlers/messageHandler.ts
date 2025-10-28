@@ -287,7 +287,7 @@ export async function handleMessage(body: any) {
                     product_id: imgProduct.id,
                     product_name: imgProduct.name,
                     product_price: imgProduct.price,
-                    product_link: `http://localhost:3000/products/${imgProduct.slug}`,
+                    product_link: `http://localhost:3000//products/${imgProduct.slug}`,
                   },
                 }); // Send to respective platform
                 if (platform === "facebook" && access_token && customer_fb_id) {

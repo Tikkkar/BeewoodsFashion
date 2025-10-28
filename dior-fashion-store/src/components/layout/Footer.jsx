@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
-import { Phone, Mail, MapPin, Facebook, Instagram, Youtube, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import sizeGuideImage from '../../assets/size.jpg';
+import React, { useState } from "react";
+import {
+  Phone,
+  Mail,
+  MapPin,
+  Facebook,
+  Instagram,
+  Youtube,
+  X,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import sizeGuideImage from "../../assets/size.jpg";
 
 const Footer = ({ brand }) => {
   const currentYear = new Date().getFullYear();
@@ -10,20 +18,19 @@ const Footer = ({ brand }) => {
   return (
     <>
       <footer className="bg-gray-900 text-gray-300">
-        
         {/* Main Footer Content */}
         <div className="max-w-7xl mx-auto px-4 py-12 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12">
-            
             {/* Company Info */}
             <div>
               <h3 className="text-white text-xl font-bold tracking-widest uppercase mb-4">
-                {brand?.name || 'BEEWO STORE'}
+                {brand?.name || "BEEWO STORE"}
               </h3>
               <p className="text-sm leading-relaxed mb-4">
-                {brand?.tagline || 'Thời trang thiết kế hiện đại, thanh lịch. Chất lượng - Dịch vụ tận tâm.'}
+                {brand?.tagline ||
+                  "Thời trang thiết kế hiện đại, thanh lịch. Chất lượng - Dịch vụ tận tâm."}
               </p>
-              
+
               {/* Social Media */}
               <div className="flex items-center gap-3 mt-6">
                 <a
@@ -63,27 +70,42 @@ const Footer = ({ brand }) => {
               </h4>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <button onClick={() => setShowSizeGuide(true)} className="hover:text-white transition text-left">
+                  <button
+                    onClick={() => setShowSizeGuide(true)}
+                    className="hover:text-white transition text-left"
+                  >
                     Hướng dẫn chọn size
                   </button>
                 </li>
                 <li>
-                  <Link to="/return-policy" className="hover:text-white transition">
+                  <Link
+                    to="/return-policy"
+                    className="hover:text-white transition"
+                  >
                     Chính sách đổi/trả hàng
                   </Link>
                 </li>
                 <li>
-                  <Link to="/shipping-policy" className="hover:text-white transition">
+                  <Link
+                    to="/shipping-policy"
+                    className="hover:text-white transition"
+                  >
                     Chính sách giao nhận
                   </Link>
                 </li>
                 <li>
-                  <Link to="/payment-policy" className="hover:text-white transition">
+                  <Link
+                    to="/payment-policy"
+                    className="hover:text-white transition"
+                  >
                     Chính sách thanh toán
                   </Link>
                 </li>
                 <li>
-                  <Link to="/privacy-policy" className="hover:text-white transition">
+                  <Link
+                    to="/privacy-policy"
+                    className="hover:text-white transition"
+                  >
                     Chính sách bảo mật
                   </Link>
                 </li>
@@ -91,7 +113,7 @@ const Footer = ({ brand }) => {
                   <Link to="/terms" className="hover:text-white transition">
                     Điều khoản WebSite
                   </Link>
-                </li> 
+                </li>
               </ul>
             </div>
 
@@ -112,7 +134,10 @@ const Footer = ({ brand }) => {
                   </Link>
                 </li>
                 <li>
-                  <Link to="/promotions" className="hover:text-white transition">
+                  <Link
+                    to="/promotions"
+                    className="hover:text-white transition"
+                  >
                     Khuyến mãi
                   </Link>
                 </li>
@@ -139,7 +164,7 @@ const Footer = ({ brand }) => {
               <h4 className="text-white font-semibold text-base uppercase mb-4 tracking-wide">
                 Liên Hệ
               </h4>
-              
+
               <div className="space-y-4 text-sm">
                 <div>
                   <p className="text-white font-medium mb-2">Flagship Store</p>
@@ -154,18 +179,26 @@ const Footer = ({ brand }) => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Phone size={14} />
-                      <a href="tel:0983918411" className="hover:text-white transition">
-                        0983.918.411
+                      <a
+                        href="tel:09622094195"
+                        className="hover:text-white transition"
+                      >
+                        0962.209.4195
                       </a>
                     </div>
-                    <p className="text-xs text-gray-400 ml-6">Đặt hàng & Hỗ trợ</p>
+                    <p className="text-xs text-gray-400 ml-6">
+                      Đặt hàng & Hỗ trợ
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <Mail size={14} />
-                  <a href="mailto:support@beewostore.vn" className="hover:text-white transition">
-                    support@beewo.vn
+                  <a
+                    href="mailto:support@beewostore.vn"
+                    className="hover:text-white transition"
+                  >
+                    chamsockhachhangbewo@gmail.com
                   </a>
                 </div>
 
@@ -185,12 +218,22 @@ const Footer = ({ brand }) => {
         <div className="border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-4 py-6">
             <div className="text-center">
-              <p className="text-sm text-gray-400 mb-3">Phương thức thanh toán</p>
+              <p className="text-sm text-gray-400 mb-3">
+                Phương thức thanh toán
+              </p>
               <div className="flex items-center justify-center gap-4 flex-wrap">
-                <div className="px-4 py-2 bg-gray-800 rounded text-xs">VISA</div>
-                <div className="px-4 py-2 bg-gray-800 rounded text-xs">MASTERCARD</div>
-                <div className="px-4 py-2 bg-gray-800 rounded text-xs">MOMO</div>
-                <div className="px-4 py-2 bg-gray-800 rounded text-xs">VNPAY</div>
+                <div className="px-4 py-2 bg-gray-800 rounded text-xs">
+                  VISA
+                </div>
+                <div className="px-4 py-2 bg-gray-800 rounded text-xs">
+                  MASTERCARD
+                </div>
+                <div className="px-4 py-2 bg-gray-800 rounded text-xs">
+                  MOMO
+                </div>
+                <div className="px-4 py-2 bg-gray-800 rounded text-xs">
+                  VNPAY
+                </div>
                 <div className="px-4 py-2 bg-gray-800 rounded text-xs">COD</div>
               </div>
             </div>
@@ -202,7 +245,8 @@ const Footer = ({ brand }) => {
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
               <p>
-                © {currentYear} {brand?.name || 'DIOR STORE'}. All rights reserved.
+                © {currentYear} {brand?.name || "DIOR STORE"}. All rights
+                reserved.
               </p>
               <p className="text-center md:text-right">
                 "Sản phẩm chất lượng - Dịch vụ tận tâm"
@@ -214,16 +258,22 @@ const Footer = ({ brand }) => {
 
       {/* Size Guide Modal */}
       {showSizeGuide && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowSizeGuide(false)}>
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative" onClick={(e) => e.stopPropagation()}>
-            <button 
-              onClick={() => setShowSizeGuide(false)} 
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowSizeGuide(false)}
+        >
+          <div
+            className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowSizeGuide(false)}
               className="absolute top-2 right-2 p-2 bg-gray-100 hover:bg-gray-200 rounded-full z-10"
               aria-label="Đóng"
             >
               <X size={20} className="text-gray-700" />
             </button>
-            <img 
+            <img
               src={sizeGuideImage}
               alt="Bảng hướng dẫn chọn size"
               className="w-full h-auto rounded-lg"

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Phone, MapPin } from 'lucide-react';
+import React from "react";
+import { Phone, MapPin } from "lucide-react";
 
 const TopBar = ({ message }) => {
   return (
@@ -9,17 +9,25 @@ const TopBar = ({ message }) => {
           {/* Left: Shipping message */}
           <div className="flex items-center gap-2">
             <span className="hidden md:inline">🚚</span>
-            <p className="line-clamp-1">{message || 'MIỄN PHÍ VẬN CHUYỂN cho đơn hàng từ 2 sản phẩm'}</p>
+            <p className="line-clamp-1">
+              {message || "MIỄN PHÍ VẬN CHUYỂN cho đơn hàng từ 2 sản phẩm"}
+            </p>
           </div>
 
           {/* Right: Contact info */}
           <div className="hidden lg:flex items-center gap-4">
-            <a href="tel:0983918411" className="flex items-center gap-1 hover:text-red-400 transition">
+            <a
+              href="tel:09622094195"
+              className="flex items-center gap-1 hover:text-red-400 transition"
+            >
               <Phone size={12} />
-              <span>0983.918.411</span>
+              <span>0962.209.4195</span>
             </a>
             <div className="w-px h-3 bg-white/30"></div>
-            <a href="#stores" className="flex items-center gap-1 hover:text-red-400 transition">
+            <a
+              href="#stores"
+              className="flex items-center gap-1 hover:text-red-400 transition"
+            >
               <MapPin size={12} />
               <span>Hệ thống cửa hàng</span>
             </a>
