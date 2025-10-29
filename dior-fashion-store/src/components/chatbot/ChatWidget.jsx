@@ -28,8 +28,11 @@ export default function ChatWidget() {
     }
     setSessionId(sid);
 
-    // Load conversation history nếu có
-    loadConversationHistory(sid);
+    async function initSession() {
+      await loadConversationHistory(sid);
+    }
+    initSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   // Auto scroll to bottom
@@ -103,7 +106,7 @@ export default function ChatWidget() {
 
     try {
       // Gọi Edge Function xử lý tin nhắn
-      const { data, error } = await supabase.functions.invoke('chatbot-process', {
+      const { error } = await supabase.functions.invoke('chatbot-process', {
         body: {
           platform: 'website',
           user_id: user?.id || null,

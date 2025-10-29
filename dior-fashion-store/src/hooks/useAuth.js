@@ -5,7 +5,6 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
   const initialized = useRef(false); // ⚡ TRACK ĐÃ INIT CHƯA
   const loadingProfile = useRef(false);
 
@@ -146,7 +145,6 @@ export const AuthProvider = ({ children }) => {
   };
  const value = {
     user,
-    loading,
     logout,
     isAdmin: user?.profile?.role === 'admin',
     isAuthenticated: !!user

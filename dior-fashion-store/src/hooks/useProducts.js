@@ -59,7 +59,8 @@ export const useProducts = (filters = {}) => {
       mounted = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [JSON.stringify(filters)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.category, filters.search, filters.minPrice, filters.maxPrice, filters.sortBy]);
 
   return { products, loading, error };
 };
