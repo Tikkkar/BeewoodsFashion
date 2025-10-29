@@ -31,7 +31,7 @@ export const brandData = {
         { text: "Váy", url: "/category/vay" },
         { text: "Quần", url: "/category/quan" },
         { text: "Setvest", url: "/category/chan-vay" },
-        { text: "Bộ", url: "/category/bo-do" },
+        { text: "Bộ", url: "/category/bo" },
       ],
     },
     { text: "Cửa Hàng", url: "/stores" },

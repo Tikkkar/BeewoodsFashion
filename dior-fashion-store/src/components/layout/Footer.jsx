@@ -34,7 +34,7 @@ const Footer = ({ brand }) => {
               {/* Social Media */}
               <div className="flex items-center gap-3 mt-6">
                 <a
-                  href="https://facebook.com"
+                  href="https://www.facebook.com/BEWObyLyThuThao"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 bg-gray-800 hover:bg-blue-600 rounded-full transition"
@@ -167,7 +167,7 @@ const Footer = ({ brand }) => {
 
               <div className="space-y-4 text-sm">
                 <div>
-                  <p className="text-white font-medium mb-2">Flagship Store</p>
+                  <p className="text-white font-medium mb-2">Cửa Hàng</p>
                   <div className="flex items-start gap-2">
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
                     <p>131 Cầu Giấy, Quan Hoa, Cầu Giấy, Hà Nội</p>
@@ -203,11 +203,11 @@ const Footer = ({ brand }) => {
                 </div>
 
                 <div>
-                  <p className="text-white font-medium mb-2">Cơ sở HCM</p>
+                  {/* <p className="text-white font-medium mb-2">Cơ sở HCM</p>
                   <div className="flex items-start gap-2">
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
                     <p>221 Võ Văn Tần, Phường 5, Quận 3, TP.HCM</p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>
