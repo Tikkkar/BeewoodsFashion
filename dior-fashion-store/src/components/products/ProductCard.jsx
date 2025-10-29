@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, ShoppingCart, Eye } from 'lucide-react';
+import { ShoppingCart, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product, onAddToCart, onQuickView }) => {
@@ -36,13 +36,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
     }).format(price);
   };
 
-  const handleWishlist = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
-    const exists = wishlist.find(item => item.id === product.id);
-    // Logic thêm/xóa wishlist có thể được thêm vào đây
-  };
 
   const handleAddToCart = (e) => {
     e.preventDefault();

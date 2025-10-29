@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { 
@@ -10,8 +9,7 @@ import {
   Users, 
   Award,
   Heart,
-  ArrowRight,
-  CheckCircle
+  ArrowRight
 } from 'lucide-react';
 
 const CareersPage = () => {
@@ -29,86 +27,86 @@ const CareersPage = () => {
     resume: null
   });
 
-  // Mock data - trong thực tế sẽ lấy từ Supabase
-  const mockJobs = [
-    {
-      id: 1,
-      title: "Senior Fashion Designer",
-      department: "Design",
-      location: "Hanoi, Vietnam",
-      type: "Full-time",
-      salary: "Competitive",
-      description: "We're looking for a creative Senior Fashion Designer to join our luxury fashion team.",
-      requirements: [
-        "5+ years experience in luxury fashion design",
-        "Strong portfolio showcasing luxury collections",
-        "Expertise in fabric selection and pattern making",
-        "Bachelor's degree in Fashion Design",
-        "Leadership and team management skills"
-      ],
-      benefits: [
-        "Competitive salary + performance bonuses",
-        "Health insurance & wellness programs",
-        "Employee discount on DIOR products",
-        "Professional development opportunities",
-        "Creative work environment"
-      ],
-      posted_date: "2024-03-15",
-      is_active: true
-    },
-    {
-      id: 2,
-      title: "E-commerce Manager",
-      department: "E-commerce",
-      location: "Ho Chi Minh City, Vietnam",
-      type: "Full-time",
-      salary: "Negotiable",
-      description: "Lead our e-commerce operations and drive online sales growth.",
-      requirements: [
-        "3+ years in e-commerce management",
-        "Experience with luxury fashion e-commerce",
-        "Strong analytical and marketing skills",
-        "Knowledge of SEO and digital marketing",
-        "Bachelor's degree in Business or Marketing"
-      ],
-      benefits: [
-        "Performance-based bonuses",
-        "Flexible working hours",
-        "Career growth opportunities",
-        "Modern office environment",
-        "Team building activities"
-      ],
-      posted_date: "2024-03-10",
-      is_active: true
-    },
-    {
-      id: 3,
-      title: "Customer Experience Specialist",
-      department: "Customer Service",
-      location: "Remote",
-      type: "Full-time",
-      salary: "Attractive Package",
-      description: "Provide exceptional customer service for our luxury clientele.",
-      requirements: [
-        "2+ years in customer service",
-        "Excellent communication skills",
-        "Passion for luxury fashion",
-        "Multilingual skills preferred",
-        "Problem-solving mindset"
-      ],
-      benefits: [
-        "Work from home flexibility",
-        "Commission on sales",
-        "Product training programs",
-        "Career advancement path",
-        "Supportive team culture"
-      ],
-      posted_date: "2024-03-12",
-      is_active: true
-    }
-  ];
-
   useEffect(() => {
+    // Mock data - trong thực tế sẽ lấy từ Supabase
+    const mockJobs = [
+      {
+        id: 1,
+        title: "Senior Fashion Designer",
+        department: "Design",
+        location: "Hanoi, Vietnam",
+        type: "Full-time",
+        salary: "Competitive",
+        description: "We're looking for a creative Senior Fashion Designer to join our luxury fashion team.",
+        requirements: [
+          "5+ years experience in luxury fashion design",
+          "Strong portfolio showcasing luxury collections",
+          "Expertise in fabric selection and pattern making",
+          "Bachelor's degree in Fashion Design",
+          "Leadership and team management skills"
+        ],
+        benefits: [
+          "Competitive salary + performance bonuses",
+          "Health insurance & wellness programs",
+          "Employee discount on DIOR products",
+          "Professional development opportunities",
+          "Creative work environment"
+        ],
+        posted_date: "2024-03-15",
+        is_active: true
+      },
+      {
+        id: 2,
+        title: "E-commerce Manager",
+        department: "E-commerce",
+        location: "Ho Chi Minh City, Vietnam",
+        type: "Full-time",
+        salary: "Negotiable",
+        description: "Lead our e-commerce operations and drive online sales growth.",
+        requirements: [
+          "3+ years in e-commerce management",
+          "Experience with luxury fashion e-commerce",
+          "Strong analytical and marketing skills",
+          "Knowledge of SEO and digital marketing",
+          "Bachelor's degree in Business or Marketing"
+        ],
+        benefits: [
+          "Performance-based bonuses",
+          "Flexible working hours",
+          "Career growth opportunities",
+          "Modern office environment",
+          "Team building activities"
+        ],
+        posted_date: "2024-03-10",
+        is_active: true
+      },
+      {
+        id: 3,
+        title: "Customer Experience Specialist",
+        department: "Customer Service",
+        location: "Remote",
+        type: "Full-time",
+        salary: "Attractive Package",
+        description: "Provide exceptional customer service for our luxury clientele.",
+        requirements: [
+          "2+ years in customer service",
+          "Excellent communication skills",
+          "Passion for luxury fashion",
+          "Multilingual skills preferred",
+          "Problem-solving mindset"
+        ],
+        benefits: [
+          "Work from home flexibility",
+          "Commission on sales",
+          "Product training programs",
+          "Career advancement path",
+          "Supportive team culture"
+        ],
+        posted_date: "2024-03-12",
+        is_active: true
+      }
+    ];
+    
     // Simulate API call
     const fetchJobs = async () => {
       try {

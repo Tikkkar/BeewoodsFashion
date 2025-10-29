@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  AlertCircle,
-  Search,
   Eye,
-  Check,
-  X,
-  Plus,
   Image,
   Trash2,
   MoveUp,
@@ -13,12 +8,10 @@ import {
   Type,
   Save,
   Loader2,
-  ChevronDown,
   Upload,
   Sparkles,
   Wand2,
   FileText,
-  ImageIcon,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import {
@@ -58,7 +51,6 @@ const SEOContentEditor = ({ initialProductId = null }) => {
     keywords: { isValid: true, message: "" },
   });
 
-  const [showPreview, setShowPreview] = useState(false);
 
   const SEO_LIMITS = {
     title: { min: 30, max: 60, optimal: 55 },
@@ -67,17 +59,24 @@ const SEOContentEditor = ({ initialProductId = null }) => {
   };
 
   useEffect(() => {
-    fetchProducts();
-    // Check Gemini config
-    const config = checkGeminiConfig();
-    setAiConfig(config);
-    console.log("🤖 Gemini status:", config.message);
+    const loadData = async () => {
+      await fetchProducts();
+      const config = checkGeminiConfig();
+      setAiConfig(config);
+      console.log("🤖 Gemini status:", config.message);
+    };
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (selectedProductId) {
-      fetchProductDetail(selectedProductId);
+      const loadProduct = async () => {
+        await fetchProductDetail(selectedProductId);
+      };
+      loadProduct();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProductId]);
 
   const fetchProducts = async () => {
@@ -159,7 +158,7 @@ const SEOContentEditor = ({ initialProductId = null }) => {
     const newValidation = { ...validation };
 
     switch (field) {
-      case "seo_title":
+      case "seo_title": {
         const titleLength = value.length;
         if (titleLength === 0) {
           newValidation.title = {
@@ -185,8 +184,8 @@ const SEOContentEditor = ({ initialProductId = null }) => {
           newValidation.title = { isValid: true, message: "Chấp nhận được" };
         }
         break;
-
-      case "seo_description":
+      }
+      case "seo_description": {
         const descLength = value.length;
         if (descLength === 0) {
           newValidation.description = {
@@ -218,8 +217,8 @@ const SEOContentEditor = ({ initialProductId = null }) => {
           };
         }
         break;
-
-      case "seo_keywords":
+      }
+      case "seo_keywords": {
         const keywords = value.split(",").filter((k) => k.trim());
         if (keywords.length === 0) {
           newValidation.keywords = {
@@ -237,6 +236,9 @@ const SEOContentEditor = ({ initialProductId = null }) => {
             message: `${keywords.length} từ khóa`,
           };
         }
+        break;
+      }
+      default:
         break;
     }
 
@@ -412,7 +414,7 @@ const SEOContentEditor = ({ initialProductId = null }) => {
 
       console.log("📤 Uploading to Supabase Storage:", filePath);
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from("product-images")
         .upload(filePath, file, {
           cacheControl: "3600",
