@@ -17,6 +17,7 @@ import ProductCard from "../components/products/ProductCard";
 import { useProductDetail, useProducts } from "../hooks/useProducts";
 import sizeGuideImage from "../assets/size.jpg";
 import SEOContentRenderer from "../components/products/SEOContentRenderer";
+
 const ProductDetailPage = ({ onAddToCart, brand }) => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -24,7 +25,16 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   // =============================================
   // DATA FETCHING
   // =============================================
-  const { product, loading, error } = useProductDetail(slug);
+  const { product: rawProduct, loading, error } = useProductDetail(slug);
+
+  // ✨ Map original_price (snake_case từ DB) sang originalPrice (camelCase)
+  const product = rawProduct
+    ? {
+        ...rawProduct,
+        originalPrice: rawProduct.original_price || rawProduct.originalPrice,
+      }
+    : null;
+
   const { products: allProducts } = useProducts({
     category: product?.categorySlug,
   });
@@ -85,6 +95,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
         ).toFixed(1)
       : "5.0";
 
+  // ✨ Kiểm tra xem có giảm giá không (giống ProductCard)
+  const isSale =
+    product?.originalPrice && product.originalPrice > product.price;
+
   // =============================================
   // EFFECTS
   // =============================================
@@ -93,25 +107,25 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
     if (product) {
       console.group("🔍 PRODUCT DETAIL PAGE DEBUG");
       console.log("1. Product name:", product.name);
-      console.log("2. Has attributes?", !!product.attributes);
-      console.log("3. Attributes type:", typeof product.attributes);
-      console.log("4. Attributes value:", product.attributes);
-      console.log("5. Content blocks:", product.attributes?.content_blocks);
+      console.log("2. Product price:", product.price);
+      console.log("3. Product originalPrice:", product.originalPrice);
+      console.log("4. Is on sale?:", isSale);
       console.log(
-        "6. Is array?",
-        Array.isArray(product.attributes?.content_blocks)
+        "5. Discount %:",
+        isSale
+          ? Math.round(
+              ((product.originalPrice - product.price) /
+                product.originalPrice) *
+                100
+            )
+          : 0
       );
-      console.log("7. Length:", product.attributes?.content_blocks?.length);
-
-      const hasContent =
-        product.attributes?.content_blocks &&
-        Array.isArray(product.attributes.content_blocks) &&
-        product.attributes.content_blocks.length > 0;
-
-      console.log("8. ✅ Should render custom?", hasContent);
+      console.log("6. Has attributes?", !!product.attributes);
+      console.log("7. Attributes value:", product.attributes);
+      console.log("8. Content blocks:", product.attributes?.content_blocks);
       console.groupEnd();
     }
-  }, [product]);
+  }, [product, isSale]);
 
   // Kiểm tra trạng thái yêu thích
   useEffect(() => {
@@ -126,7 +140,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
 
     const interval = setInterval(() => {
       setSelectedImage((prev) => (prev + 1) % productImages.length);
-    }, 3000); // Thay đổi thời gian tại đây (3000ms = 3 giây)
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [productImages.length]);
@@ -137,7 +151,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
 
     const interval = setInterval(() => {
       setLightboxImage((prev) => (prev + 1) % productImages.length);
-    }, 3000); // Thay đổi thời gian tại đây
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [showLightbox, productImages.length]);
@@ -302,6 +316,19 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
 
+            {/* Sale Badge - giống ProductCard */}
+            {isSale && (
+              <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
+                -
+                {Math.round(
+                  ((product.originalPrice - product.price) /
+                    product.originalPrice) *
+                    100
+                )}
+                %
+              </div>
+            )}
+
             {/* Navigation Arrows - hiện khi hover */}
             {productImages.length > 1 && (
               <>
@@ -432,15 +459,39 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
             </div>
           </div>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-3 md:gap-4">
-            <span className="text-3xl md:text-4xl font-bold text-red-600">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && (
-              <span className="text-lg md:text-xl text-gray-400 line-through">
-                {formatPrice(product.originalPrice)}
+          {/* ✨ IMPROVED: Price Display - GIỐNG ProductCard */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 md:gap-4 flex-wrap">
+              {/* Giá hiện tại - Luôn hiển thị */}
+              <span className="text-3xl md:text-4xl font-bold text-red-600">
+                {formatPrice(product.price)}
               </span>
+
+              {/* Giá gốc và % giảm - Chỉ hiển thị khi có sale */}
+              {isSale && (
+                <>
+                  <span className="text-lg md:text-xl text-gray-400 line-through">
+                    {formatPrice(product.originalPrice)}
+                  </span>
+                  <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-sm font-semibold">
+                    -
+                    {Math.round(
+                      ((product.originalPrice - product.price) /
+                        product.originalPrice) *
+                        100
+                    )}
+                    %
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Tiết kiệm được - Chỉ hiển thị khi có sale */}
+            {isSale && (
+              <p className="text-sm text-green-600 font-medium">
+                🎉 Bạn tiết kiệm được{" "}
+                {formatPrice(product.originalPrice - product.price)}
+              </p>
             )}
           </div>
 
