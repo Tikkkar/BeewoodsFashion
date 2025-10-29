@@ -52,7 +52,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   // State quản lý danh sách yêu thích
   const [wishlist, setWishlist] = useState(() => {
     try {
-      const saved = localStorage.getItem("dior_wishlist");
+      const saved = localStorage.getItem("bewo_wishlist");
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];

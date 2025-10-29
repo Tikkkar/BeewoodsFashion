@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, ShoppingCart, Eye } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Heart, ShoppingCart, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -18,7 +18,10 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   const handleMouseEnter = () => {
     setShowActions(true);
     // Nếu có ảnh thứ 2, đổi sang ảnh đó
-    if (product.imageSecondary && product.imageSecondary !== product.imagePrimary) {
+    if (
+      product.imageSecondary &&
+      product.imageSecondary !== product.imagePrimary
+    ) {
       setCurrentImage(product.imageSecondary);
     }
   };
@@ -30,17 +33,17 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
   const handleWishlist = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
-    const exists = wishlist.find(item => item.id === product.id);
+    const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
+    const exists = wishlist.find((item) => item.id === product.id);
     // Logic thêm/xóa wishlist có thể được thêm vào đây
   };
 
@@ -76,7 +79,7 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             src={currentImage}
             alt={product.name}
             className={`w-full h-full object-cover transition-all duration-700 ${
-              imageLoaded ? 'opacity-100 group-hover:scale-110' : 'opacity-0'
+              imageLoaded ? "opacity-100 group-hover:scale-110" : "opacity-0"
             }`}
             onLoad={() => setImageLoaded(true)}
             loading="lazy"
@@ -85,14 +88,24 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
           {/* Sale Badge */}
           {isSale && (
             <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
-              -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+              -
+              {Math.round(
+                ((product.originalPrice - product.price) /
+                  product.originalPrice) *
+                  100
+              )}
+              %
             </div>
           )}
 
           {/* Quick Actions - Desktop */}
-          <div className={`hidden md:flex absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent p-4 transition-all duration-300 ${
-            showActions ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
-          }`}>
+          <div
+            className={`hidden md:flex absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/50 to-transparent p-4 transition-all duration-300 ${
+              showActions
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-2"
+            }`}
+          >
             <div className="flex items-center gap-2 w-full">
               <button
                 onClick={handleAddToCart}
@@ -157,15 +170,26 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             <div className="flex items-center gap-1 mt-2">
               <div className="flex items-center">
                 {[...Array(5)].map((_, i) => {
-                  const avgRating = product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length;
+                  const avgRating =
+                    product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+                    product.reviews.length;
                   return (
-                    <span key={i} className={`text-xs ${i < Math.round(avgRating) ? 'text-yellow-400' : 'text-gray-300'}`}>
+                    <span
+                      key={i}
+                      className={`text-xs ${
+                        i < Math.round(avgRating)
+                          ? "text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    >
                       ★
                     </span>
                   );
                 })}
               </div>
-              <span className="text-xs text-gray-500">({product.reviews.length})</span>
+              <span className="text-xs text-gray-500">
+                ({product.reviews.length})
+              </span>
             </div>
           )}
         </div>

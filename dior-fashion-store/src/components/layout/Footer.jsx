@@ -245,7 +245,7 @@ const Footer = ({ brand }) => {
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-500">
               <p>
-                © {currentYear} {brand?.name || "DIOR STORE"}. All rights
+                © {currentYear} {brand?.name || "BEWO STORE"}. All rights
                 reserved.
               </p>
               <p className="text-center md:text-right">

@@ -1,19 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
-import { INITIAL_DATA } from '../data/initialData';
+import { useState, useEffect, useCallback } from "react";
+import { INITIAL_DATA } from "../data/initialData";
 
 export const useEditor = () => {
   // History management for Undo/Redo
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  
+
   // Load data from localStorage on mount
   const getInitialData = () => {
-    const savedData = localStorage.getItem('diorStoreData');
+    const savedData = localStorage.getItem("bewoStoreData");
     if (savedData) {
       try {
         return JSON.parse(savedData);
       } catch (error) {
-        console.error('Error loading saved data:', error);
+        console.error("Error loading saved data:", error);
         return INITIAL_DATA;
       }
     }
@@ -35,22 +35,25 @@ export const useEditor = () => {
   }, []);
 
   // Enhanced setData with history tracking
-  const setDataWithHistory = useCallback((newData) => {
-    setData(newData);
-    
-    // Add to history (remove any future states if we're not at the end)
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newData);
-    
-    // Limit history to 50 states to prevent memory issues
-    if (newHistory.length > 50) {
-      newHistory.shift();
-    } else {
-      setHistoryIndex(historyIndex + 1);
-    }
-    
-    setHistory(newHistory);
-  }, [history, historyIndex]);
+  const setDataWithHistory = useCallback(
+    (newData) => {
+      setData(newData);
+
+      // Add to history (remove any future states if we're not at the end)
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newData);
+
+      // Limit history to 50 states to prevent memory issues
+      if (newHistory.length > 50) {
+        newHistory.shift();
+      } else {
+        setHistoryIndex(historyIndex + 1);
+      }
+
+      setHistory(newHistory);
+    },
+    [history, historyIndex]
+  );
 
   // Undo function
   const undo = useCallback(() => {
@@ -77,7 +80,7 @@ export const useEditor = () => {
   // Save function
   const handleSave = () => {
     setSavedData(data);
-    localStorage.setItem('diorStoreData', JSON.stringify(data));
+    localStorage.setItem("bewoStoreData", JSON.stringify(data));
     return true; // Return success status
   };
 
@@ -105,7 +108,7 @@ export const useEditor = () => {
       // Only work when editor is open
       if (!editMode) return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "z") {
         e.preventDefault();
         if (e.shiftKey) {
           redo();
@@ -115,8 +118,8 @@ export const useEditor = () => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [editMode, undo, redo]);
 
   return {
@@ -134,6 +137,6 @@ export const useEditor = () => {
     canUndo,
     canRedo,
     historyIndex,
-    historyLength: history.length
+    historyLength: history.length,
   };
 };

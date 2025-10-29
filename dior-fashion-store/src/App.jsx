@@ -1,63 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { testSupabaseConnection } from './lib/testConnection';
-import { AuthProvider } from './hooks/useAuth';
-import { useToast } from './hooks/useToast';
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+} from "react-router-dom";
+import { testSupabaseConnection } from "./lib/testConnection";
+import { AuthProvider } from "./hooks/useAuth";
+import { useToast } from "./hooks/useToast";
 
 // ✨ Dữ liệu tĩnh giờ được import từ một file riêng
-import { brandData } from './data'; 
+import { brandData } from "./data";
 
 // Layout Components
-import TopBar from './components/layout/TopBar';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
+import TopBar from "./components/layout/TopBar";
+import Header from "./components/layout/Header";
+import Footer from "./components/layout/Footer";
 
 // Pages
-import HomePage from './pages/HomePage';
-import ProductsPage from './pages/ProductsPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderSuccessPage from './pages/OrderSuccessPage';
-import AboutPage from './pages/AboutPage';
-import ReturnPolicyPage from './pages/ReturnPolicyPage';
-import ShippingPolicyPage from './pages/ShippingPolicyPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import PaymentPolicyPage from './pages/PaymentPolicyPage';
-import TermsPage from './pages/TermsPage';
-import CareersPage from './pages/CareersPage';
-import ChatWidget from './components/chatbot/ChatWidget';
+import HomePage from "./pages/HomePage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailPage from "./pages/ProductDetailPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
+import AboutPage from "./pages/AboutPage";
+import ReturnPolicyPage from "./pages/ReturnPolicyPage";
+import ShippingPolicyPage from "./pages/ShippingPolicyPage";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import PaymentPolicyPage from "./pages/PaymentPolicyPage";
+import TermsPage from "./pages/TermsPage";
+import CareersPage from "./pages/CareersPage";
+import ChatWidget from "./components/chatbot/ChatWidget";
 
 // Auth Pages
-import LoginPage from './pages/auth/LoginPage';
-import RegisterPage from './pages/auth/RegisterPage';
-import ProtectedRoute from './components/auth/ProtectedRoute';
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // Admin Pages
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminProducts from './pages/admin/AdminProducts';
-import AdminProductForm from './pages/admin/AdminProductForm';
-import AdminCategories from './pages/admin/AdminCategories';
-import AdminBanners from './pages/admin/AdminBanners';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminOrderDetail from './pages/admin/AdminOrderDetail';
-import SEOManagerPage from './pages/admin/SEOManager';
-import AdminAnalytics from './pages/admin/AdminAnalytics';
-import FacebookSettingsPage from './pages/admin/chatbot/FacebookSettingsPage';
-import ConversationsPage from './pages/admin/chatbot/ConversationsPage';
-import ScenariosTab from './pages/admin/chatbot/ScenariosTab';
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminProductForm from "./pages/admin/AdminProductForm";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminBanners from "./pages/admin/AdminBanners";
+import AdminOrders from "./pages/admin/AdminOrders";
+import AdminOrderDetail from "./pages/admin/AdminOrderDetail";
+import SEOManagerPage from "./pages/admin/SEOManager";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
+import FacebookSettingsPage from "./pages/admin/chatbot/FacebookSettingsPage";
+import ConversationsPage from "./pages/admin/chatbot/ConversationsPage";
+import ScenariosTab from "./pages/admin/chatbot/ScenariosTab";
 // User Pages
-import ProfileLayout from './pages/user/ProfileLayout';
-import ProfilePage from './pages/user/ProfilePage';
-import OrderHistoryPage from './pages/user/OrderHistoryPage';
-import OrderDetailPage from './pages/user/OrderDetailPage';
-import AddressesPage from './pages/user/AddressesPage';
-import WishlistPage from './pages/user/WishlistPage';
+import ProfileLayout from "./pages/user/ProfileLayout";
+import ProfilePage from "./pages/user/ProfilePage";
+import OrderHistoryPage from "./pages/user/OrderHistoryPage";
+import OrderDetailPage from "./pages/user/OrderDetailPage";
+import AddressesPage from "./pages/user/AddressesPage";
+import WishlistPage from "./pages/user/WishlistPage";
 
 // Cart Components
-import CartSidebar from './components/cart/CartSidebar';
-import WishlistSidebar from './components/cart/WishlistSidebar';
-import { ToastContainer } from './components/common/Toast';
+import CartSidebar from "./components/cart/CartSidebar";
+import WishlistSidebar from "./components/cart/WishlistSidebar";
+import { ToastContainer } from "./components/common/Toast";
 
 function App() {
   // =============================================
@@ -79,13 +85,12 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [wishlistOpen, setWishlistOpen] = useState(false);
 
-
   // =============================================
   // CART STATE
   // =============================================
   const [cart, setCart] = useState(() => {
     try {
-      const savedCart = localStorage.getItem('dior_cart');
+      const savedCart = localStorage.getItem("bewo_cart");
       return savedCart ? JSON.parse(savedCart) : [];
     } catch {
       return [];
@@ -93,7 +98,7 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('dior_cart', JSON.stringify(cart));
+    localStorage.setItem("bewo_cart", JSON.stringify(cart));
   }, [cart]);
 
   // =============================================
@@ -101,7 +106,7 @@ function App() {
   // =============================================
   const [wishlist, setWishlist] = useState(() => {
     try {
-      const savedWishlist = localStorage.getItem('dior_wishlist');
+      const savedWishlist = localStorage.getItem("bewo_wishlist");
       return savedWishlist ? JSON.parse(savedWishlist) : [];
     } catch {
       return [];
@@ -109,25 +114,25 @@ function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('dior_wishlist', JSON.stringify(wishlist));
+    localStorage.setItem("bewo_wishlist", JSON.stringify(wishlist));
   }, [wishlist]);
 
   useEffect(() => {
     const handleWishlistChange = () => {
       try {
-        const savedWishlist = localStorage.getItem('dior_wishlist');
+        const savedWishlist = localStorage.getItem("bewo_wishlist");
         setWishlist(savedWishlist ? JSON.parse(savedWishlist) : []);
       } catch {
         setWishlist([]);
       }
     };
 
-    window.addEventListener('storage', handleWishlistChange);
-    window.addEventListener('wishlistUpdated', handleWishlistChange);
+    window.addEventListener("storage", handleWishlistChange);
+    window.addEventListener("wishlistUpdated", handleWishlistChange);
 
     return () => {
-      window.removeEventListener('storage', handleWishlistChange);
-      window.removeEventListener('wishlistUpdated', handleWishlistChange);
+      window.removeEventListener("storage", handleWishlistChange);
+      window.removeEventListener("wishlistUpdated", handleWishlistChange);
     };
   }, []);
 
@@ -135,56 +140,57 @@ function App() {
   // CHECK IF CURRENT PATH IS ADMIN
   // =============================================
   const isAdminRoute = () => {
-    return window.location.pathname.startsWith('/admin');
+    return window.location.pathname.startsWith("/admin");
   };
 
   // =============================================
   // HANDLERS
   // =============================================
   const handleAddToCart = (product, selectedSize = null) => {
-    const cartId = `${product.id}-${selectedSize || 'default'}-${Date.now()}`;
-    
+    const cartId = `${product.id}-${selectedSize || "default"}-${Date.now()}`;
+
     const cartItem = {
       id: product.id,
       cartId: cartId,
       name: product.name,
       price: product.price,
       imagePrimary: product.imagePrimary,
-      selectedSize: selectedSize || product.sizes?.[0] || 'One Size',
-      quantity: 1
+      selectedSize: selectedSize || product.sizes?.[0] || "One Size",
+      quantity: 1,
     };
 
-    setCart(prevCart => {
+    setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex(
-        item => item.id === product.id && item.selectedSize === cartItem.selectedSize
+        (item) =>
+          item.id === product.id && item.selectedSize === cartItem.selectedSize
       );
-      
+
       if (existingItemIndex > -1) {
         const updatedCart = [...prevCart];
         updatedCart[existingItemIndex].quantity += 1;
         return updatedCart;
       }
-      
+
       return [...prevCart, cartItem];
     });
-    
+
     success(`Đã thêm "${product.name}" vào giỏ hàng!`);
     setCartOpen(true);
   };
 
   const handleRemoveFromCart = (itemId, selectedSize) => {
-    setCart(prevCart => {
-      if (typeof itemId === 'string' && itemId.includes('-')) {
-        return prevCart.filter(item => item.cartId !== itemId);
+    setCart((prevCart) => {
+      if (typeof itemId === "string" && itemId.includes("-")) {
+        return prevCart.filter((item) => item.cartId !== itemId);
       }
-      
+
       if (selectedSize) {
         return prevCart.filter(
-          item => !(item.id === itemId && item.selectedSize === selectedSize)
+          (item) => !(item.id === itemId && item.selectedSize === selectedSize)
         );
       }
-      
-      return prevCart.filter(item => item.id !== itemId);
+
+      return prevCart.filter((item) => item.id !== itemId);
     });
   };
 
@@ -194,35 +200,35 @@ function App() {
       return;
     }
 
-    setCart(prevCart => {
-      return prevCart.map(item => {
+    setCart((prevCart) => {
+      return prevCart.map((item) => {
         if (item.cartId === itemId) {
           return { ...item, quantity: newQuantity };
         }
-        
+
         if (item.id === itemId && item.selectedSize === selectedSize) {
           return { ...item, quantity: newQuantity };
         }
-        
+
         if (item.id === itemId && !selectedSize) {
           return { ...item, quantity: newQuantity };
         }
-        
+
         return item;
       });
     });
   };
 
   const handleRemoveFromWishlist = (productId) => {
-    const newWishlist = wishlist.filter(item => item.id !== productId);
+    const newWishlist = wishlist.filter((item) => item.id !== productId);
     setWishlist(newWishlist);
-    localStorage.setItem('dior_wishlist', JSON.stringify(newWishlist));
-    window.dispatchEvent(new Event('wishlistUpdated'));
+    localStorage.setItem("bewo_wishlist", JSON.stringify(newWishlist));
+    window.dispatchEvent(new Event("wishlistUpdated"));
   };
 
   const handleClearCart = () => {
     setCart([]);
-    localStorage.removeItem('dior_cart');
+    localStorage.removeItem("bewo_cart");
   };
 
   // =============================================
@@ -233,10 +239,9 @@ function App() {
       <AuthProvider>
         <ChatWidget />
         <div className="min-h-screen flex flex-col">
-          
           {/* Top Bar - Hide in admin */}
           {!isAdminRoute() && <TopBar message={brandData.topBarMessage} />}
-          
+
           {/* Header - Hide in admin */}
           {!isAdminRoute() && (
             <Header
@@ -257,67 +262,79 @@ function App() {
               {/* =============================================
                   PUBLIC ROUTES
                   ============================================= */}
-              <Route 
-                path="/" 
-                element={<HomePage onAddToCart={handleAddToCart} />} 
+              <Route
+                path="/"
+                element={<HomePage onAddToCart={handleAddToCart} />}
               />
 
-              <Route 
-                path="/products" 
+              <Route
+                path="/products"
                 element={
-                  <ProductsPage 
+                  <ProductsPage
                     onAddToCart={handleAddToCart}
                     wishlist={wishlist}
                   />
-                } 
+                }
               />
 
-              <Route 
-                path="/category/:slug" 
+              <Route
+                path="/category/:slug"
                 element={
-                  <ProductsPage 
+                  <ProductsPage
                     onAddToCart={handleAddToCart}
                     wishlist={wishlist}
                   />
-                } 
+                }
               />
 
-              <Route 
-                path="/product/:slug" 
+              <Route
+                path="/product/:slug"
                 element={
-                  <ProductDetailPage 
+                  <ProductDetailPage
                     onAddToCart={handleAddToCart}
                     brand={brandData.brand}
                     wishlist={wishlist}
                   />
-                } 
+                }
               />
 
-              <Route 
-                path="/checkout" 
+              <Route
+                path="/checkout"
                 element={
-                  <CheckoutPage 
-                    cart={cart}
-                    onClearCart={handleClearCart}
-                  />
-                } 
+                  <CheckoutPage cart={cart} onClearCart={handleClearCart} />
+                }
               />
-              
-              <Route 
-                path="/checkout/success" 
-                element={<OrderSuccessPage />} 
-              />
+
+              <Route path="/checkout/success" element={<OrderSuccessPage />} />
 
               {/* =============================================
                   POLICY PAGES
                   ============================================= */}
-              <Route path="/about" element={<AboutPage brand={brandData.brand} />} />
-              <Route path="/return-policy" element={<ReturnPolicyPage brand={brandData.brand} />} />
-              <Route path="/shipping-policy" element={<ShippingPolicyPage brand={brandData.brand} />} />
-              <Route path="/privacy-policy" element={<PrivacyPolicyPage brand={brandData.brand} />} />
-              <Route path="/payment-policy" element={<PaymentPolicyPage brand={brandData.brand} />} />
-              <Route path="/terms" element={<TermsPage brand={brandData.brand} />} />
-               <Route path="/careers" element={<CareersPage />} />   
+              <Route
+                path="/about"
+                element={<AboutPage brand={brandData.brand} />}
+              />
+              <Route
+                path="/return-policy"
+                element={<ReturnPolicyPage brand={brandData.brand} />}
+              />
+              <Route
+                path="/shipping-policy"
+                element={<ShippingPolicyPage brand={brandData.brand} />}
+              />
+              <Route
+                path="/privacy-policy"
+                element={<PrivacyPolicyPage brand={brandData.brand} />}
+              />
+              <Route
+                path="/payment-policy"
+                element={<PaymentPolicyPage brand={brandData.brand} />}
+              />
+              <Route
+                path="/terms"
+                element={<TermsPage brand={brandData.brand} />}
+              />
+              <Route path="/careers" element={<CareersPage />} />
               {/* =============================================
                   AUTH ROUTES
                   ============================================= */}
@@ -360,19 +377,25 @@ function App() {
                 <Route path="products" element={<AdminProducts />} />
                 <Route path="products/new" element={<AdminProductForm />} />
                 <Route path="products/:id" element={<AdminProductForm />} />
-                 <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
+                <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
                 {/* Categories */}
                 <Route path="categories" element={<AdminCategories />} />
-                
+
                 {/* Banners */}
                 <Route path="banners" element={<AdminBanners />} />
-                
+
                 {/* Orders */}
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:id" element={<AdminOrderDetail />} />
                 {/* Facebook Settings for Chatbot */}
-                <Route path="chatbot/facebook" element={<FacebookSettingsPage />} />
-                <Route path="chatbot/conversations" element={<ConversationsPage />} />
+                <Route
+                  path="chatbot/facebook"
+                  element={<FacebookSettingsPage />}
+                />
+                <Route
+                  path="chatbot/conversations"
+                  element={<ConversationsPage />}
+                />
                 <Route path="chatbot/scenarios" element={<ScenariosTab />} />
               </Route>
 
@@ -398,9 +421,9 @@ function App() {
 
           {/* Footer - Hide in admin */}
           {!isAdminRoute() && (
-            <Footer 
-              brand={brandData.brand} 
-              sections={brandData.footerSections} 
+            <Footer
+              brand={brandData.brand}
+              sections={brandData.footerSections}
             />
           )}
 

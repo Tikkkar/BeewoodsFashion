@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { X, ShoppingCart, Heart, Star, ExternalLink, Minus, Plus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useToast } from '../../hooks/useToast';
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  ShoppingCart,
+  Heart,
+  Star,
+  ExternalLink,
+  Minus,
+  Plus,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../../hooks/useToast";
 
 const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
@@ -15,44 +23,47 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
     if (isOpen && product) {
       setQuantity(1);
       setImageLoaded(false);
-      
+
       if (product.sizes && product.sizes.length > 0) {
-        const firstSize = typeof product.sizes[0] === 'object' 
-          ? product.sizes[0].size 
-          : product.sizes[0];
+        const firstSize =
+          typeof product.sizes[0] === "object"
+            ? product.sizes[0].size
+            : product.sizes[0];
         setSelectedSize(firstSize);
       } else {
-        setSelectedSize('');
+        setSelectedSize("");
       }
-      
-      const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
-      setIsWishlisted(wishlist.some(item => item.id === product.id));
-      
-      document.body.style.overflow = 'hidden';
+
+      const wishlist = JSON.parse(
+        localStorage.getItem("bewo_wishlist") || "[]"
+      );
+      setIsWishlisted(wishlist.some((item) => item.id === product.id));
+
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen, product]);
 
   if (!isOpen || !product) return null;
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
   const handleAddToCart = () => {
     if (!selectedSize && sizes.length > 0) {
-      showError('Vui lòng chọn size!');
+      showError("Vui lòng chọn size!");
       return;
     }
-    
+
     onAddToCart(product, selectedSize, quantity);
     showSuccess(`${product.name} đã được thêm vào giỏ hàng.`);
     onClose();
@@ -64,43 +75,49 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
   };
 
   const handleToggleWishlist = () => {
-    const wishlist = JSON.parse(localStorage.getItem('dior_wishlist') || '[]');
-    const exists = wishlist.find(item => item.id === product.id);
-    
+    const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
+    const exists = wishlist.find((item) => item.id === product.id);
+
     if (exists) {
-      const newWishlist = wishlist.filter(item => item.id !== product.id);
-      localStorage.setItem('dior_wishlist', JSON.stringify(newWishlist));
+      const newWishlist = wishlist.filter((item) => item.id !== product.id);
+      localStorage.setItem("bewo_wishlist", JSON.stringify(newWishlist));
       setIsWishlisted(false);
     } else {
       wishlist.push(product);
-      localStorage.setItem('dior_wishlist', JSON.stringify(wishlist));
+      localStorage.setItem("bewo_wishlist", JSON.stringify(wishlist));
       setIsWishlisted(true);
     }
-    
-    window.dispatchEvent(new Event('wishlistUpdated'));
+
+    window.dispatchEvent(new Event("wishlistUpdated"));
   };
 
-  const sizes = product.sizes 
-    ? product.sizes.map(s => typeof s === 'object' ? s.size : s)
+  const sizes = product.sizes
+    ? product.sizes.map((s) => (typeof s === "object" ? s.size : s))
     : [];
 
-  const discount = product.originalPrice && product.originalPrice > product.price
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : null;
+  const discount =
+    product.originalPrice && product.originalPrice > product.price
+      ? Math.round(
+          ((product.originalPrice - product.price) / product.originalPrice) *
+            100
+        )
+      : null;
 
-  const avgRating = product.reviews && product.reviews.length > 0
-    ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
-    : 5;
+  const avgRating =
+    product.reviews && product.reviews.length > 0
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+        product.reviews.length
+      : 5;
 
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-300"
         onClick={onClose}
       />
-      
+
       <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
-        <div 
+        <div
           className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] animate-in fade-in zoom-in duration-300 flex flex-col overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
@@ -110,7 +127,7 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
           >
             <X size={20} />
           </button>
-        
+
           {/* ✨ SỬA LỖI: Cấu trúc layout mới cho mobile và desktop */}
           <div className="flex flex-col md:grid md:grid-cols-2 flex-1 overflow-hidden">
             {/* Left: Product Image */}
@@ -144,18 +161,26 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
               <div className="flex items-center gap-3 mb-4 flex-wrap">
                 <div className="flex items-center gap-1">
                   {[...Array(5)].map((_, i) => (
-                    <Star 
-                      key={i} 
-                      size={16} 
-                      className={i < Math.round(avgRating) ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-300 text-gray-300'} 
+                    <Star
+                      key={i}
+                      size={16}
+                      className={
+                        i < Math.round(avgRating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "fill-gray-300 text-gray-300"
+                      }
                     />
                   ))}
                 </div>
                 <span className="text-sm text-gray-600">
                   ({product.reviews?.length || 0} đánh giá)
                 </span>
-                <span className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  • {product.stock > 0 ? 'Còn hàng' : 'Hết hàng'}
+                <span
+                  className={`text-sm font-medium ${
+                    product.stock > 0 ? "text-green-600" : "text-red-600"
+                  }`}
+                >
+                  • {product.stock > 0 ? "Còn hàng" : "Hết hàng"}
                 </span>
               </div>
 
@@ -163,17 +188,19 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                 <span className="text-3xl font-bold text-black">
                   {formatPrice(product.price)}
                 </span>
-                {product.originalPrice && product.originalPrice > product.price && (
-                  <span className="text-lg text-gray-400 line-through">
-                    {formatPrice(product.originalPrice)}
-                  </span>
-                )}
+                {product.originalPrice &&
+                  product.originalPrice > product.price && (
+                    <span className="text-lg text-gray-400 line-through">
+                      {formatPrice(product.originalPrice)}
+                    </span>
+                  )}
               </div>
 
               <p className="text-gray-700 text-sm leading-relaxed mb-6">
-                {product.description || 'Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, mang đến sự sang trọng và đẳng cấp cho người sử dụng.'}
+                {product.description ||
+                  "Sản phẩm cao cấp từ bộ sưu tập mới nhất. Thiết kế tinh tế, chất liệu cao cấp, mang đến sự sang trọng và đẳng cấp cho người sử dụng."}
               </p>
-              
+
               <div className="mt-auto space-y-6">
                 {sizes.length > 0 && (
                   <div className="space-y-3">
@@ -181,7 +208,10 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                       <span>Chọn Size</span>
                       {selectedSize && (
                         <span className="text-xs font-normal text-gray-600 normal-case">
-                          Đã chọn: <span className="font-semibold text-black">{selectedSize}</span>
+                          Đã chọn:{" "}
+                          <span className="font-semibold text-black">
+                            {selectedSize}
+                          </span>
                         </span>
                       )}
                     </label>
@@ -192,8 +222,8 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                           onClick={() => setSelectedSize(size)}
                           className={`py-3 rounded-lg border-2 font-medium text-sm transition-all ${
                             selectedSize === size
-                              ? 'border-black bg-black text-white scale-105 shadow-md'
-                              : 'border-gray-300 hover:border-black hover:scale-105'
+                              ? "border-black bg-black text-white scale-105 shadow-md"
+                              : "border-gray-300 hover:border-black hover:scale-105"
                           }`}
                         >
                           {size}
@@ -217,7 +247,9 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                     <input
                       type="number"
                       value={quantity}
-                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      onChange={(e) =>
+                        setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+                      }
                       className="w-20 h-11 text-center border-2 border-gray-300 rounded-lg focus:border-black focus:outline-none font-medium"
                     />
                     <button
@@ -235,25 +267,30 @@ const QuickViewModal = ({ product, isOpen, onClose, onAddToCart }) => {
                     disabled={product.stock === 0}
                     className={`w-full py-4 rounded-lg font-semibold uppercase tracking-wide transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg ${
                       product.stock === 0
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-black text-white hover:bg-gray-800'
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-black text-white hover:bg-gray-800"
                     }`}
                   >
                     <ShoppingCart size={20} />
-                    {product.stock === 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
+                    {product.stock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
                   </button>
-                  
+
                   <button
                     onClick={handleToggleWishlist}
                     className={`w-full py-3 rounded-lg border-2 font-medium transition-all flex items-center justify-center gap-2 ${
                       isWishlisted
-                        ? 'border-red-500 text-red-500 bg-red-50 hover:bg-red-100'
-                        : 'border-gray-300 hover:border-black hover:bg-gray-50'
+                        ? "border-red-500 text-red-500 bg-red-50 hover:bg-red-100"
+                        : "border-gray-300 hover:border-black hover:bg-gray-50"
                     }`}
                   >
-                    <Heart size={18} fill={isWishlisted ? 'currentColor' : 'none'} />
+                    <Heart
+                      size={18}
+                      fill={isWishlisted ? "currentColor" : "none"}
+                    />
                     <span className="text-sm">
-                      {isWishlisted ? 'Đã thêm vào yêu thích' : 'Thêm vào yêu thích'}
+                      {isWishlisted
+                        ? "Đã thêm vào yêu thích"
+                        : "Thêm vào yêu thích"}
                     </span>
                   </button>
                   <button
