@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta name="zalo-platform-site-verification" content="UzMO2whzJnzN_lytezPGBbd6u0kri3TSCJKt" />
+    <meta
+      name="zalo-platform-site-verification"
+      content="UzMO2whzJnzN_lytezPGBbd6u0kri3TSCJKt"
+    />
     <meta charset="utf-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -40,5 +43,32 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+
+    <!-- BẮT ĐẦU MÃ NHÚNG ZALO CHAT WIDGET -->
+    <!-- Thẻ DIV là nơi widget Zalo được nhúng vào (thường ở góc dưới bên phải) -->
+    <div
+      class="zalo-chat-widget"
+      data-oaid="870752253827008707"
+      data-welcome-message="Rất vui khi được hỗ trợ bạn!"
+      data-autopopup="0"
+      data-width=""
+      data-height=""
+    ></div>
+    <!-- KẾT THÚC MÃ NHÚNG ZALO CHAT WIDGET -->
+
+    <!-- BẮT ĐẦU MÃ NHÚNG NÚT QUAN TÂM ZALO (FOLLOW BUTTON) -->
+    <!-- Đã đặt trong Footer component, nhưng giữ lại ở đây để đảm bảo SDK được tải. -->
+    <div
+      class="zalo-follow-only-button"
+      data-oaid="870752253827008707"
+      data-customize="true"
+      data-size="30"
+      data-title="true"
+      style="position: fixed; bottom: 80px; left: 20px; z-index: 1000"
+    ></div>
+    <!-- KẾT THÚC MÃ NHÚNG NÚT QUAN TÂM ZALO (FOLLOW BUTTON) -->
+
+    <!-- Thẻ SCRIPT tải Zalo SDK để kích hoạt tất cả widget và nút Follow -->
+    <script src="https://sp.zalo.me/plugins/sdk.js"></script>
   </body>
 </html>
