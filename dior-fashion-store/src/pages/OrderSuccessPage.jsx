@@ -110,16 +110,21 @@ const OrderSuccessPage = () => {
       console.log("🔔 Zalo Consent Response:", response);
 
       // --- SỬA LỖI 1: Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng ---
+      // Nếu response là một hành động trạng thái (state action) hoặc không có lỗi,
+      // thì không xử lý như một sự kiện đồng ý/hủy cuối cùng.
       if (
         response.action === "loaded_successfully" ||
-        response.action === "click_interaction_accepted"
+        response.action === "click_interaction_accepted" ||
+        response.error === undefined
       ) {
-        console.log("Zalo SDK action:", response.action);
-        return; // Không xử lý các action này như lỗi
+        // Log để debug nhưng không xử lý logic tiếp theo
+        console.log("Zalo SDK action:", response.action || "Status update");
+        return;
       }
       // --- KẾT THÚC SỬA LỖI 1 ---
 
       if (response.error === 0) {
+        // Trường hợp người dùng đồng ý (error: 0)
         const zaloUserId = response.data.user_id_by_app;
         localStorage.setItem("zalo_user_id", zaloUserId);
 
@@ -171,6 +176,7 @@ const OrderSuccessPage = () => {
             );
           });
       } else {
+        // Trường hợp lỗi (bao gồm cả hủy đồng ý)
         console.error("❌ Zalo consent error:", response);
         if (response.error === 3) {
           showAlert(
@@ -191,10 +197,11 @@ const OrderSuccessPage = () => {
 
     let timer;
 
-    // --- SỬA LỖI 2: Chỉ reload widget khi ZaloSocialSDK sẵn sàng và DOM đã render ---
+    // --- SỬA LỖI 2: Tăng độ trễ cho reload để đảm bảo DOM của widget đã sẵn sàng ---
     if (window.ZaloSocialSDK) {
       console.log("🔄 Reloading Zalo SDK for Consent Widget...");
-      // Tăng timeout để đảm bảo React đã hoàn tất việc render DOM của widget.
+      // Tăng timeout lên 500ms để đảm bảo React đã hoàn tất việc render DOM của widget
+      // và widget iframe đã kịp load, giảm thiểu lỗi 'postMessage'
       timer = setTimeout(() => {
         // Kiểm tra an toàn lần nữa trước khi gọi reload
         if (window.ZaloSocialSDK) {
@@ -202,7 +209,7 @@ const OrderSuccessPage = () => {
         } else {
           console.warn("ZaloSocialSDK not found inside timeout.");
         }
-      }, 300); // Tăng lên 300ms
+      }, 500); // Đã tăng lên 500ms
     } else {
       console.warn("ZaloSocialSDK not loaded when useEffect ran.");
     }
@@ -212,12 +219,11 @@ const OrderSuccessPage = () => {
     return () => {
       clearTimeout(timer);
       // Xóa callback trên global window khi component unmount
-      // để tránh memory leak trong ứng dụng SPA
       if (window.handleZaloConsent) {
         delete window.handleZaloConsent;
       }
     };
-    // --- SỬA LỖI 3: Thêm showAlert vào dependency array ---
+    // --- SỬA LỖI 3: Thêm showAlert vào dependency array để đảm bảo useCallback hoạt động đúng ---
   }, [order, showAlert]);
   // --- KẾT THÚC SỬA LỖI 3 ---
 
