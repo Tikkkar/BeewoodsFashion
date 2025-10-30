@@ -143,8 +143,13 @@ const OrderSuccessPage = () => {
     window.handleZaloConsent = function (response) {
       console.log("🆕 NEW CODE VERSION 2.0 - Consent fired:", response);
       console.log("Consent fired:", response);
-      const { action, error, data } = response;
-      console.log("🔔 Zalo Consent Response:", { action, error, data });
+      const { action, error, data, user_id } = response; // ← THÊM user_id
+      console.log("🔔 Zalo Consent Response:", {
+        action,
+        error,
+        data,
+        user_id,
+      });
 
       // Bỏ qua các event không liên quan
       if (action === "loaded_successfully") {
@@ -154,19 +159,23 @@ const OrderSuccessPage = () => {
 
       // Xử lý khi user đồng ý
       if (action === "click_interaction_accepted" || error === 0) {
-        const zaloUserId = data?.user_id_by_app;
+        // ✅ LẤY user_id TỪ RESPONSE, KHÔNG PHẢI data.user_id_by_app
+        const zaloUserId =
+          user_id || data?.user_id_by_app || order.customer_phone;
+
+        console.log("✅ Consent granted, sending ZNS...");
+        console.log("🆔 Zalo User ID:", zaloUserId);
+        console.log("📞 Fallback Phone:", order.customer_phone);
 
         if (zaloUserId) {
           localStorage.setItem("zalo_user_id", zaloUserId);
         }
 
-        console.log("✅ Consent granted, sending ZNS...");
-
         const orderData = {
           order_number: order?.order_number || "",
           customer_name: order?.customer_name || "",
           customer_phone: order?.customer_phone || "",
-          zalo_user_id: zaloUserId,
+          zalo_user_id: zaloUserId, // ← QUAN TRỌNG: phải có giá trị
           order_date: order?.created_at
             ? formatDateForZNS(order.created_at)
             : "",
@@ -174,6 +183,8 @@ const OrderSuccessPage = () => {
             ? getOrderStatus(order.status)
             : "Đang xử lý",
         };
+
+        console.log("📤 Sending order data:", orderData);
 
         fetch(
           "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
@@ -189,13 +200,24 @@ const OrderSuccessPage = () => {
             }),
           }
         )
-          .then((res) => res.json())
+          .then((res) => {
+            console.log("📥 Response status:", res.status);
+            return res.json();
+          })
           .then((data) => {
             console.log("✅ ZNS sent successfully:", data);
-            showAlert(
-              "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
-              "success"
-            );
+            if (data.success) {
+              showAlert(
+                "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
+                "success"
+              );
+            } else {
+              console.error("❌ Server returned error:", data.error);
+              showAlert(
+                "⚠️ Có lỗi xảy ra khi đăng ký thông báo. Vui lòng thử lại sau.",
+                "error"
+              );
+            }
           })
           .catch((err) => {
             console.error("❌ Error sending ZNS:", err);
