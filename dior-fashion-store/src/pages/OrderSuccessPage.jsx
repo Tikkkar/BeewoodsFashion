@@ -141,24 +141,26 @@ const OrderSuccessPage = () => {
     document.body.appendChild(script);
 
     window.handleZaloConsent = function (response) {
-      const action = response.action;
-      const error = response.error;
-      const data = response.data;
+      console.log("Consent fired:", response);
+      const { action, error, data } = response;
       console.log("🔔 Zalo Consent Response:", { action, error, data });
-      if (
-        action === "loaded_successfully" ||
-        action === "click_interaction_accepted" ||
-        error === undefined
-      ) {
-        console.log("Zalo SDK action:", action || "Status update");
+
+      // Bỏ qua các event không liên quan
+      if (action === "loaded_successfully") {
+        console.log("Zalo SDK loaded");
         return;
       }
-      if (error === 0) {
+
+      // Xử lý khi user đồng ý
+      if (action === "click_interaction_accepted" || error === 0) {
         const zaloUserId = data?.user_id_by_app;
+
         if (zaloUserId) {
           localStorage.setItem("zalo_user_id", zaloUserId);
         }
+
         console.log("✅ Consent granted, sending ZNS...");
+
         const orderData = {
           order_number: order?.order_number || "",
           customer_name: order?.customer_name || "",
@@ -171,14 +173,14 @@ const OrderSuccessPage = () => {
             ? getOrderStatus(order.status)
             : "Đang xử lý",
         };
+
         fetch(
           "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization:
-                "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cXdwc2Z0emJhZ2lkb3Vkd29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3NjIwOTQsImV4cCI6MjA0NTMzODA5NH0.DpjLxzE-5bRkE6zQXWA8b77C-5kZqNIHvBcl5pf5Yeo",
+              Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
               action: "SEND_ORDER_ZNS",
@@ -201,16 +203,23 @@ const OrderSuccessPage = () => {
               "error"
             );
           });
-      } else {
+
+        return;
+      }
+
+      // Xử lý khi user từ chối
+      if (error === 3) {
+        showAlert(
+          "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo.",
+          "warning"
+        );
+        return;
+      }
+
+      // Xử lý các lỗi khác
+      if (error !== undefined && error !== 0) {
         console.error("❌ Zalo consent error:", { error, data, action });
-        if (error === 3) {
-          showAlert(
-            "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo.",
-            "warning"
-          );
-        } else {
-          showAlert("⚠️ Có lỗi xảy ra. Vui lòng thử lại sau.", "error");
-        }
+        showAlert("⚠️ Có lỗi xảy ra. Vui lòng thử lại sau.", "error");
       }
     };
 
