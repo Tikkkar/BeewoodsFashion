@@ -70,11 +70,11 @@ const OrderSuccessPage = () => {
   const orderNumber = location.state?.orderNumber;
 
   // Function to show custom alert message
-  const showAlert = (message, type) => {
+  const showAlert = useCallback((message, type) => {
     setAlertState({ message, type });
     // Tự động đóng sau 5 giây
     setTimeout(() => setAlertState({ message: null, type: "success" }), 5000);
-  };
+  }, []); // Sử dụng useCallback để ổn định hàm
 
   const handleCloseAlert = useCallback(() => {
     setAlertState({ message: null, type: "success" });
@@ -108,6 +108,16 @@ const OrderSuccessPage = () => {
     // ✅ Định nghĩa global callback function cho Zalo SDK
     window.handleZaloConsent = function (response) {
       console.log("🔔 Zalo Consent Response:", response);
+
+      // --- SỬA LỖI 1: Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng ---
+      if (
+        response.action === "loaded_successfully" ||
+        response.action === "click_interaction_accepted"
+      ) {
+        console.log("Zalo SDK action:", response.action);
+        return; // Không xử lý các action này như lỗi
+      }
+      // --- KẾT THÚC SỬA LỖI 1 ---
 
       if (response.error === 0) {
         const zaloUserId = response.data.user_id_by_app;
@@ -179,30 +189,37 @@ const OrderSuccessPage = () => {
     console.log("- ZaloSDK loaded:", !!window.ZaloSocialSDK);
     console.log("- Callback defined:", !!window.handleZaloConsent);
 
-    // ✅ FIX LỖI: Chỉ reload widget khi order đã load VÀ ZaloSocialSDK đã sẵn sàng.
-    // Dùng setTimeout 100ms để đảm bảo React đã hoàn tất việc render DOM của widget.
+    let timer;
+
+    // --- SỬA LỖI 2: Chỉ reload widget khi ZaloSocialSDK sẵn sàng và DOM đã render ---
     if (window.ZaloSocialSDK) {
       console.log("🔄 Reloading Zalo SDK for Consent Widget...");
-      const timer = setTimeout(() => {
-        window.ZaloSocialSDK.reload();
-      }, 100);
-
-      // Cleanup: Xóa callback và timeout
-      return () => {
-        clearTimeout(timer);
-        if (window.handleZaloConsent) {
-          delete window.handleZaloConsent;
+      // Tăng timeout để đảm bảo React đã hoàn tất việc render DOM của widget.
+      timer = setTimeout(() => {
+        // Kiểm tra an toàn lần nữa trước khi gọi reload
+        if (window.ZaloSocialSDK) {
+          window.ZaloSocialSDK.reload();
+        } else {
+          console.warn("ZaloSocialSDK not found inside timeout.");
         }
-      };
+      }, 300); // Tăng lên 300ms
     } else {
-      // Cleanup: Chỉ xóa callback nếu ZaloSocialSDK không tồn tại
-      return () => {
-        if (window.handleZaloConsent) {
-          delete window.handleZaloConsent;
-        }
-      };
+      console.warn("ZaloSocialSDK not loaded when useEffect ran.");
     }
-  }, [order]); // Dependency là order và showAlert
+    // --- KẾT THÚC SỬA LỖI 2 ---
+
+    // Cleanup: Xóa callback và timeout
+    return () => {
+      clearTimeout(timer);
+      // Xóa callback trên global window khi component unmount
+      // để tránh memory leak trong ứng dụng SPA
+      if (window.handleZaloConsent) {
+        delete window.handleZaloConsent;
+      }
+    };
+    // --- SỬA LỖI 3: Thêm showAlert vào dependency array ---
+  }, [order, showAlert]);
+  // --- KẾT THÚC SỬA LỖI 3 ---
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
