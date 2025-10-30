@@ -138,26 +138,39 @@ const OrderSuccessPage = () => {
 
     // Định nghĩa global callback function cho Zalo SDK
     window.handleZaloConsent = function (response) {
-      console.log("🔔 Zalo Consent Response:", response);
+      // FIX LỖI: Tránh JSON.stringify đối tượng DOM/Event.
+      // Chúng ta sẽ tạo một bản sao "phẳng" (shallow copy) chỉ chứa các thuộc tính cần thiết,
+      // hoặc chỉ xử lý các thuộc tính cần thiết.
+      // Lỗi này xảy ra khi SDK cố gắng postMessage một đối tượng có tham chiếu vòng lặp.
+
+      // Trích xuất các thuộc tính cần thiết ra khỏi đối tượng response
+      const action = response.action;
+      const error = response.error;
+      const data = response.data;
+
+      console.log("🔔 Zalo Consent Response:", { action, error, data });
 
       // Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng
       if (
-        response.action === "loaded_successfully" ||
-        response.action === "click_interaction_accepted" ||
-        response.error === undefined
+        action === "loaded_successfully" ||
+        action === "click_interaction_accepted" ||
+        error === undefined
       ) {
-        console.log("Zalo SDK action:", response.action || "Status update");
+        console.log("Zalo SDK action:", action || "Status update");
         return;
       }
 
-      if (response.error === 0) {
+      if (error === 0) {
         // Trường hợp người dùng đồng ý (error: 0)
-        const zaloUserId = response.data.user_id_by_app;
-        localStorage.setItem("zalo_user_id", zaloUserId);
+        // Dùng data.user_id_by_app an toàn vì nó là chuỗi
+        const zaloUserId = data?.user_id_by_app;
+        if (zaloUserId) {
+          localStorage.setItem("zalo_user_id", zaloUserId);
+        }
 
         console.log("✅ Consent granted, sending ZNS...");
 
-        // Chuẩn bị dữ liệu để gửi đến Supabase Function
+        // Chuẩn bị dữ liệu để gửi đến Supabase Function (đảm bảo là JSON sạch)
         const orderData = {
           order_number: order?.order_number || "",
           customer_name: order?.customer_name || "",
@@ -204,8 +217,8 @@ const OrderSuccessPage = () => {
           });
       } else {
         // Trường hợp lỗi (bao gồm cả hủy đồng ý)
-        console.error("❌ Zalo consent error:", response);
-        if (response.error === 3) {
+        console.error("❌ Zalo consent error:", { error, data, action });
+        if (error === 3) {
           showAlert(
             "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo.",
             "warning"
@@ -231,10 +244,17 @@ const OrderSuccessPage = () => {
       const isWidgetInDOM =
         document.querySelector(".zalo-consent-widget") !== null;
 
+      // Sửa lỗi tiềm ẩn: Đảm bảo order đã được tải trước khi sử dụng order.customer_phone
+      // Mặc dù đã có check if (!order) return; ở đầu, nhưng check lại an toàn hơn
+      if (!order) return false;
+
       if (isSDKLoaded && isWidgetInDOM) {
         // Cả SDK và DOM widget đã sẵn sàng, tiến hành reload
         console.log("✅ Zalo SDK and Widget DOM are ready. Reloading...");
-        window.ZaloSocialSDK.reload();
+        // Kiểm tra lại lần cuối xem order.customer_phone đã có chưa
+        if (order.customer_phone) {
+          window.ZaloSocialSDK.reload();
+        }
 
         // Xóa interval sau khi đã reload thành công
         clearInterval(intervalId);
