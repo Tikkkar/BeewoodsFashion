@@ -3,6 +3,7 @@
 // ============================================
 import { formatPrice } from "./formatters.ts";
 import { TOOL_INSTRUCTIONS } from "./aiTools.ts";
+import { createSupabaseClient } from "./supabaseClient.ts";
 // ============================================
 // 1. TYPES
 // ============================================
@@ -73,7 +74,8 @@ async function getStoreInfo(): Promise<StoreInfo> {
     description:
       "Shop thời trang Linen cao cấp, phong cách thanh lịch, sang trọng",
     policies: {
-      shipping: "Giao hàng toàn quốc 1-4 ngày, phí 30k (miễn phí từ 300k)",
+      shipping:
+        "Giao hàng toàn quốc 1-4 ngày, phí 30k (miễn phí ship đơn hàng từ 799k)",
       return: "Đổi trả trong 7 ngày nếu còn nguyên tem, chưa qua sử dụng",
       payment: "COD - Kiểm tra hàng trước khi thanh toán",
     },
@@ -82,6 +84,19 @@ async function getStoreInfo(): Promise<StoreInfo> {
 
 // Mocking function - In a real app, these would fetch real data
 async function getProductSummary(): Promise<ProductSummary> {
+  try {
+    const { data: products, error } = await createSupabaseClient()
+      .from("products")
+      .select("stock"); // ← THÊM DẤU CHẤM PHẨY
+
+    // Optional: xử lý error nếu cần
+    if (error) {
+      console.error("Error fetching products:", error);
+    }
+  } catch (err) {
+    console.error("Error in getProductSummary:", err);
+  }
+
   return {
     total_products: 125,
     categories: [
@@ -152,9 +167,10 @@ function buildSystemPrompt(ctx: PromptContext): string {
     activeDiscounts,
   } = ctx;
 
-  const categoryList = productSummary.categories.length > 0
-    ? productSummary.categories.map((c) => `• ${c}`).join("\n")
-    : "• Áo sơ mi\n• Quần suông\n• Áo vest\n• Chân váy\n• Váy liền thân";
+  const categoryList =
+    productSummary.categories.length > 0
+      ? productSummary.categories.map((c) => `• ${c}`).join("\n")
+      : "• Áo sơ mi\n• Quần suông\n• Áo vest\n• Chân váy\n• Váy liền thân";
 
   let promotionInfo = "";
   if (activeBanners.length > 0) {
@@ -173,19 +189,22 @@ function buildSystemPrompt(ctx: PromptContext): string {
   if (activeDiscounts.length > 0) {
     discountInfo = "\n===== MÃ GIẢM GIÁ =====\n";
     activeDiscounts.forEach((disc) => {
-      const discountValue = disc.discount_type === "percentage"
-        ? `${disc.value}%`
-        : formatPrice(disc.value);
-      const minPurchase = disc.min_purchase_amount > 0
-        ? ` (đơn từ ${formatPrice(disc.min_purchase_amount)})`
-        : "";
+      const discountValue =
+        disc.discount_type === "percentage"
+          ? `${disc.value}%`
+          : formatPrice(disc.value);
+      const minPurchase =
+        disc.min_purchase_amount > 0
+          ? ` (đơn từ ${formatPrice(disc.min_purchase_amount)})`
+          : "";
       discountInfo += `• ${disc.code}: Giảm ${discountValue}${minPurchase}\n`;
     });
   }
 
-  const sizeInfo = productSummary.available_sizes.length > 0
-    ? productSummary.available_sizes.join(", ")
-    : "XS, S, M, L, XL, XXL";
+  const sizeInfo =
+    productSummary.available_sizes.length > 0
+      ? productSummary.available_sizes.join(", ")
+      : "XS, S, M, L, XL, XXL";
 
   return `BẠN LÀ ${botConfig.bot_name.toUpperCase()} - ${botConfig.bot_role.toUpperCase()}
 ${storeInfo.name} - ${storeInfo.description}
@@ -199,9 +218,9 @@ Emoji: ${botConfig.allowed_emojis.join(" ")}
 
 ===== THÔNG TIN SẢN PHẨM =====
 Tổng: ${productSummary.total_products} sản phẩm
-Giá: ${formatPrice(productSummary.price_range.min)} - ${
-    formatPrice(productSummary.price_range.max)
-  }
+Giá: ${formatPrice(productSummary.price_range.min)} - ${formatPrice(
+    productSummary.price_range.max
+  )}
 Danh mục:
 ${categoryList}
 Chất liệu: ${productSummary.top_materials.join(", ") || "Linen cao cấp"}
@@ -643,7 +662,7 @@ BẮT ĐẦU TƯ VẤN CHUYÊN NGHIỆP!`;
 
 export async function buildFullPrompt(
   context: any,
-  userMessage: string,
+  userMessage: string
 ): Promise<string> {
   const systemPrompt = await getSystemPrompt();
 
@@ -661,9 +680,9 @@ export async function buildFullPrompt(
     if (p.phone) fullContext += `SĐT: ${p.phone}\n`;
     if (p.usual_size) fullContext += `Size thường mặc: ${p.usual_size}\n`;
     if (p.style_preference && p.style_preference.length > 0) {
-      fullContext += `Phong cách thích: ${
-        JSON.stringify(p.style_preference)
-      }\n`;
+      fullContext += `Phong cách thích: ${JSON.stringify(
+        p.style_preference
+      )}\n`;
     }
     if (p.total_orders > 0) {
       fullContext += `Đã mua: ${p.total_orders} đơn (khách quen)\n`;
@@ -702,18 +721,20 @@ export async function buildFullPrompt(
     const recent = context.history.slice(-4);
 
     // Check if bot vừa hỏi xác nhận địa chỉ
-    const botAskedConfirmation = recent.some((msg: any) =>
-      msg.sender_type === "bot" &&
-      msg.content?.text?.includes("giao về") &&
-      msg.content?.text?.includes("phải không")
+    const botAskedConfirmation = recent.some(
+      (msg: any) =>
+        msg.sender_type === "bot" &&
+        msg.content?.text?.includes("giao về") &&
+        msg.content?.text?.includes("phải không")
     );
 
     // Check if customer vừa xác nhận
-    const customerConfirmed = recent.some((msg: any) =>
-      msg.sender_type === "customer" &&
-      /^(được|ok|đúng|vâng|ừ|chốt|đồng ý|có|phải)/i.test(
-        msg.content?.text?.trim() || "",
-      )
+    const customerConfirmed = recent.some(
+      (msg: any) =>
+        msg.sender_type === "customer" &&
+        /^(được|ok|đúng|vâng|ừ|chốt|đồng ý|có|phải)/i.test(
+          msg.content?.text?.trim() || ""
+        )
     );
 
     if (botAskedConfirmation && customerConfirmed) {
@@ -782,14 +803,16 @@ export async function buildFullPrompt(
   if (context.cart && context.cart.length > 0) {
     fullContext += "\n🛒 GIỎ HÀNG HIỆN TẠI:\n";
     context.cart.forEach((item: any, idx: number) => {
-      fullContext += `${
-        idx + 1
-      }. ${item.name} - Size ${item.size} x${item.quantity}\n`;
+      fullContext += `${idx + 1}. ${item.name} - Size ${item.size} x${
+        item.quantity
+      }\n`;
     });
-    fullContext += `\n💰 Tạm tính: ${
-      formatPrice(context.cart.reduce((sum: number, item: any) =>
-        sum + (item.price * item.quantity), 0))
-    }\n`;
+    fullContext += `\n💰 Tạm tính: ${formatPrice(
+      context.cart.reduce(
+        (sum: number, item: any) => sum + item.price * item.quantity,
+        0
+      )
+    )}\n`;
   }
 
   return `${systemPrompt}

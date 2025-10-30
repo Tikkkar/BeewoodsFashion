@@ -20,6 +20,7 @@
     "react-loading-skeleton": "^3.5.0",
     "react-router-dom": "^7.9.4",
     "recharts": "^3.2.1",
+    "supabase": "^2.54.11",
     "zod": "^3.25.76"
   },
   "devDependencies": {

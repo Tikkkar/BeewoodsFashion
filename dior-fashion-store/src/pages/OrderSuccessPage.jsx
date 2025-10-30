@@ -32,11 +32,120 @@ const OrderSuccessPage = () => {
     fetchOrder();
   }, [orderNumber, navigate]);
 
+  // Khởi tạo Zalo Consent Widget và định nghĩa callback
+  useEffect(() => {
+    // ✅ Định nghĩa global callback function
+    window.handleZaloConsent = function (response) {
+      console.log("🔔 Zalo Consent Response:", response);
+
+      if (response.error === 0) {
+        const zaloUserId = response.data.user_id_by_app;
+        localStorage.setItem("zalo_user_id", zaloUserId);
+
+        console.log("✅ Consent granted, sending ZNS...");
+
+        // Gửi request đến backend
+        const orderData = {
+          order_number: order?.order_number || "",
+          customer_name: order?.customer_name || "",
+          customer_phone: order?.customer_phone || "",
+          zalo_user_id: zaloUserId,
+          order_date: order?.created_at
+            ? formatDateForZNS(order.created_at)
+            : "",
+          order_status: order?.status
+            ? getOrderStatus(order.status)
+            : "Đang xử lý",
+        };
+
+        // ✅ URL Supabase Function
+        fetch(
+          "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization:
+                "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0cXdwc2Z0emJhZ2lkb3Vkd29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mjk3NjIwOTQsImV4cCI6MjA0NTMzODA5NH0.DpjLxzE-5bRkE6zQXWA8b77C-5kZqNIHvBcl5pf5Yeo",
+            },
+            body: JSON.stringify({
+              action: "SEND_ORDER_ZNS",
+              payload: orderData,
+            }),
+          }
+        )
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("✅ ZNS sent successfully:", data);
+            alert(
+              "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo."
+            );
+          })
+          .catch((err) => {
+            console.error("❌ Error sending ZNS:", err);
+            alert(
+              "⚠️ Có lỗi xảy ra khi đăng ký thông báo. Vui lòng thử lại sau."
+            );
+          });
+      } else {
+        console.error("❌ Zalo consent error:", response);
+        if (response.error === 3) {
+          alert(
+            "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo."
+          );
+        } else {
+          alert("⚠️ Có lỗi xảy ra. Vui lòng thử lại sau.");
+        }
+      }
+    };
+
+    // Debug logs
+    console.log("🔍 Zalo Debug:");
+    console.log("- Order:", order);
+    console.log("- ZaloSDK loaded:", !!window.ZaloSocialSDK);
+    console.log("- Callback defined:", !!window.handleZaloConsent);
+
+    // Reload Zalo SDK khi order đã load
+    if (order && window.ZaloSocialSDK) {
+      console.log("🔄 Reloading Zalo SDK...");
+      window.ZaloSocialSDK.reload();
+    }
+
+    // Cleanup khi component unmount
+    return () => {
+      if (window.handleZaloConsent) {
+        delete window.handleZaloConsent;
+      }
+    };
+  }, [order]);
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
+  };
+
+  const formatDateForZNS = (dateString) => {
+    // Format: DD/MM/YYYY
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const getOrderStatus = (status) => {
+    const statusMap = {
+      pending: "Chờ xác nhận",
+      processing: "Đang xử lý",
+      confirmed: "Đã xác nhận",
+      shipping: "Đang giao hàng",
+      delivered: "Đã giao hàng",
+      completed: "Hoàn thành",
+      cancelled: "Đã hủy",
+    };
+    return statusMap[status] || "Đang xử lý";
   };
 
   if (loading) {
@@ -70,6 +179,53 @@ const OrderSuccessPage = () => {
           <p className="text-gray-600">
             Cảm ơn bạn đã mua hàng. Chúng tôi đã nhận được đơn hàng của bạn.
           </p>
+        </div>
+
+        {/* Zalo ZNS Consent Widget */}
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-md p-6 mb-6 border-2 border-blue-200">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg
+                className="w-12 h-12"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle cx="24" cy="24" r="24" fill="#0068FF" />
+                <path
+                  d="M24 12C17.373 12 12 16.925 12 23c0 3.025 1.575 5.775 4.05 7.725v5.775l5.55-3.05c1.125.3 2.325.45 3.525.45 6.627 0 12-4.925 12-11 0-6.075-5.373-11-12.125-11z"
+                  fill="white"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg mb-2 text-blue-900">
+                📱 Nhận thông báo đơn hàng qua Zalo
+              </h3>
+              <p className="text-sm text-blue-800 mb-4">
+                Đồng ý để nhận thông báo cập nhật trạng thái đơn hàng và ưu đãi
+                độc quyền qua Zalo OA. Hoàn toàn miễn phí!
+              </p>
+
+              {/* Zalo Consent Widget */}
+              <div
+                className="zalo-consent-widget"
+                data-callback="handleZaloConsent"
+                data-oaid="870752253827008707"
+                data-user-external-id={order.customer_phone || order.id}
+                data-appid="2783779431140209468"
+                data-reason-msg={`thông báo đơn hàng ${order.order_number}`}
+                data-status="show"
+                style={{ minHeight: "60px" }}
+              ></div>
+
+              <p className="text-xs text-blue-600 mt-3">
+                ✓ Nhận thông báo đơn hàng ngay lập tức
+                <br />✓ Cập nhật trạng thái giao hàng theo thời gian thực
+                <br />✓ Ưu đãi và khuyến mãi độc quyền
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Order Info Card */}

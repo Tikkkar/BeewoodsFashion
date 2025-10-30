@@ -287,7 +287,7 @@ export async function handleMessage(body: any) {
                     product_id: imgProduct.id,
                     product_name: imgProduct.name,
                     product_price: imgProduct.price,
-                    product_link: `http://localhost:3000//products/${imgProduct.slug}`,
+                    product_link: `http://bewo.com.vn/products/${imgProduct.slug}`,
                   },
                 }); // Send to respective platform
                 if (platform === "facebook" && access_token && customer_fb_id) {
@@ -345,8 +345,8 @@ export async function handleMessage(body: any) {
       } catch (error: any) {
         console.error(`❌ Function execution error (${fnCall.name}):`, error);
       }
-    } // <-- Đóng vòng lặp for (Chắc chắn đúng)
-  } // <-- Đóng khối if (functionCalls.length > 0)
+    }
+  }
   // ========================================
   // 4.5. CHECK ORDER CONFIRMATION
   // ========================================
