@@ -69,12 +69,10 @@ const OrderSuccessPage = () => {
 
   const orderNumber = location.state?.orderNumber;
 
-  // Function to show custom alert message
   const showAlert = useCallback((message, type) => {
     setAlertState({ message, type });
-    // Tự động đóng sau 5 giây
     setTimeout(() => setAlertState({ message: null, type: "success" }), 5000);
-  }, []); // Sử dụng useCallback để ổn định hàm
+  }, []);
 
   const handleCloseAlert = useCallback(() => {
     setAlertState({ message: null, type: "success" });
@@ -88,7 +86,6 @@ const OrderSuccessPage = () => {
   };
 
   const formatDateForZNS = (dateString) => {
-    // Format: DD/MM/YYYY
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -115,42 +112,39 @@ const OrderSuccessPage = () => {
       navigate("/");
       return;
     }
-
     const fetchOrder = async () => {
       const { data, error } = await getOrderByNumber(orderNumber);
-
       if (error) {
         console.error("Error fetching order:", error);
       } else {
         setOrder(data);
       }
-
       setLoading(false);
     };
-
     fetchOrder();
   }, [orderNumber, navigate]);
   // --- END EFFECT: FETCH ORDER DATA ---
 
-  // --- EFFECT: ZALO SDK CONSENT WIDGET LOGIC (UPDATED) ---
+  // --- EFFECT: ZALO SDK WIDGET FIX ---
   useEffect(() => {
-    if (!order) return; // Đảm bảo order đã load xong
+    if (!order) return;
+    // Cleanup script trước khi inject mới
+    const existedScript = document.querySelector(
+      'script[src="https://sp.zalo.me/plugins/sdk.js"]'
+    );
+    if (existedScript) existedScript.remove();
+    // Inject Zalo SDK
+    const script = document.createElement("script");
+    script.src = "https://sp.zalo.me/plugins/sdk.js";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
 
-    // Định nghĩa global callback function cho Zalo SDK
     window.handleZaloConsent = function (response) {
-      // FIX LỖI: Tránh JSON.stringify đối tượng DOM/Event.
-      // Chúng ta sẽ tạo một bản sao "phẳng" (shallow copy) chỉ chứa các thuộc tính cần thiết,
-      // hoặc chỉ xử lý các thuộc tính cần thiết.
-      // Lỗi này xảy ra khi SDK cố gắng postMessage một đối tượng có tham chiếu vòng lặp.
-
-      // Trích xuất các thuộc tính cần thiết ra khỏi đối tượng response
       const action = response.action;
       const error = response.error;
       const data = response.data;
-
       console.log("🔔 Zalo Consent Response:", { action, error, data });
-
-      // Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng
       if (
         action === "loaded_successfully" ||
         action === "click_interaction_accepted" ||
@@ -159,18 +153,12 @@ const OrderSuccessPage = () => {
         console.log("Zalo SDK action:", action || "Status update");
         return;
       }
-
       if (error === 0) {
-        // Trường hợp người dùng đồng ý (error: 0)
-        // Dùng data.user_id_by_app an toàn vì nó là chuỗi
         const zaloUserId = data?.user_id_by_app;
         if (zaloUserId) {
           localStorage.setItem("zalo_user_id", zaloUserId);
         }
-
         console.log("✅ Consent granted, sending ZNS...");
-
-        // Chuẩn bị dữ liệu để gửi đến Supabase Function (đảm bảo là JSON sạch)
         const orderData = {
           order_number: order?.order_number || "",
           customer_name: order?.customer_name || "",
@@ -183,8 +171,6 @@ const OrderSuccessPage = () => {
             ? getOrderStatus(order.status)
             : "Đang xử lý",
         };
-
-        // Gửi request đến backend (Supabase Function)
         fetch(
           "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
           {
@@ -216,7 +202,6 @@ const OrderSuccessPage = () => {
             );
           });
       } else {
-        // Trường hợp lỗi (bao gồm cả hủy đồng ý)
         console.error("❌ Zalo consent error:", { error, data, action });
         if (error === 3) {
           showAlert(
@@ -229,69 +214,39 @@ const OrderSuccessPage = () => {
       }
     };
 
-    // Debug logs
-    console.log("🔍 Zalo Debug:");
-    console.log("- Order:", order);
-    console.log("- ZaloSDK loaded:", !!window.ZaloSocialSDK);
-    console.log("- Callback defined:", !!window.handleZaloConsent);
-
     let intervalId;
-
-    // Khắc phục lỗi postMessage bằng cách sử dụng setInterval để check DOM
     const checkAndReloadZalo = () => {
       const isSDKLoaded = !!window.ZaloSocialSDK;
-      // Kiểm tra xem phần tử widget đã được render trong DOM chưa
       const isWidgetInDOM =
         document.querySelector(".zalo-consent-widget") !== null;
-
-      // Sửa lỗi tiềm ẩn: Đảm bảo order đã được tải trước khi sử dụng order.customer_phone
-      // Mặc dù đã có check if (!order) return; ở đầu, nhưng check lại an toàn hơn
       if (!order) return false;
-
       if (isSDKLoaded && isWidgetInDOM) {
-        // Cả SDK và DOM widget đã sẵn sàng, tiến hành reload
-        console.log("✅ Zalo SDK and Widget DOM are ready. Reloading...");
-        // Kiểm tra lại lần cuối xem order.customer_phone đã có chưa
         if (order.customer_phone) {
           window.ZaloSocialSDK.reload();
         }
-
-        // Xóa interval sau khi đã reload thành công
         clearInterval(intervalId);
         return true;
       }
-
-      // Logging cho mục đích debug
-      if (!isSDKLoaded) {
-        console.log("Waiting for ZaloSocialSDK to load...");
-      }
-      if (!isWidgetInDOM) {
-        console.log("Waiting for .zalo-consent-widget element in DOM...");
-      }
       return false;
     };
-
     if (order) {
-      console.log("🔄 Starting interval check for Zalo SDK (200ms)...");
-      // Thực hiện check lần đầu ngay lập tức
       if (!checkAndReloadZalo()) {
-        // Nếu lần đầu chưa thành công, thiết lập interval để kiểm tra liên tục mỗi 200ms
         intervalId = setInterval(checkAndReloadZalo, 200);
       }
     }
-
-    // Cleanup: Xóa callback và interval
+    // Cleanup effect
     return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      // Xóa callback trên global window khi component unmount
-      if (window.handleZaloConsent) {
-        delete window.handleZaloConsent;
-      }
+      if (intervalId) clearInterval(intervalId);
+      if (window.handleZaloConsent) delete window.handleZaloConsent;
+      const injectedScript = document.querySelector(
+        'script[src="https://sp.zalo.me/plugins/sdk.js"]'
+      );
+      if (injectedScript) injectedScript.remove();
+      const zaloConsent = document.querySelector(".zalo-consent-widget");
+      if (zaloConsent) zaloConsent.innerHTML = "";
     };
-  }, [order, showAlert]); // Thêm showAlert vào dependency array
-  // --- END EFFECT: ZALO SDK CONSENT WIDGET LOGIC ---
+  }, [order, showAlert]);
+  // --- END ZALO SDK EFFECT ---
 
   if (loading) {
     return (
@@ -300,7 +255,6 @@ const OrderSuccessPage = () => {
       </div>
     );
   }
-
   if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -313,7 +267,6 @@ const OrderSuccessPage = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <CustomAlert
@@ -322,7 +275,6 @@ const OrderSuccessPage = () => {
         onClose={handleCloseAlert}
       />
       <div className="max-w-3xl mx-auto">
-        {/* Success Icon */}
         <div className="text-center mb-8">
           <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">Đặt Hàng Thành Công!</h1>
@@ -330,7 +282,6 @@ const OrderSuccessPage = () => {
             Cảm ơn bạn đã mua hàng. Chúng tôi đã nhận được đơn hàng của bạn.
           </p>
         </div>
-
         {/* Zalo ZNS Consent Widget */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-md p-6 mb-6 border-2 border-blue-200">
           <div className="flex items-start gap-4">
@@ -356,8 +307,6 @@ const OrderSuccessPage = () => {
                 Đồng ý để nhận thông báo cập nhật trạng thái đơn hàng và ưu đãi
                 độc quyền qua Zalo OA. Hoàn toàn miễn phí!
               </p>
-
-              {/* Zalo Consent Widget */}
               <div
                 className="zalo-consent-widget"
                 data-callback="handleZaloConsent"
@@ -368,7 +317,6 @@ const OrderSuccessPage = () => {
                 data-status="show"
                 style={{ minHeight: "60px" }}
               ></div>
-
               <p className="text-xs text-blue-600 mt-3">
                 ✓ Nhận thông báo đơn hàng ngay lập tức
                 <br />✓ Cập nhật trạng thái giao hàng theo thời gian thực
@@ -377,8 +325,7 @@ const OrderSuccessPage = () => {
             </div>
           </div>
         </div>
-
-        {/* Order Info Card */}
+        {/* ... Các phần thông tin đơn hàng, sản phẩm, trạng thái, nút ... giữ như mã gốc ... */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="border-b pb-4 mb-4">
             <h2 className="text-xl font-bold mb-2">Thông Tin Đơn Hàng</h2>
@@ -392,7 +339,6 @@ const OrderSuccessPage = () => {
               Ngày đặt: {new Date(order.created_at).toLocaleDateString("vi-VN")}
             </p>
           </div>
-
           {/* Customer Info */}
           <div className="mb-6">
             <h3 className="font-semibold mb-3">Thông tin người nhận:</h3>
@@ -413,7 +359,6 @@ const OrderSuccessPage = () => {
               </p>
             </div>
           </div>
-
           {/* Order Items */}
           <div className="mb-6">
             <h3 className="font-semibold mb-3">Sản phẩm đã đặt:</h3>
@@ -439,7 +384,6 @@ const OrderSuccessPage = () => {
               ))}
             </div>
           </div>
-
           {/* Order Total */}
           <div className="border-t pt-4">
             <div className="flex justify-between mb-2">
@@ -464,7 +408,6 @@ const OrderSuccessPage = () => {
             </div>
           </div>
         </div>
-
         {/* Order Status Timeline */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="font-semibold mb-4">Trạng Thái Đơn Hàng</h3>
@@ -480,7 +423,6 @@ const OrderSuccessPage = () => {
                 </p>
               </div>
             </div>
-
             <div className="flex items-center gap-3 opacity-50">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                 <Package className="w-5 h-5 text-gray-600" />
@@ -490,7 +432,6 @@ const OrderSuccessPage = () => {
                 <p className="text-sm text-gray-500">Chờ xử lý</p>
               </div>
             </div>
-
             <div className="flex items-center gap-3 opacity-50">
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                 <Truck className="w-5 h-5 text-gray-600" />
@@ -502,7 +443,6 @@ const OrderSuccessPage = () => {
             </div>
           </div>
         </div>
-
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
@@ -518,7 +458,6 @@ const OrderSuccessPage = () => {
             Xem Sản Phẩm Khác
           </Link>
         </div>
-
         {/* Support Info */}
         <div className="mt-8 text-center text-sm text-gray-600">
           <p className="mb-2">
