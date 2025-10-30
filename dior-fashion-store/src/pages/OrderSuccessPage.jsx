@@ -209,7 +209,7 @@ const OrderSuccessPage = () => {
         } else {
           console.warn("ZaloSocialSDK not found inside timeout.");
         }
-      }, 500); // Đã tăng lên 500ms
+      }, 1000); // Đã tăng lên 500ms
     } else {
       console.warn("ZaloSocialSDK not loaded when useEffect ran.");
     }
