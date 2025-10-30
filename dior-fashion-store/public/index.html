@@ -57,7 +57,42 @@
     ></div>
     <!-- KẾT THÚC MÃ NHÚNG NÚT QUAN TÂM ZALO (FOLLOW BUTTON) -->
 
-    <!-- ⚠️ QUAN TRỌNG: Zalo SDK PHẢI Ở CUỐI BODY -->
-    <script src="https://sp.zalo.me/plugins/sdk.js"></script>
+    <!-- ⚠️ QUAN TRỌNG: Zalo SDK được load động sau khi DOM sẵn sàng -->
+    <script>
+      // Hàm load Zalo SDK
+      function loadZaloSDK() {
+        try {
+          var script = document.createElement("script");
+          script.src = "https://sp.zalo.me/plugins/sdk.js";
+          script.async = true;
+          script.defer = true;
+
+          script.onload = function () {
+            console.log("Zalo SDK loaded successfully");
+          };
+
+          script.onerror = function () {
+            console.error("Không thể tải Zalo SDK");
+          };
+
+          document.body.appendChild(script);
+        } catch (error) {
+          console.error("Lỗi khi load Zalo SDK:", error);
+        }
+      }
+
+      // Đảm bảo DOM và React app đã load xong
+      if (document.readyState === "loading") {
+        // DOM vẫn đang load
+        document.addEventListener("DOMContentLoaded", function () {
+          // Đợi thêm 300ms để React render xong
+          setTimeout(loadZaloSDK, 300);
+        });
+      } else {
+        // DOM đã load xong
+        // Đợi thêm 300ms để React render xong
+        setTimeout(loadZaloSDK, 300);
+      }
+    </script>
   </body>
 </html>
