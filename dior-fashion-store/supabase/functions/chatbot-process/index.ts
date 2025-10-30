@@ -1,5 +1,5 @@
 // ============================================
-// index.ts - Main entry point (UPGRADED WITH ZALO ZNS)
+// index.ts - Main entry point (UPGRADED WITH ZALO ZNS + AUTO TOKEN REFRESH)
 // ============================================
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -32,6 +32,90 @@ import {
   handleSendOrderZNS,
   handleGetZNSLogs,
 } from "./handlers/zaloHandler.ts";
+
+// =========================================================
+// 🔑 ZALO TOKEN MANAGEMENT
+// =========================================================
+
+// Cache access token in memory (valid for 1 hour typically)
+let cachedAccessToken: string | null = null;
+let tokenExpiryTime: number = 0;
+
+/**
+ * Refresh Zalo Access Token using Refresh Token
+ */
+async function refreshZaloAccessToken(): Promise<string | null> {
+  const ZALO_APP_ID = Deno.env.get("ZALO_APP_ID") || "2783779431140209468";
+  const ZALO_SECRET_KEY = Deno.env.get("ZALO_SECRET_KEY");
+  const ZALO_REFRESH_TOKEN = Deno.env.get("ZALO_REFRESH_TOKEN");
+
+  if (!ZALO_SECRET_KEY || !ZALO_REFRESH_TOKEN) {
+    console.error("❌ Missing ZALO_SECRET_KEY or ZALO_REFRESH_TOKEN");
+    return null;
+  }
+
+  try {
+    console.log("🔄 Refreshing Zalo access token...");
+
+    const response = await fetch(
+      "https://oauth.zaloapp.com/v4/oa/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          secret_key: ZALO_SECRET_KEY,
+        },
+        body: new URLSearchParams({
+          refresh_token: ZALO_REFRESH_TOKEN,
+          app_id: ZALO_APP_ID,
+          grant_type: "refresh_token",
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("📥 Token refresh response:", {
+      error: data.error,
+      message: data.message,
+      hasAccessToken: !!data.access_token,
+    });
+
+    if (data.error === 0 && data.access_token) {
+      cachedAccessToken = data.access_token;
+      // Cache token for 50 minutes (3000 seconds) to be safe
+      tokenExpiryTime = Date.now() + 3000 * 1000;
+
+      console.log("✅ Access token refreshed successfully");
+      console.log(
+        "🔑 New token (first 20 chars):",
+        data.access_token.substring(0, 20) + "..."
+      );
+
+      return data.access_token;
+    } else {
+      console.error("❌ Failed to refresh token:", data);
+      return null;
+    }
+  } catch (error) {
+    console.error("❌ Error refreshing token:", error);
+    return null;
+  }
+}
+
+/**
+ * Get valid Zalo Access Token (from cache or refresh)
+ */
+async function getValidZaloAccessToken(): Promise<string | null> {
+  // Check if cached token is still valid
+  if (cachedAccessToken && Date.now() < tokenExpiryTime) {
+    console.log("✅ Using cached access token");
+    return cachedAccessToken;
+  }
+
+  console.log("⏰ Token expired or not cached, refreshing...");
+  return await refreshZaloAccessToken();
+}
 
 // =========================================================
 // MAIN SERVER LOGIC
@@ -127,7 +211,7 @@ serve(async (req: Request) => {
           break;
 
         // ==========================================
-        // 🆕 ZALO ZNS ACTIONS
+        // 🆕 ZALO ZNS ACTIONS (WITH AUTO TOKEN REFRESH)
         // ==========================================
 
         /**
@@ -141,9 +225,24 @@ serve(async (req: Request) => {
          *   order_status?: string
          * }
          */
-        case "SEND_ZNS":
-          result = await handleSendZNS(payload);
+        case "SEND_ZNS": {
+          const accessToken = await getValidZaloAccessToken();
+          if (!accessToken) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error:
+                  "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
+              }),
+              {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+          result = await handleSendZNS(payload, accessToken);
           break;
+        }
 
         /**
          * SAVE_ZALO_CONSENT - Lưu đồng ý nhận ZNS
@@ -161,12 +260,31 @@ serve(async (req: Request) => {
          * Lấy thông tin từ database và gửi
          * Payload: {
          *   order_number: string,
-         *   zalo_user_id?: string (optional, sẽ lấy từ customer_profiles)
+         *   customer_name: string,
+         *   customer_phone: string,
+         *   zalo_user_id: string,
+         *   order_date?: string,
+         *   order_status?: string
          * }
          */
-        case "SEND_ORDER_ZNS":
-          result = await handleSendOrderZNS(payload);
+        case "SEND_ORDER_ZNS": {
+          const accessToken = await getValidZaloAccessToken();
+          if (!accessToken) {
+            return new Response(
+              JSON.stringify({
+                success: false,
+                error:
+                  "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
+              }),
+              {
+                status: 500,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+          result = await handleSendOrderZNS(payload, accessToken);
           break;
+        }
 
         /**
          * GET_ZNS_LOGS - Lấy lịch sử gửi ZNS
@@ -178,6 +296,19 @@ serve(async (req: Request) => {
         case "GET_ZNS_LOGS":
           result = await handleGetZNSLogs(payload);
           break;
+
+        /**
+         * REFRESH_ZALO_TOKEN - Manually refresh token (for testing)
+         */
+        case "REFRESH_ZALO_TOKEN": {
+          const newToken = await refreshZaloAccessToken();
+          result = {
+            success: !!newToken,
+            token: newToken ? newToken.substring(0, 20) + "..." : null,
+            expiresAt: new Date(tokenExpiryTime).toISOString(),
+          };
+          break;
+        }
 
         // ==========================================
         // UNKNOWN ACTION
@@ -220,18 +351,33 @@ serve(async (req: Request) => {
  * USAGE EXAMPLES
  * ============================================
  *
- * 1. Gửi ZNS cho đơn hàng mới:
+ * 1. Gửi ZNS cho đơn hàng mới (auto refresh token):
+ *
+ * curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/chatbot-process \
+ *   -H "Content-Type: application/json" \
+ *   -H "Authorization: Bearer YOUR_SUPABASE_ANON_KEY" \
+ *   -d '{
+ *     "action": "SEND_ORDER_ZNS",
+ *     "payload": {
+ *       "order_number": "BEWO-2510301988",
+ *       "customer_name": "Ducvit12",
+ *       "customer_phone": "84868945899",
+ *       "zalo_user_id": "7202759495111049759",
+ *       "order_date": "30/10/2025",
+ *       "order_status": "Đang xử lý"
+ *     }
+ *   }'
+ *
+ * 2. Manually refresh token (for testing):
  *
  * curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/chatbot-process \
  *   -H "Content-Type: application/json" \
  *   -d '{
- *     "action": "SEND_ORDER_ZNS",
- *     "payload": {
- *       "order_number": "ORD-001"
- *     }
+ *     "action": "REFRESH_ZALO_TOKEN",
+ *     "payload": {}
  *   }'
  *
- * 2. Lưu Zalo consent:
+ * 3. Lưu Zalo consent:
  *
  * curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/chatbot-process \
  *   -H "Content-Type: application/json" \
@@ -243,22 +389,6 @@ serve(async (req: Request) => {
  *     }
  *   }'
  *
- * 3. Gửi ZNS với data đầy đủ:
- *
- * curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/chatbot-process \
- *   -H "Content-Type: application/json" \
- *   -d '{
- *     "action": "SEND_ZNS",
- *     "payload": {
- *       "order_number": "ORD-001",
- *       "customer_name": "Nguyễn Văn A",
- *       "customer_phone": "0912345678",
- *       "zalo_user_id": "user_id_123",
- *       "order_date": "2024-11-01",
- *       "order_status": "pending"
- *     }
- *   }'
- *
  * 4. Xem lịch sử ZNS:
  *
  * curl -X POST https://YOUR_PROJECT.supabase.co/functions/v1/chatbot-process \
@@ -266,8 +396,19 @@ serve(async (req: Request) => {
  *   -d '{
  *     "action": "GET_ZNS_LOGS",
  *     "payload": {
- *       "order_number": "ORD-001",
+ *       "order_number": "BEWO-2510301988",
  *       "limit": 10
  *     }
  *   }'
+ *
+ * ============================================
+ * REQUIRED ENVIRONMENT VARIABLES
+ * ============================================
+ *
+ * Set these in Supabase Dashboard → Edge Functions → Secrets:
+ *
+ * ZALO_APP_ID=2783779431140209468
+ * ZALO_OA_ID=870752253827008707
+ * ZALO_SECRET_KEY=<your_secret_key_from_zalo_developer>
+ * ZALO_REFRESH_TOKEN=<your_refresh_token_from_zalo>
  */

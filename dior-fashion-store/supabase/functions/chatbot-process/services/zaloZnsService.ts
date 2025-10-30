@@ -1,12 +1,11 @@
 // ============================================
-// ZALO ZNS SERVICE
+// ZALO ZNS SERVICE (UPDATED WITH DYNAMIC ACCESS TOKEN)
 // File: services/zaloZnsService.ts
 // ============================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ZALO_API_URL = "https://business.openapi.zalo.me/message/template";
-const ZALO_ACCESS_TOKEN = Deno.env.get("ZALO_ACCESS_TOKEN") || "";
 const ZALO_TEMPLATE_ID = Deno.env.get("ZALO_TEMPLATE_ID") || "";
 
 interface ZNSOrderData {
@@ -29,8 +28,13 @@ interface ZaloAPIResponse {
 
 /**
  * Gửi ZNS notification qua Zalo
+ * @param orderData - Order information
+ * @param accessToken - Dynamic access token (refreshed from index.ts)
  */
-export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
+export async function sendZaloZNS(
+  orderData: ZNSOrderData,
+  accessToken: string
+): Promise<any> {
   try {
     console.log("📱 Sending ZNS notification:", {
       order_number: orderData.order_number,
@@ -39,16 +43,24 @@ export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
     });
 
     // Validate
-    if (!ZALO_ACCESS_TOKEN) {
-      throw new Error("ZALO_ACCESS_TOKEN not configured");
+    if (!accessToken) {
+      throw new Error("Access token not provided");
     }
     if (!ZALO_TEMPLATE_ID) {
       throw new Error("ZALO_TEMPLATE_ID not configured");
     }
 
+    console.log(
+      "🔑 Using access token (first 20 chars):",
+      accessToken.substring(0, 20) + "..."
+    );
+
+    // Format phone number (convert 0xxx to 84xxx)
+    const formattedPhone = orderData.customer_phone.replace(/^0/, "84");
+
     // Prepare payload
     const znsPayload = {
-      phone: orderData.zalo_user_id,
+      phone: formattedPhone, // ✅ Use formatted phone, not zalo_user_id
       template_id: ZALO_TEMPLATE_ID,
       template_data: {
         date: orderData.order_date,
@@ -56,23 +68,23 @@ export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
         name: orderData.customer_name,
         status: orderData.order_status,
       },
-      tracking_id: `ORDER_${orderData.order_number}_${Date.now()}`,
+      tracking_id: orderData.zalo_user_id, // ✅ Use zalo_user_id as tracking_id
     };
 
-    console.log("📤 ZNS Payload:", znsPayload);
+    console.log("📤 ZNS Payload:", JSON.stringify(znsPayload, null, 2));
 
-    // Call Zalo API
+    // Call Zalo API with dynamic access token
     const response = await fetch(ZALO_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        access_token: ZALO_ACCESS_TOKEN,
+        access_token: accessToken, // ✅ Use dynamic token
       },
       body: JSON.stringify(znsPayload),
     });
 
     const result: ZaloAPIResponse = await response.json();
-    console.log("📥 Zalo API response:", result);
+    console.log("📥 Zalo API response:", JSON.stringify(result, null, 2));
 
     // Log to database
     await logZNS(orderData, result);
@@ -112,8 +124,14 @@ async function logZNS(
       zalo_user_id: orderData.zalo_user_id,
       customer_phone: orderData.customer_phone,
       template_id: ZALO_TEMPLATE_ID,
+      template_data: {
+        date: orderData.order_date,
+        order_code: orderData.order_number,
+        name: orderData.customer_name,
+        status: orderData.order_status,
+      },
       status: result.error === 0 ? "sent" : "failed",
-      response: result,
+      zalo_response: result,
       error_message: result.error !== 0 ? result.message : null,
       sent_at: new Date().toISOString(),
     };
@@ -121,10 +139,12 @@ async function logZNS(
     const { error } = await supabase.from("zalo_zns_logs").insert(logData);
 
     if (error) {
-      console.error("Failed to log ZNS:", error);
+      console.error("❌ Failed to log ZNS:", error);
+    } else {
+      console.log("✅ ZNS log saved successfully");
     }
   } catch (error) {
-    console.error("Error logging ZNS:", error);
+    console.error("❌ Exception while logging ZNS:", error);
   }
 }
 
@@ -143,12 +163,18 @@ export async function saveZaloConsent(
 
     const { data, error } = await supabase
       .from("customer_profiles")
-      .update({
-        zalo_user_id: zalo_user_id,
-        zalo_consent_date: new Date().toISOString(),
-        zalo_consent_active: true,
-      })
-      .eq("phone", customer_phone)
+      .upsert(
+        {
+          phone: customer_phone,
+          zalo_user_id: zalo_user_id,
+          zalo_consent_date: new Date().toISOString(),
+          zalo_consent_active: true,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "phone",
+        }
+      )
       .select()
       .single();
 
@@ -157,7 +183,7 @@ export async function saveZaloConsent(
     console.log("✅ Zalo consent saved for:", customer_phone);
     return data;
   } catch (error) {
-    console.error("Error saving Zalo consent:", error);
+    console.error("❌ Error saving Zalo consent:", error);
     throw error;
   }
 }
