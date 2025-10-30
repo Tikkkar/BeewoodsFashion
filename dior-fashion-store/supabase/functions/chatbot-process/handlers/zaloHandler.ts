@@ -1,7 +1,6 @@
 // ============================================
-// ZALO ZNS HANDLER (UPDATED WITH ACCESS TOKEN SUPPORT)
+// ZALO ZNS HANDLER (SIMPLIFIED - NO TOKEN PARAM)
 // File: handlers/zaloHandler.ts
-// Bao gồm logic cập nhật Zalo Consent vào customer_profiles
 // ============================================
 
 import {
@@ -14,14 +13,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 /**
  * Handle SEND_ZNS action
- * Gửi ZNS notification với đầy đủ data được cung cấp.
- * @param payload - Order data
- * @param accessToken - Dynamic Zalo access token from index.ts
  */
-export async function handleSendZNS(
-  payload: any,
-  accessToken: string
-): Promise<any> {
+export async function handleSendZNS(payload: any): Promise<any> {
   try {
     console.log("[ZNS Handler] Sending ZNS for order:", payload.order_number);
 
@@ -34,35 +27,28 @@ export async function handleSendZNS(
       order_status,
     } = payload;
 
-    // Validate required fields
     if (!order_number || !customer_name || !zalo_user_id) {
       throw new Error(
         "Missing required fields: order_number, customer_name, zalo_user_id"
       );
     }
 
-    // Format date
     const formattedDate = order_date
       ? formatDateForZNS(order_date)
       : formatDateForZNS(new Date());
 
-    // Format status
     const formattedStatus = order_status
       ? getOrderStatusVN(order_status)
       : "Đang xử lý";
 
-    // Send ZNS with dynamic access token
-    const result = await sendZaloZNS(
-      {
-        order_number,
-        customer_name,
-        customer_phone: customer_phone || "",
-        zalo_user_id,
-        order_date: formattedDate,
-        order_status: formattedStatus,
-      },
-      accessToken
-    );
+    const result = await sendZaloZNS({
+      order_number,
+      customer_name,
+      customer_phone: customer_phone || "",
+      zalo_user_id,
+      order_date: formattedDate,
+      order_status: formattedStatus,
+    });
 
     return {
       success: true,
@@ -77,7 +63,6 @@ export async function handleSendZNS(
 
 /**
  * Handle SAVE_ZALO_CONSENT action
- * Chỉ lưu thông tin đồng ý nhận ZNS của khách (sử dụng riêng)
  */
 export async function handleSaveZaloConsent(payload: any): Promise<any> {
   try {
@@ -104,15 +89,8 @@ export async function handleSaveZaloConsent(payload: any): Promise<any> {
 
 /**
  * Handle SEND_ORDER_ZNS action
- * [ĐÃ CẬP NHẬT]
- * Tự động gửi ZNS khi tạo đơn VÀ LƯU ZALO CONSENT
- * @param payload - Contains order_number, customer info, and zalo_user_id
- * @param accessToken - Dynamic Zalo access token from index.ts
  */
-export async function handleSendOrderZNS(
-  payload: any,
-  accessToken: string
-): Promise<any> {
+export async function handleSendOrderZNS(payload: any): Promise<any> {
   try {
     const {
       order_number,
@@ -125,18 +103,15 @@ export async function handleSendOrderZNS(
 
     console.log(`[ZNS Handler] Processing SEND_ORDER_ZNS for: ${order_number}`);
 
-    // Validate required fields from payload
     if (!order_number) {
       throw new Error("order_number is required");
     }
 
     if (!zalo_user_id) {
-      console.warn(
-        "No Zalo user ID provided in payload, cannot send ZNS or save consent."
-      );
+      console.warn("No Zalo user ID provided");
       return {
         success: false,
-        message: "No Zalo User ID provided from frontend.",
+        message: "No Zalo User ID provided",
       };
     }
 
@@ -149,7 +124,7 @@ export async function handleSendOrderZNS(
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // [LOGIC MỚI] Lưu hoặc cập nhật thông tin Zalo vào customer_profiles
+    // Save consent
     console.log(`💾 Saving Zalo consent for phone: ${customer_phone}`);
     const { error: profileUpdateError } = await supabase
       .from("customer_profiles")
@@ -172,26 +147,19 @@ export async function handleSendOrderZNS(
         "❌ Failed to save Zalo consent:",
         profileUpdateError.message
       );
-      // Không dừng lại, vẫn cố gắng gửi ZNS
     } else {
-      console.log(
-        "✅ Zalo consent saved successfully for phone:",
-        customer_phone
-      );
+      console.log("✅ Zalo consent saved successfully");
     }
 
-    // Gửi ZNS với access token động
-    const result = await sendZaloZNS(
-      {
-        order_number: order_number,
-        customer_name: customer_name,
-        customer_phone: customer_phone,
-        zalo_user_id: zalo_user_id,
-        order_date: order_date || formatDateForZNS(new Date()),
-        order_status: order_status || "Đang xử lý",
-      },
-      accessToken
-    );
+    // Send ZNS
+    const result = await sendZaloZNS({
+      order_number: order_number,
+      customer_name: customer_name,
+      customer_phone: customer_phone,
+      zalo_user_id: zalo_user_id,
+      order_date: order_date || formatDateForZNS(new Date()),
+      order_status: order_status || "Đang xử lý",
+    });
 
     return {
       success: true,
@@ -206,7 +174,6 @@ export async function handleSendOrderZNS(
 
 /**
  * Handle GET_ZNS_LOGS action
- * Lấy lịch sử gửi ZNS
  */
 export async function handleGetZNSLogs(payload: any): Promise<any> {
   try {

@@ -40,10 +40,6 @@ import {
 // Cache access token in memory (valid for 1 hour typically)
 let cachedAccessToken: string | null = null;
 let tokenExpiryTime: number = 0;
-
-/**
- * Refresh Zalo Access Token using Refresh Token
- */
 async function refreshZaloAccessToken(): Promise<string | null> {
   const ZALO_APP_ID = Deno.env.get("ZALO_APP_ID") || "2783779431140209468";
   const ZALO_SECRET_KEY = Deno.env.get("ZALO_SECRET_KEY");
@@ -76,25 +72,24 @@ async function refreshZaloAccessToken(): Promise<string | null> {
     const data = await response.json();
 
     console.log("📥 Token refresh response:", {
-      error: data.error,
-      message: data.message,
       hasAccessToken: !!data.access_token,
+      hasRefreshToken: !!data.refresh_token,
     });
 
-    if (data.error === 0 && data.access_token) {
+    // ✅ FIX: Chỉ cần check access_token tồn tại
+    if (data.access_token) {
       cachedAccessToken = data.access_token;
-      // Cache token for 50 minutes (3000 seconds) to be safe
       tokenExpiryTime = Date.now() + 3000 * 1000;
 
       console.log("✅ Access token refreshed successfully");
       console.log(
-        "🔑 New token (first 20 chars):",
+        "🔑 Token (first 20 chars):",
         data.access_token.substring(0, 20) + "..."
       );
 
       return data.access_token;
     } else {
-      console.error("❌ Failed to refresh token:", data);
+      console.error("❌ No access token in response:", data);
       return null;
     }
   } catch (error) {
@@ -107,13 +102,15 @@ async function refreshZaloAccessToken(): Promise<string | null> {
  * Get valid Zalo Access Token (from cache or refresh)
  */
 async function getValidZaloAccessToken(): Promise<string | null> {
-  // Check if cached token is still valid
-  if (cachedAccessToken && Date.now() < tokenExpiryTime) {
-    console.log("✅ Using cached access token");
-    return cachedAccessToken;
+  // TẠM THỜI: Dùng access token cố định
+  const hardcodedToken = Deno.env.get("ZALO_ACCESS_TOKEN");
+
+  if (hardcodedToken) {
+    console.log("✅ Using hardcoded access token");
+    return hardcodedToken;
   }
 
-  console.log("⏰ Token expired or not cached, refreshing...");
+  console.log("⏰ No hardcoded token, trying refresh...");
   return await refreshZaloAccessToken();
 }
 
@@ -282,7 +279,7 @@ serve(async (req: Request) => {
               }
             );
           }
-          result = await handleSendOrderZNS(payload, accessToken);
+          result = await handleSendOrderZNS(payload);
           break;
         }
 

@@ -1,11 +1,12 @@
 // ============================================
-// ZALO ZNS SERVICE (UPDATED WITH DYNAMIC ACCESS TOKEN)
+// ZALO ZNS SERVICE (SIMPLIFIED - STATIC TOKEN)
 // File: services/zaloZnsService.ts
 // ============================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ZALO_API_URL = "https://business.openapi.zalo.me/message/template";
+const ZALO_ACCESS_TOKEN = Deno.env.get("ZALO_ACCESS_TOKEN") || ""; // ✅ Static token
 const ZALO_TEMPLATE_ID = Deno.env.get("ZALO_TEMPLATE_ID") || "";
 
 interface ZNSOrderData {
@@ -28,13 +29,8 @@ interface ZaloAPIResponse {
 
 /**
  * Gửi ZNS notification qua Zalo
- * @param orderData - Order information
- * @param accessToken - Dynamic access token (refreshed from index.ts)
  */
-export async function sendZaloZNS(
-  orderData: ZNSOrderData,
-  accessToken: string
-): Promise<any> {
+export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
   try {
     console.log("📱 Sending ZNS notification:", {
       order_number: orderData.order_number,
@@ -43,8 +39,8 @@ export async function sendZaloZNS(
     });
 
     // Validate
-    if (!accessToken) {
-      throw new Error("Access token not provided");
+    if (!ZALO_ACCESS_TOKEN) {
+      throw new Error("ZALO_ACCESS_TOKEN not configured");
     }
     if (!ZALO_TEMPLATE_ID) {
       throw new Error("ZALO_TEMPLATE_ID not configured");
@@ -52,7 +48,7 @@ export async function sendZaloZNS(
 
     console.log(
       "🔑 Using access token (first 20 chars):",
-      accessToken.substring(0, 20) + "..."
+      ZALO_ACCESS_TOKEN.substring(0, 20) + "..."
     );
 
     // Format phone number (convert 0xxx to 84xxx)
@@ -60,7 +56,7 @@ export async function sendZaloZNS(
 
     // Prepare payload
     const znsPayload = {
-      phone: formattedPhone, // ✅ Use formatted phone, not zalo_user_id
+      phone: formattedPhone,
       template_id: ZALO_TEMPLATE_ID,
       template_data: {
         date: orderData.order_date,
@@ -68,17 +64,17 @@ export async function sendZaloZNS(
         name: orderData.customer_name,
         status: orderData.order_status,
       },
-      tracking_id: orderData.zalo_user_id, // ✅ Use zalo_user_id as tracking_id
+      tracking_id: orderData.zalo_user_id,
     };
 
     console.log("📤 ZNS Payload:", JSON.stringify(znsPayload, null, 2));
 
-    // Call Zalo API with dynamic access token
+    // Call Zalo API
     const response = await fetch(ZALO_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        access_token: accessToken, // ✅ Use dynamic token
+        access_token: ZALO_ACCESS_TOKEN,
       },
       body: JSON.stringify(znsPayload),
     });
@@ -124,14 +120,8 @@ async function logZNS(
       zalo_user_id: orderData.zalo_user_id,
       customer_phone: orderData.customer_phone,
       template_id: ZALO_TEMPLATE_ID,
-      template_data: {
-        date: orderData.order_date,
-        order_code: orderData.order_number,
-        name: orderData.customer_name,
-        status: orderData.order_status,
-      },
       status: result.error === 0 ? "sent" : "failed",
-      zalo_response: result,
+      response: result,
       error_message: result.error !== 0 ? result.message : null,
       sent_at: new Date().toISOString(),
     };
