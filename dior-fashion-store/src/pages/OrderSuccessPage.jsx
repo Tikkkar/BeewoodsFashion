@@ -1,15 +1,84 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
-import { CheckCircle, Package, Truck, Loader2 } from "lucide-react";
+import {
+  CheckCircle,
+  Package,
+  Truck,
+  Loader2,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import { getOrderByNumber } from "../lib/api/orders";
+
+// --- CUSTOM ALERT COMPONENT ---
+const CustomAlert = ({ message, type, onClose }) => {
+  const bgColor =
+    type === "success"
+      ? "bg-green-100"
+      : type === "error"
+      ? "bg-red-100"
+      : "bg-yellow-100";
+  const textColor =
+    type === "success"
+      ? "text-green-800"
+      : type === "error"
+      ? "text-red-800"
+      : "text-yellow-800";
+  const borderColor =
+    type === "success"
+      ? "border-green-400"
+      : type === "error"
+      ? "border-red-400"
+      : "border-yellow-400";
+  const Icon =
+    type === "error" || type === "warning" ? AlertTriangle : CheckCircle;
+
+  if (!message) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20">
+      <div
+        className={`shadow-2xl max-w-sm w-full p-4 rounded-lg border-l-4 ${bgColor} ${textColor} ${borderColor}`}
+        role="alert"
+      >
+        <div className="flex items-start">
+          <Icon className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" />
+          <div className="text-sm font-medium flex-1">{message}</div>
+          <button
+            onClick={onClose}
+            className={`ml-4 ${textColor} hover:text-gray-600 transition`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+// --- END CUSTOM ALERT COMPONENT ---
 
 const OrderSuccessPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [alertState, setAlertState] = useState({
+    message: null,
+    type: "success",
+  });
 
   const orderNumber = location.state?.orderNumber;
+
+  // Function to show custom alert message
+  const showAlert = (message, type) => {
+    setAlertState({ message, type });
+    // Tự động đóng sau 5 giây
+    setTimeout(() => setAlertState({ message: null, type: "success" }), 5000);
+  };
+
+  const handleCloseAlert = useCallback(() => {
+    setAlertState({ message: null, type: "success" });
+  }, []);
 
   useEffect(() => {
     if (!orderNumber) {
@@ -34,7 +103,9 @@ const OrderSuccessPage = () => {
 
   // Khởi tạo Zalo Consent Widget và định nghĩa callback
   useEffect(() => {
-    // ✅ Định nghĩa global callback function
+    if (!order) return; // Đảm bảo order đã load xong
+
+    // ✅ Định nghĩa global callback function cho Zalo SDK
     window.handleZaloConsent = function (response) {
       console.log("🔔 Zalo Consent Response:", response);
 
@@ -77,24 +148,27 @@ const OrderSuccessPage = () => {
           .then((res) => res.json())
           .then((data) => {
             console.log("✅ ZNS sent successfully:", data);
-            alert(
-              "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo."
+            showAlert(
+              "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
+              "success"
             );
           })
           .catch((err) => {
             console.error("❌ Error sending ZNS:", err);
-            alert(
-              "⚠️ Có lỗi xảy ra khi đăng ký thông báo. Vui lòng thử lại sau."
+            showAlert(
+              "⚠️ Có lỗi xảy ra khi đăng ký thông báo. Vui lòng thử lại sau.",
+              "error"
             );
           });
       } else {
         console.error("❌ Zalo consent error:", response);
         if (response.error === 3) {
-          alert(
-            "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo."
+          showAlert(
+            "⚠️ Bạn đã hủy đồng ý. Vui lòng thử lại nếu muốn nhận thông báo.",
+            "warning"
           );
         } else {
-          alert("⚠️ Có lỗi xảy ra. Vui lòng thử lại sau.");
+          showAlert("⚠️ Có lỗi xảy ra. Vui lòng thử lại sau.", "error");
         }
       }
     };
@@ -105,19 +179,30 @@ const OrderSuccessPage = () => {
     console.log("- ZaloSDK loaded:", !!window.ZaloSocialSDK);
     console.log("- Callback defined:", !!window.handleZaloConsent);
 
-    // Reload Zalo SDK khi order đã load
-    if (order && window.ZaloSocialSDK) {
-      console.log("🔄 Reloading Zalo SDK...");
-      window.ZaloSocialSDK.reload();
-    }
+    // ✅ FIX LỖI: Chỉ reload widget khi order đã load VÀ ZaloSocialSDK đã sẵn sàng.
+    // Dùng setTimeout 100ms để đảm bảo React đã hoàn tất việc render DOM của widget.
+    if (window.ZaloSocialSDK) {
+      console.log("🔄 Reloading Zalo SDK for Consent Widget...");
+      const timer = setTimeout(() => {
+        window.ZaloSocialSDK.reload();
+      }, 100);
 
-    // Cleanup khi component unmount
-    return () => {
-      if (window.handleZaloConsent) {
-        delete window.handleZaloConsent;
-      }
-    };
-  }, [order]);
+      // Cleanup: Xóa callback và timeout
+      return () => {
+        clearTimeout(timer);
+        if (window.handleZaloConsent) {
+          delete window.handleZaloConsent;
+        }
+      };
+    } else {
+      // Cleanup: Chỉ xóa callback nếu ZaloSocialSDK không tồn tại
+      return () => {
+        if (window.handleZaloConsent) {
+          delete window.handleZaloConsent;
+        }
+      };
+    }
+  }, [order]); // Dependency là order và showAlert
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -171,6 +256,11 @@ const OrderSuccessPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <CustomAlert
+        message={alertState.message}
+        type={alertState.type}
+        onClose={handleCloseAlert}
+      />
       <div className="max-w-3xl mx-auto">
         {/* Success Icon */}
         <div className="text-center mb-8">
