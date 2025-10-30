@@ -80,6 +80,36 @@ const OrderSuccessPage = () => {
     setAlertState({ message: null, type: "success" });
   }, []);
 
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
+
+  const formatDateForZNS = (dateString) => {
+    // Format: DD/MM/YYYY
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const getOrderStatus = (status) => {
+    const statusMap = {
+      pending: "Chờ xác nhận",
+      processing: "Đang xử lý",
+      confirmed: "Đã xác nhận",
+      shipping: "Đang giao hàng",
+      delivered: "Đã giao hàng",
+      completed: "Hoàn thành",
+      cancelled: "Đã hủy",
+    };
+    return statusMap[status] || "Đang xử lý";
+  };
+
+  // --- EFFECT: FETCH ORDER DATA ---
   useEffect(() => {
     if (!orderNumber) {
       navigate("/");
@@ -100,28 +130,25 @@ const OrderSuccessPage = () => {
 
     fetchOrder();
   }, [orderNumber, navigate]);
+  // --- END EFFECT: FETCH ORDER DATA ---
 
-  // Khởi tạo Zalo Consent Widget và định nghĩa callback
+  // --- EFFECT: ZALO SDK CONSENT WIDGET LOGIC (UPDATED) ---
   useEffect(() => {
     if (!order) return; // Đảm bảo order đã load xong
 
-    // ✅ Định nghĩa global callback function cho Zalo SDK
+    // Định nghĩa global callback function cho Zalo SDK
     window.handleZaloConsent = function (response) {
       console.log("🔔 Zalo Consent Response:", response);
 
-      // --- SỬA LỖI 1: Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng ---
-      // Nếu response là một hành động trạng thái (state action) hoặc không có lỗi,
-      // thì không xử lý như một sự kiện đồng ý/hủy cuối cùng.
+      // Bỏ qua các thông báo trạng thái không phải là kết quả cuối cùng
       if (
         response.action === "loaded_successfully" ||
         response.action === "click_interaction_accepted" ||
         response.error === undefined
       ) {
-        // Log để debug nhưng không xử lý logic tiếp theo
         console.log("Zalo SDK action:", response.action || "Status update");
         return;
       }
-      // --- KẾT THÚC SỬA LỖI 1 ---
 
       if (response.error === 0) {
         // Trường hợp người dùng đồng ý (error: 0)
@@ -130,7 +157,7 @@ const OrderSuccessPage = () => {
 
         console.log("✅ Consent granted, sending ZNS...");
 
-        // Gửi request đến backend
+        // Chuẩn bị dữ liệu để gửi đến Supabase Function
         const orderData = {
           order_number: order?.order_number || "",
           customer_name: order?.customer_name || "",
@@ -144,7 +171,7 @@ const OrderSuccessPage = () => {
             : "Đang xử lý",
         };
 
-        // ✅ URL Supabase Function
+        // Gửi request đến backend (Supabase Function)
         fetch(
           "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
           {
@@ -195,66 +222,56 @@ const OrderSuccessPage = () => {
     console.log("- ZaloSDK loaded:", !!window.ZaloSocialSDK);
     console.log("- Callback defined:", !!window.handleZaloConsent);
 
-    let timer;
+    let intervalId;
 
-    // --- SỬA LỖI 2: Tăng độ trễ cho reload để đảm bảo DOM của widget đã sẵn sàng ---
-    if (window.ZaloSocialSDK) {
-      console.log("🔄 Reloading Zalo SDK for Consent Widget...");
-      // Tăng timeout lên 500ms để đảm bảo React đã hoàn tất việc render DOM của widget
-      // và widget iframe đã kịp load, giảm thiểu lỗi 'postMessage'
-      timer = setTimeout(() => {
-        // Kiểm tra an toàn lần nữa trước khi gọi reload
-        if (window.ZaloSocialSDK) {
-          window.ZaloSocialSDK.reload();
-        } else {
-          console.warn("ZaloSocialSDK not found inside timeout.");
-        }
-      }, 1000); // Đã tăng lên 500ms
-    } else {
-      console.warn("ZaloSocialSDK not loaded when useEffect ran.");
+    // Khắc phục lỗi postMessage bằng cách sử dụng setInterval để check DOM
+    const checkAndReloadZalo = () => {
+      const isSDKLoaded = !!window.ZaloSocialSDK;
+      // Kiểm tra xem phần tử widget đã được render trong DOM chưa
+      const isWidgetInDOM =
+        document.querySelector(".zalo-consent-widget") !== null;
+
+      if (isSDKLoaded && isWidgetInDOM) {
+        // Cả SDK và DOM widget đã sẵn sàng, tiến hành reload
+        console.log("✅ Zalo SDK and Widget DOM are ready. Reloading...");
+        window.ZaloSocialSDK.reload();
+
+        // Xóa interval sau khi đã reload thành công
+        clearInterval(intervalId);
+        return true;
+      }
+
+      // Logging cho mục đích debug
+      if (!isSDKLoaded) {
+        console.log("Waiting for ZaloSocialSDK to load...");
+      }
+      if (!isWidgetInDOM) {
+        console.log("Waiting for .zalo-consent-widget element in DOM...");
+      }
+      return false;
+    };
+
+    if (order) {
+      console.log("🔄 Starting interval check for Zalo SDK (200ms)...");
+      // Thực hiện check lần đầu ngay lập tức
+      if (!checkAndReloadZalo()) {
+        // Nếu lần đầu chưa thành công, thiết lập interval để kiểm tra liên tục mỗi 200ms
+        intervalId = setInterval(checkAndReloadZalo, 200);
+      }
     }
-    // --- KẾT THÚC SỬA LỖI 2 ---
 
-    // Cleanup: Xóa callback và timeout
+    // Cleanup: Xóa callback và interval
     return () => {
-      clearTimeout(timer);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
       // Xóa callback trên global window khi component unmount
       if (window.handleZaloConsent) {
         delete window.handleZaloConsent;
       }
     };
-    // --- SỬA LỖI 3: Thêm showAlert vào dependency array để đảm bảo useCallback hoạt động đúng ---
-  }, [order, showAlert]);
-  // --- KẾT THÚC SỬA LỖI 3 ---
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
-  const formatDateForZNS = (dateString) => {
-    // Format: DD/MM/YYYY
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
-
-  const getOrderStatus = (status) => {
-    const statusMap = {
-      pending: "Chờ xác nhận",
-      processing: "Đang xử lý",
-      confirmed: "Đã xác nhận",
-      shipping: "Đang giao hàng",
-      delivered: "Đã giao hàng",
-      completed: "Hoàn thành",
-      cancelled: "Đã hủy",
-    };
-    return statusMap[status] || "Đang xử lý";
-  };
+  }, [order, showAlert]); // Thêm showAlert vào dependency array
+  // --- END EFFECT: ZALO SDK CONSENT WIDGET LOGIC ---
 
   if (loading) {
     return (
