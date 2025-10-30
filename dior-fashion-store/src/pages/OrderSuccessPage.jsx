@@ -141,6 +141,7 @@ const OrderSuccessPage = () => {
     document.body.appendChild(script);
 
     window.handleZaloConsent = function (response) {
+      console.log("🆕 NEW CODE VERSION 2.0 - Consent fired:", response);
       console.log("Consent fired:", response);
       const { action, error, data } = response;
       console.log("🔔 Zalo Consent Response:", { action, error, data });
