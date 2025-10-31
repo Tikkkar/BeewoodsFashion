@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { getAdminOrderDetails, updateOrderStatus } from "../../lib/api/admin";
-import { createClient } from "@supabase/supabase-js";
 import {
   Loader2,
   Package,
@@ -15,12 +14,6 @@ import {
   Phone,
   Bell,
 } from "lucide-react";
-
-// Initialize Supabase
-const supabase = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SUPABASE_ANON_KEY
-);
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
@@ -62,7 +55,7 @@ const AdminOrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [znsStatus, setZnsStatus] = useState(null); // For ZNS notification status
+  const [znsStatus, setZnsStatus] = useState(null);
 
   const loadOrder = async () => {
     setLoading(true);
@@ -75,43 +68,22 @@ const AdminOrderDetail = () => {
     loadOrder();
   }, [id]);
 
-  // ✅ NEW: Send ZNS notification
+  // ✅ SIMPLIFIED: Just call Edge Function, let it handle everything
   const sendZNSNotification = async (order, newStatus) => {
     try {
       console.log("📤 Sending ZNS for status change:", {
         order_number: order.order_number,
-        old_status: order.status,
         new_status: newStatus,
       });
 
-      // Get customer Zalo info
-      const { data: customerProfile, error: profileError } = await supabase
-        .from("customer_profiles")
-        .select("zalo_user_id, zalo_consent_active, full_name")
-        .eq("phone", order.customer_phone)
-        .single();
-
-      if (profileError) {
-        console.log("⚠️ No customer profile found");
-        return { sent: false, reason: "no_profile" };
-      }
-
-      if (
-        !customerProfile?.zalo_consent_active ||
-        !customerProfile?.zalo_user_id
-      ) {
-        console.log("⚠️ Customer has not consented to Zalo notifications");
-        return { sent: false, reason: "no_consent" };
-      }
-
-      // Prepare ZNS payload
+      // Prepare ZNS payload - Edge Function will check consent internally
       const znsPayload = {
         action: "SEND_ORDER_ZNS",
         payload: {
           order_number: order.order_number,
-          customer_name: order.customer_name || customerProfile.full_name,
+          customer_name: order.customer_name,
           customer_phone: order.customer_phone,
-          zalo_user_id: customerProfile.zalo_user_id,
+          zalo_user_id: order.customer_phone.replace(/^0/, "84"), // Use phone as fallback
           order_date: new Date(order.created_at).toLocaleDateString("vi-VN"),
           order_status: statusMeta[newStatus]?.label || "Đang xử lý",
         },
@@ -139,6 +111,14 @@ const AdminOrderDetail = () => {
         console.log("✅ ZNS sent successfully");
         return { sent: true, result };
       } else {
+        // Check if it's a "no consent" error
+        if (
+          result.error?.includes("No Zalo User ID") ||
+          result.error?.includes("no consent")
+        ) {
+          console.log("⚠️ Customer hasn't consented");
+          return { sent: false, reason: "no_consent" };
+        }
         console.error("❌ Failed to send ZNS:", result.error);
         return { sent: false, error: result.error };
       }
@@ -148,14 +128,13 @@ const AdminOrderDetail = () => {
     }
   };
 
-  // ✅ UPDATED: Handle status update with ZNS
   const handleStatusUpdate = async (e) => {
     const newStatus = e.target.value;
 
-    if (updating) return; // Prevent double-click
+    if (updating) return;
 
     setUpdating(true);
-    setZnsStatus("sending"); // Show loading state
+    setZnsStatus("sending");
 
     try {
       // 1. Update order status
@@ -166,9 +145,12 @@ const AdminOrderDetail = () => {
 
       if (znsResult.sent) {
         setZnsStatus("success");
-        setTimeout(() => setZnsStatus(null), 3000); // Clear after 3s
-      } else {
+        setTimeout(() => setZnsStatus(null), 3000);
+      } else if (znsResult.reason === "no_consent") {
         setZnsStatus("skipped");
+        setTimeout(() => setZnsStatus(null), 4000);
+      } else {
+        setZnsStatus("error");
         setTimeout(() => setZnsStatus(null), 3000);
       }
 
@@ -202,10 +184,10 @@ const AdminOrderDetail = () => {
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* ✅ ZNS Status Notification */}
+      {/* ZNS Status Notification */}
       {znsStatus && (
         <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 ${
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 animate-slide-in ${
             znsStatus === "success"
               ? "bg-green-50 border-green-500 text-green-800"
               : znsStatus === "sending"
@@ -231,7 +213,14 @@ const AdminOrderDetail = () => {
             {znsStatus === "skipped" && (
               <>
                 <Bell className="w-5 h-5" />
-                <span>⚠️ Khách hàng chưa đăng ký nhận thông báo Zalo</span>
+                <div>
+                  <div className="font-medium">
+                    ⚠️ Chưa gửi được thông báo Zalo
+                  </div>
+                  <div className="text-xs mt-1">
+                    Khách hàng chưa đăng ký nhận thông báo từ trang thanh toán
+                  </div>
+                </div>
               </>
             )}
             {znsStatus === "error" && (
@@ -244,7 +233,7 @@ const AdminOrderDetail = () => {
         </div>
       )}
 
-      {/* Header - Back link + Order Number + Status */}
+      {/* Header */}
       <div className="flex justify-between items-center border-b pb-4 mb-6">
         <Link
           to="/admin/orders"
@@ -302,14 +291,10 @@ const AdminOrderDetail = () => {
             >
               {statusMeta[st].label}
             </div>
-            {idx < ORDER_STATUSES.length - 1 && (
-              <div className="hidden w-10 h-1 mx-1 bg-gray-200 rounded-full"></div>
-            )}
           </div>
         ))}
       </div>
 
-      {/* Timeline connector */}
       <div className="hidden lg:flex w-full justify-center -mt-8 mb-8">
         <div className="h-1 bg-gray-200 w-full max-w-xl -ml-20 -mr-20"></div>
       </div>
