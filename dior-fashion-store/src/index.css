@@ -1,5 +1,3 @@
-
-
 /* 1. Khai báo các lớp cơ sở của Tailwind CSS */
 @tailwind base;
 @tailwind components;
@@ -8,29 +6,26 @@
 /* 2. Thiết lập các kiểu dáng cơ bản cho toàn bộ trang */
 @layer base {
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-      Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+      Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Bạn có thể thêm các kiểu cơ bản khác ở đây, ví dụ: màu nền, màu chữ mặc định */
     @apply bg-white text-gray-900;
   }
 }
 
-/* 3. Các lớp tiện ích tùy chỉnh (Custom Utilities) */
+/* 3. Các lớp tiện ích tùy chỉnh */
 @layer utilities {
-  /* Tiện ích ẩn thanh cuộn */
   .scrollbar-hide {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   .scrollbar-hide::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    display: none;
   }
 }
 
-/* 4. Các hiệu ứng (Animations) tùy chỉnh */
+/* 4. Các hiệu ứng */
 @keyframes slide-in {
   from {
     transform: translateX(100%);
@@ -53,11 +48,89 @@
   }
 }
 
-/* Gán animation vào các lớp tiện ích */
 .animate-slide-in {
   animation: slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .animate-scale-in {
   animation: scale-in 0.3s ease-out;
+}
+
+/* ============================================
+   🔧 CHATBOT WIDGET - ABOVE ZALO (RIGHT SIDE)
+   ============================================ */
+
+/* Chatbot ở TRÊN, bên PHẢI */
+.chatbot-widget,
+[class*="chatbot"],
+.chat-widget-container,
+button[class*="chatbot"],
+div[class*="chat-widget"],
+[class*="ChatWidget"],
+[id*="chatbot"],
+button[class*="chat"] {
+  position: fixed !important;
+  bottom: 110px !important; /* 110px từ đáy */
+  right: 20px !important; /* Bên phải */
+  left: auto !important;
+  z-index: 1000 !important;
+}
+
+/* Mobile - giữ nguyên layout */
+@media (max-width: 768px) {
+  .chatbot-widget,
+  [class*="chatbot"],
+  button[class*="chatbot"],
+  button[class*="chat"] {
+    bottom: 100px !important;
+    right: 15px !important;
+  }
+}
+
+/* ============================================
+   🔧 ADMIN LAYOUT
+   ============================================ */
+
+.admin-layout {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  background: white !important;
+  z-index: 10;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-content {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-layout::before,
+.admin-layout::after {
+  display: none !important;
+}
+
+/* ============================================
+   🔧 TOAST ANIMATION
+   ============================================ */
+
+@keyframes toast-in {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 0.3s ease-out;
 }

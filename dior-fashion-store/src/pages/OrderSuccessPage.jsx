@@ -545,7 +545,7 @@ const OrderSuccessPage = () => {
             <strong>{order.customer_email}</strong>
           </p>
           <p>
-            Liên hệ: <strong>0962.209.4195</strong> nếu cần hỗ trợ
+            Liên hệ: <strong>036 2014571</strong> nếu cần hỗ trợ
           </p>
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   Route,
   Link,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { testSupabaseConnection } from "./lib/testConnection";
 import { AuthProvider } from "./hooks/useAuth";
@@ -64,6 +65,243 @@ import WishlistPage from "./pages/user/WishlistPage";
 import CartSidebar from "./components/cart/CartSidebar";
 import WishlistSidebar from "./components/cart/WishlistSidebar";
 import { ToastContainer } from "./components/common/Toast";
+
+// ✅ NEW: Wrapper component that uses useLocation
+function AppContent({
+  cart,
+  wishlist,
+  menuOpen,
+  setMenuOpen,
+  cartOpen,
+  setCartOpen,
+  wishlistOpen,
+  setWishlistOpen,
+  handleAddToCart,
+  handleRemoveFromCart,
+  handleUpdateQuantity,
+  handleRemoveFromWishlist,
+  handleClearCart,
+  toasts,
+  removeToast,
+}) {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+
+  return (
+    <>
+      {/* ✅ FIXED: Only show ChatWidget on non-admin routes */}
+      {!isAdminRoute && <ChatWidget />}
+
+      <div className="min-h-screen flex flex-col">
+        {/* Top Bar - Hide in admin */}
+        {!isAdminRoute && <TopBar message={brandData.topBarMessage} />}
+
+        {/* Header - Hide in admin */}
+        {!isAdminRoute && (
+          <Header
+            brandName={brandData.brand.name}
+            cart={cart}
+            wishlist={wishlist}
+            menuOpen={menuOpen}
+            onMenuToggle={() => setMenuOpen(!menuOpen)}
+            onCartClick={() => setCartOpen(true)}
+            onWishlistClick={() => setWishlistOpen(true)}
+            navigation={brandData.navigation}
+          />
+        )}
+
+        {/* Main Routes */}
+        <main className="flex-1">
+          <Routes>
+            {/* =============================================
+                PUBLIC ROUTES
+                ============================================= */}
+            <Route
+              path="/"
+              element={<HomePage onAddToCart={handleAddToCart} />}
+            />
+
+            <Route
+              path="/products"
+              element={
+                <ProductsPage
+                  onAddToCart={handleAddToCart}
+                  wishlist={wishlist}
+                />
+              }
+            />
+
+            <Route
+              path="/category/:slug"
+              element={
+                <ProductsPage
+                  onAddToCart={handleAddToCart}
+                  wishlist={wishlist}
+                />
+              }
+            />
+
+            <Route
+              path="/product/:slug"
+              element={
+                <ProductDetailPage
+                  onAddToCart={handleAddToCart}
+                  brand={brandData.brand}
+                  wishlist={wishlist}
+                />
+              }
+            />
+
+            <Route
+              path="/checkout"
+              element={
+                <CheckoutPage cart={cart} onClearCart={handleClearCart} />
+              }
+            />
+
+            <Route path="/checkout/success" element={<OrderSuccessPage />} />
+
+            {/* =============================================
+                POLICY PAGES
+                ============================================= */}
+            <Route
+              path="/about"
+              element={<AboutPage brand={brandData.brand} />}
+            />
+            <Route
+              path="/return-policy"
+              element={<ReturnPolicyPage brand={brandData.brand} />}
+            />
+            <Route
+              path="/shipping-policy"
+              element={<ShippingPolicyPage brand={brandData.brand} />}
+            />
+            <Route
+              path="/privacy-policy"
+              element={<PrivacyPolicyPage brand={brandData.brand} />}
+            />
+            <Route
+              path="/payment-policy"
+              element={<PaymentPolicyPage brand={brandData.brand} />}
+            />
+            <Route
+              path="/terms"
+              element={<TermsPage brand={brandData.brand} />}
+            />
+            <Route path="/careers" element={<CareersPage />} />
+            {/* =============================================
+                AUTH ROUTES
+                ============================================= */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+
+            {/* =============================================
+                USER PROFILE ROUTES
+                ============================================= */}
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfileLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<ProfilePage />} />
+              <Route path="orders" element={<OrderHistoryPage />} />
+              <Route path="orders/:orderId" element={<OrderDetailPage />} />
+              <Route path="addresses" element={<AddressesPage />} />
+              <Route path="wishlist" element={<WishlistPage />} />
+            </Route>
+
+            {/* =============================================
+                ADMIN ROUTES
+                ============================================= */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="analytics" element={<AdminAnalytics />} />
+              {/* Products */}
+              <Route path="products" element={<AdminProducts />} />
+              <Route path="products/new" element={<AdminProductForm />} />
+              <Route path="products/:id" element={<AdminProductForm />} />
+              <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
+              {/* Categories */}
+              <Route path="categories" element={<AdminCategories />} />
+
+              {/* Banners */}
+              <Route path="banners" element={<AdminBanners />} />
+
+              {/* Orders */}
+              <Route path="orders" element={<AdminOrders />} />
+              <Route path="orders/:id" element={<AdminOrderDetail />} />
+              {/* Facebook Settings for Chatbot */}
+              <Route
+                path="chatbot/facebook"
+                element={<FacebookSettingsPage />}
+              />
+              <Route
+                path="chatbot/conversations"
+                element={<ConversationsPage />}
+              />
+              <Route path="chatbot/scenarios" element={<ScenariosTab />} />
+            </Route>
+
+            {/* =============================================
+                404 NOT FOUND
+                ============================================= */}
+            <Route
+              path="*"
+              element={
+                <div className="min-h-screen flex items-center justify-center">
+                  <div className="text-center">
+                    <h1 className="text-4xl font-bold mb-4">404</h1>
+                    <p className="text-gray-600 mb-4">Page not found</p>
+                    <Link to="/" className="text-blue-600 hover:underline">
+                      Back to Home
+                    </Link>
+                  </div>
+                </div>
+              }
+            />
+          </Routes>
+        </main>
+
+        {/* Footer - Hide in admin */}
+        {!isAdminRoute && (
+          <Footer brand={brandData.brand} sections={brandData.footerSections} />
+        )}
+
+        {/* Cart Sidebar */}
+        <CartSidebar
+          isOpen={cartOpen}
+          onClose={() => setCartOpen(false)}
+          cart={cart}
+          onRemoveItem={handleRemoveFromCart}
+          onUpdateQuantity={handleUpdateQuantity}
+        />
+
+        {/* Wishlist Sidebar */}
+        <WishlistSidebar
+          isOpen={wishlistOpen}
+          onClose={() => setWishlistOpen(false)}
+          wishlist={wishlist}
+          onRemoveItem={handleRemoveFromWishlist}
+          onAddToCart={handleAddToCart}
+        />
+
+        {/* Toast Notifications */}
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </div>
+    </>
+  );
+}
 
 function App() {
   // =============================================
@@ -135,13 +373,6 @@ function App() {
       window.removeEventListener("wishlistUpdated", handleWishlistChange);
     };
   }, []);
-
-  // =============================================
-  // CHECK IF CURRENT PATH IS ADMIN
-  // =============================================
-  const isAdminRoute = () => {
-    return window.location.pathname.startsWith("/admin");
-  };
 
   // =============================================
   // HANDLERS
@@ -237,217 +468,23 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <ChatWidget />
-        <div className="min-h-screen flex flex-col">
-          {/* Top Bar - Hide in admin */}
-          {!isAdminRoute() && <TopBar message={brandData.topBarMessage} />}
-
-          {/* Header - Hide in admin */}
-          {!isAdminRoute() && (
-            <Header
-              brandName={brandData.brand.name}
-              cart={cart}
-              wishlist={wishlist}
-              menuOpen={menuOpen}
-              onMenuToggle={() => setMenuOpen(!menuOpen)}
-              onCartClick={() => setCartOpen(true)}
-              onWishlistClick={() => setWishlistOpen(true)}
-              navigation={brandData.navigation}
-            />
-          )}
-
-          {/* Main Routes */}
-          <main className="flex-1">
-            <Routes>
-              {/* =============================================
-                  PUBLIC ROUTES
-                  ============================================= */}
-              <Route
-                path="/"
-                element={<HomePage onAddToCart={handleAddToCart} />}
-              />
-
-              <Route
-                path="/products"
-                element={
-                  <ProductsPage
-                    onAddToCart={handleAddToCart}
-                    wishlist={wishlist}
-                  />
-                }
-              />
-
-              <Route
-                path="/category/:slug"
-                element={
-                  <ProductsPage
-                    onAddToCart={handleAddToCart}
-                    wishlist={wishlist}
-                  />
-                }
-              />
-
-              <Route
-                path="/product/:slug"
-                element={
-                  <ProductDetailPage
-                    onAddToCart={handleAddToCart}
-                    brand={brandData.brand}
-                    wishlist={wishlist}
-                  />
-                }
-              />
-
-              <Route
-                path="/checkout"
-                element={
-                  <CheckoutPage cart={cart} onClearCart={handleClearCart} />
-                }
-              />
-
-              <Route path="/checkout/success" element={<OrderSuccessPage />} />
-
-              {/* =============================================
-                  POLICY PAGES
-                  ============================================= */}
-              <Route
-                path="/about"
-                element={<AboutPage brand={brandData.brand} />}
-              />
-              <Route
-                path="/return-policy"
-                element={<ReturnPolicyPage brand={brandData.brand} />}
-              />
-              <Route
-                path="/shipping-policy"
-                element={<ShippingPolicyPage brand={brandData.brand} />}
-              />
-              <Route
-                path="/privacy-policy"
-                element={<PrivacyPolicyPage brand={brandData.brand} />}
-              />
-              <Route
-                path="/payment-policy"
-                element={<PaymentPolicyPage brand={brandData.brand} />}
-              />
-              <Route
-                path="/terms"
-                element={<TermsPage brand={brandData.brand} />}
-              />
-              <Route path="/careers" element={<CareersPage />} />
-              {/* =============================================
-                  AUTH ROUTES
-                  ============================================= */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-
-              {/* =============================================
-                  USER PROFILE ROUTES
-                  ============================================= */}
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <ProfileLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<ProfilePage />} />
-                <Route path="orders" element={<OrderHistoryPage />} />
-                <Route path="orders/:orderId" element={<OrderDetailPage />} />
-                <Route path="addresses" element={<AddressesPage />} />
-                <Route path="wishlist" element={<WishlistPage />} />
-              </Route>
-
-              {/* =============================================
-                  ADMIN ROUTES
-                  ============================================= */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route index element={<Navigate to="dashboard" replace />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="analytics" element={<AdminAnalytics />} />
-                {/* Products */}
-                <Route path="products" element={<AdminProducts />} />
-                <Route path="products/new" element={<AdminProductForm />} />
-                <Route path="products/:id" element={<AdminProductForm />} />
-                <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
-                {/* Categories */}
-                <Route path="categories" element={<AdminCategories />} />
-
-                {/* Banners */}
-                <Route path="banners" element={<AdminBanners />} />
-
-                {/* Orders */}
-                <Route path="orders" element={<AdminOrders />} />
-                <Route path="orders/:id" element={<AdminOrderDetail />} />
-                {/* Facebook Settings for Chatbot */}
-                <Route
-                  path="chatbot/facebook"
-                  element={<FacebookSettingsPage />}
-                />
-                <Route
-                  path="chatbot/conversations"
-                  element={<ConversationsPage />}
-                />
-                <Route path="chatbot/scenarios" element={<ScenariosTab />} />
-              </Route>
-
-              {/* =============================================
-                  404 NOT FOUND
-                  ============================================= */}
-              <Route
-                path="*"
-                element={
-                  <div className="min-h-screen flex items-center justify-center">
-                    <div className="text-center">
-                      <h1 className="text-4xl font-bold mb-4">404</h1>
-                      <p className="text-gray-600 mb-4">Page not found</p>
-                      <Link to="/" className="text-blue-600 hover:underline">
-                        Back to Home
-                      </Link>
-                    </div>
-                  </div>
-                }
-              />
-            </Routes>
-          </main>
-
-          {/* Footer - Hide in admin */}
-          {!isAdminRoute() && (
-            <Footer
-              brand={brandData.brand}
-              sections={brandData.footerSections}
-            />
-          )}
-
-          {/* Cart Sidebar */}
-          <CartSidebar
-            isOpen={cartOpen}
-            onClose={() => setCartOpen(false)}
-            cart={cart}
-            onRemoveItem={handleRemoveFromCart}
-            onUpdateQuantity={handleUpdateQuantity}
-          />
-
-          {/* Wishlist Sidebar */}
-          <WishlistSidebar
-            isOpen={wishlistOpen}
-            onClose={() => setWishlistOpen(false)}
-            wishlist={wishlist}
-            onRemoveItem={handleRemoveFromWishlist}
-            onAddToCart={handleAddToCart}
-          />
-
-          {/* Toast Notifications */}
-          <ToastContainer toasts={toasts} removeToast={removeToast} />
-        </div>
+        <AppContent
+          cart={cart}
+          wishlist={wishlist}
+          menuOpen={menuOpen}
+          setMenuOpen={setMenuOpen}
+          cartOpen={cartOpen}
+          setCartOpen={setCartOpen}
+          wishlistOpen={wishlistOpen}
+          setWishlistOpen={setWishlistOpen}
+          handleAddToCart={handleAddToCart}
+          handleRemoveFromCart={handleRemoveFromCart}
+          handleUpdateQuantity={handleUpdateQuantity}
+          handleRemoveFromWishlist={handleRemoveFromWishlist}
+          handleClearCart={handleClearCart}
+          toasts={toasts}
+          removeToast={removeToast}
+        />
       </AuthProvider>
     </Router>
   );

@@ -35,7 +35,7 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
 
-    <!-- BẮT ĐẦU MÃ NHÚNG ZALO CHAT WIDGET -->
+    <!-- ZALO CHAT WIDGET -->
     <div
       class="zalo-chat-widget"
       data-oaid="870752253827008707"
@@ -44,53 +44,32 @@
       data-width=""
       data-height=""
     ></div>
-    <!-- KẾT THÚC MÃ NHÚNG ZALO CHAT WIDGET -->
 
-    <!-- BẮT ĐẦU MÃ NHÚNG NÚT QUAN TÂM ZALO (FOLLOW BUTTON) -->
-    <div
-      class="zalo-follow-only-button"
-      data-oaid="870752253827008707"
-      data-customize="true"
-      data-size="30"
-      data-title="true"
-      style="position: fixed; bottom: 80px; left: 20px; z-index: 1000"
-    ></div>
-    <!-- KẾT THÚC MÃ NHÚNG NÚT QUAN TÂM ZALO (FOLLOW BUTTON) -->
-
-    <!-- ⚠️ QUAN TRỌNG: Zalo SDK được load động sau khi DOM sẵn sàng -->
+    <!-- Load Zalo SDK -->
     <script>
-      // Hàm load Zalo SDK
       function loadZaloSDK() {
         try {
           var script = document.createElement("script");
           script.src = "https://sp.zalo.me/plugins/sdk.js";
           script.async = true;
           script.defer = true;
-
           script.onload = function () {
             console.log("Zalo SDK loaded successfully");
           };
-
           script.onerror = function () {
             console.error("Không thể tải Zalo SDK");
           };
-
           document.body.appendChild(script);
         } catch (error) {
           console.error("Lỗi khi load Zalo SDK:", error);
         }
       }
 
-      // Đảm bảo DOM và React app đã load xong
       if (document.readyState === "loading") {
-        // DOM vẫn đang load
         document.addEventListener("DOMContentLoaded", function () {
-          // Đợi thêm 300ms để React render xong
           setTimeout(loadZaloSDK, 300);
         });
       } else {
-        // DOM đã load xong
-        // Đợi thêm 300ms để React render xong
         setTimeout(loadZaloSDK, 300);
       }
     </script>

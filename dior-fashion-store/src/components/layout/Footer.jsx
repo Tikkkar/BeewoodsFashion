@@ -60,6 +60,10 @@ const Footer = ({ brand }) => {
                 >
                   <Youtube size={18} />
                 </a>
+                {/* <div
+                  class="zalo-follow-only-button"
+                  data-oaid="870752253827008707"
+                ></div> */}
               </div>
             </div>
 
@@ -170,20 +174,20 @@ const Footer = ({ brand }) => {
                   <p className="text-white font-medium mb-2">Flagship Store</p>
                   <div className="flex items-start gap-2">
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
-                    <p>131 Cầu Giấy, Quan Hoa, Cầu Giấy, Hà Nội</p>
+                    <p>Số 8 Tôn Đức Thắng, Phường Văn Miếu, TP Hà Nội</p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="text-white font-medium mb-2">Hotline</p>
+                  <p className="text-white font-medium mb-2">Hotline Bewo</p>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Phone size={14} />
                       <a
-                        href="tel:09622094195"
+                        href="tel:036 2014571"
                         className="hover:text-white transition"
                       >
-                        0962.209.4195
+                        036 2014571
                       </a>
                     </div>
                     <p className="text-xs text-gray-400 ml-6">
@@ -203,10 +207,15 @@ const Footer = ({ brand }) => {
                 </div>
 
                 <div>
-                  <p className="text-white font-medium mb-2">Cơ sở HCM</p>
+                  <p className="text-white font-medium mb-2">Cơ sở Hà Nội</p>
                   <div className="flex items-start gap-2">
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
-                    <p>221 Võ Văn Tần, Phường 5, Quận 3, TP.HCM</p>
+                    <p>Số 8 Tôn Đức Thắng, Phường Văn Miếu, TP Hà Nội</p>
+                  </div>
+                  <p className="text-white font-medium mb-2">Cơ sở Hưng Yên</p>
+                  <div className="flex items-start gap-2">
+                    <MapPin size={16} className="mt-1 flex-shrink-0" />
+                    <p>Tobe Continute</p>
                   </div>
                 </div>
               </div>

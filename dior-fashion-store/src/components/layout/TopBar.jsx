@@ -17,11 +17,11 @@ const TopBar = ({ message }) => {
           {/* Right: Contact info */}
           <div className="hidden lg:flex items-center gap-4">
             <a
-              href="tel:09622094195"
+              href="tel:036 2014571"
               className="flex items-center gap-1 hover:text-red-400 transition"
             >
               <Phone size={12} />
-              <span>0962.209.4195</span>
+              <span>036 2014571</span>
             </a>
             <div className="w-px h-3 bg-white/30"></div>
             <a

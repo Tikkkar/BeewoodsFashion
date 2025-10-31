@@ -1,5 +1,5 @@
 // ============================================
-// ZALO ZNS SERVICE (SIMPLIFIED - STATIC TOKEN)
+// ZALO ZNS SERVICE (FIXED - TEMPLATE_ID ALWAYS INCLUDED)
 // File: services/zaloZnsService.ts
 // ============================================
 
@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ZALO_API_URL = "https://business.openapi.zalo.me/message/template";
 const ZALO_ACCESS_TOKEN = Deno.env.get("ZALO_ACCESS_TOKEN") || ""; // ✅ Static token
-const ZALO_TEMPLATE_ID = Deno.env.get("ZALO_TEMPLATE_ID") || "";
+const ZALO_TEMPLATE_ID = Deno.env.get("ZALO_TEMPLATE_ID") || "501443"; // ✅ Default template ID
 
 interface ZNSOrderData {
   order_number: string;
@@ -50,6 +50,7 @@ export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
       "🔑 Using access token (first 20 chars):",
       ZALO_ACCESS_TOKEN.substring(0, 20) + "..."
     );
+    console.log("📋 Using template ID:", ZALO_TEMPLATE_ID); // ✅ Log template ID
 
     // Format phone number (convert 0xxx to 84xxx)
     const formattedPhone = orderData.customer_phone.replace(/^0/, "84");
@@ -104,6 +105,7 @@ export async function sendZaloZNS(orderData: ZNSOrderData): Promise<any> {
 
 /**
  * Log ZNS attempt to database
+ * ✅ FIXED: Always include template_id with fallback
  */
 async function logZNS(
   orderData: ZNSOrderData,
@@ -119,17 +121,20 @@ async function logZNS(
       order_number: orderData.order_number,
       zalo_user_id: orderData.zalo_user_id,
       customer_phone: orderData.customer_phone,
-      template_id: ZALO_TEMPLATE_ID,
+      template_id: ZALO_TEMPLATE_ID || "501443", // ✅ CRITICAL: Always provide template_id
       status: result.error === 0 ? "sent" : "failed",
       response: result,
       error_message: result.error !== 0 ? result.message : null,
       sent_at: new Date().toISOString(),
     };
 
+    console.log("💾 Saving ZNS log with template_id:", logData.template_id);
+
     const { error } = await supabase.from("zalo_zns_logs").insert(logData);
 
     if (error) {
       console.error("❌ Failed to log ZNS:", error);
+      console.error("❌ Error details:", JSON.stringify(error, null, 2));
     } else {
       console.log("✅ ZNS log saved successfully");
     }

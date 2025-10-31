@@ -233,8 +233,8 @@ const ReturnPolicyPage = ({ brand }) => {
                 <div>
                   <p className="font-semibold mb-1">Liên hệ hotline hỗ trợ</p>
                   <p className="text-gray-700 text-sm">
-                    Gọi <strong>0962.209.4195</strong> để được tư vấn và xác
-                    nhận đổi hàng
+                    Gọi <strong>036 2014571</strong> để được tư vấn và xác nhận
+                    đổi hàng
                   </p>
                 </div>
               </li>
@@ -287,7 +287,7 @@ const ReturnPolicyPage = ({ brand }) => {
                           href="tel:0865644468"
                           className="text-blue-600 font-bold hover:underline"
                         >
-                          0962.209.4195
+                          036 2014571
                         </a>
                       </div>
                     </div>
@@ -383,7 +383,7 @@ const ReturnPolicyPage = ({ brand }) => {
                 href="tel:0865644468"
                 className="text-2xl font-bold hover:text-gray-300 transition"
               >
-                0962.209.4195
+                036 2014571
               </a>
             </div>
 
@@ -397,7 +397,7 @@ const ReturnPolicyPage = ({ brand }) => {
                 href="tel:0978715445"
                 className="text-2xl font-bold hover:text-gray-300 transition"
               >
-                0962.209.4195
+                036 2014571
               </a>
               <p className="text-xs text-gray-400 mt-2">(Giờ hành chính)</p>
             </div>
