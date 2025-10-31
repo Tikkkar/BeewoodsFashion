@@ -1,5 +1,5 @@
 // ============================================
-// ZALO ZNS HANDLER (SIMPLIFIED - NO TOKEN PARAM)
+// ZALO ZNS HANDLER (FIXED - NO UNIQUE CONSTRAINT NEEDED)
 // File: handlers/zaloHandler.ts
 // ============================================
 
@@ -89,6 +89,7 @@ export async function handleSaveZaloConsent(payload: any): Promise<any> {
 
 /**
  * Handle SEND_ORDER_ZNS action
+ * ✅ FIXED: Properly save consent without requiring unique constraint
  */
 export async function handleSendOrderZNS(payload: any): Promise<any> {
   try {
@@ -124,23 +125,56 @@ export async function handleSendOrderZNS(payload: any): Promise<any> {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Save consent
-    console.log(`💾 Saving Zalo consent for phone: ${customer_phone}`);
-    const { error: profileUpdateError } = await supabase
+    // ✅ FIXED: Check if profile exists first
+    console.log(`🔍 Checking for existing profile: ${customer_phone}`);
+
+    const { data: existingProfile, error: checkError } = await supabase
       .from("customer_profiles")
-      .upsert(
-        {
-          phone: customer_phone,
+      .select("id, phone, zalo_user_id, zalo_consent_active")
+      .eq("phone", customer_phone)
+      .maybeSingle();
+
+    if (checkError && checkError.code !== "PGRST116") {
+      console.error("❌ Error checking profile:", checkError);
+      throw checkError;
+    }
+
+    let profileUpdateError;
+
+    if (existingProfile) {
+      // ✅ Profile exists - UPDATE
+      console.log(`📝 Updating existing profile ID: ${existingProfile.id}`);
+
+      const { error: updateError } = await supabase
+        .from("customer_profiles")
+        .update({
           full_name: customer_name,
           zalo_user_id: zalo_user_id,
           zalo_consent_date: new Date().toISOString(),
           zalo_consent_active: true,
           updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "phone",
-        }
-      );
+        })
+        .eq("id", existingProfile.id);
+
+      profileUpdateError = updateError;
+    } else {
+      // ✅ Profile doesn't exist - INSERT
+      console.log(`➕ Creating new profile for: ${customer_phone}`);
+
+      const { error: insertError } = await supabase
+        .from("customer_profiles")
+        .insert({
+          phone: customer_phone,
+          full_name: customer_name,
+          zalo_user_id: zalo_user_id,
+          zalo_consent_date: new Date().toISOString(),
+          zalo_consent_active: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      profileUpdateError = insertError;
+    }
 
     if (profileUpdateError) {
       console.error(
@@ -152,6 +186,8 @@ export async function handleSendOrderZNS(payload: any): Promise<any> {
     }
 
     // Send ZNS
+    console.log(`📱 Sending ZNS notification...`);
+
     const result = await sendZaloZNS({
       order_number: order_number,
       customer_name: customer_name,

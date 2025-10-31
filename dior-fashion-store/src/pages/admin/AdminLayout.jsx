@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { signOut } from '../../lib/api/auth';
-import { BarChart3 } from 'lucide-react'; // Add this import
-import { ListChecks } from 'lucide-react'; // thay thế Scenarios bằng ListChecksclear
+import React, { useState } from "react";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { signOut } from "../../lib/api/auth";
+import { BarChart3 } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import {
   LayoutDashboard,
   Package,
@@ -15,8 +15,8 @@ import {
   LogOut,
   Menu,
   X,
-  Home
-} from 'lucide-react';
+  Home,
+} from "lucide-react";
 
 const AdminLayout = () => {
   const { user, isAdmin } = useAuth();
@@ -26,68 +26,70 @@ const AdminLayout = () => {
 
   // Redirect if not admin
   if (!isAdmin) {
-    navigate('/');
+    navigate("/");
     return null;
   }
 
   const handleLogout = async () => {
     await signOut();
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
   const menuItems = [
     {
-      title: 'Dashboard',
+      title: "Bảng điều khiển", // Dịch: Dashboard
       icon: LayoutDashboard,
-      path: '/admin/dashboard' // ✅ SỬA: /admin → /admin/dashboard
+      path: "/admin/dashboard",
     },
     {
-      title: 'Products',
+      title: "Sản phẩm", // Dịch: Products
       icon: Package,
-      path: '/admin/products'
+      path: "/admin/products",
     },
     {
-      title: 'Categories',
+      title: "Danh mục", // Dịch: Categories
       icon: FolderOpen,
-      path: '/admin/categories'
+      path: "/admin/categories",
     },
     {
-      title: 'Banners',
+      title: "Banner", // Dịch: Banners
       icon: Image,
-      path: '/admin/banners'
+      path: "/admin/banners",
     },
     {
-      title: 'Orders',
+      title: "Đơn hàng", // Dịch: Orders
       icon: ShoppingBag,
-      path: '/admin/orders'
+      path: "/admin/orders",
     },
-    // Add this to your navigation array (after Dashboard)
     {
-      title: 'Analytics',
-      path: '/admin/analytics',
-      icon: BarChart3
+      title: "Phân tích", // Dịch: Analytics
+      path: "/admin/analytics",
+      icon: BarChart3,
     },
-    { 
-      title: 'Chatbot Settings', 
-      path: '/admin/chatbot/facebook', 
-      icon: Settings 
+    {
+      title: "Cài đặt Chatbot", // Dịch: Chatbot Settings
+      path: "/admin/chatbot/facebook",
+      icon: Settings,
     },
-    { 
-      title: 'Conversations', 
-      path: '/admin/chatbot/conversations', 
-      icon: MessageSquare 
+    {
+      title: "Hội thoại", // Dịch: Conversations
+      path: "/admin/chatbot/conversations",
+      icon: MessageSquare,
     },
-    { 
-      title: 'Scenarios', 
-      path: '/admin/chatbot/scenarios', 
-      icon: ListChecks 
-    },
+    // {
+    //   title: "Kịch bản", // Dịch: Scenarios
+    //   path: "/admin/chatbot/scenarios",
+    //   icon: ListChecks,
+    // },
   ];
 
   const isActive = (path) => {
     // Exact match for dashboard
-    if (path === '/admin/dashboard') {
-      return location.pathname === '/admin' || location.pathname === '/admin/dashboard';
+    if (path === "/admin/dashboard") {
+      return (
+        location.pathname === "/admin" ||
+        location.pathname === "/admin/dashboard"
+      );
     }
     // Starts with for other routes
     return location.pathname.startsWith(path);
@@ -104,7 +106,8 @@ const AdminLayout = () => {
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <h1 className="text-xl font-bold">ADMIN PANEL</h1>
+          <h1 className="text-xl font-bold">BẢNG ĐIỀU KHIỂN ADMIN</h1>{" "}
+          {/* Dịch: ADMIN PANEL */}
           <div className="w-10" />
         </div>
       </div>
@@ -114,7 +117,7 @@ const AdminLayout = () => {
         className={`
           fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-40
           transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 lg:w-64 w-64
         `}
       >
@@ -131,7 +134,10 @@ const AdminLayout = () => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">
-                {user?.user_metadata?.full_name || user?.profile?.full_name || 'Admin'}
+                {user?.user_metadata?.full_name ||
+                  user?.profile?.full_name ||
+                  "Quản trị viên"}{" "}
+                {/* Dịch: Admin */}
               </p>
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
             </div>
@@ -151,9 +157,10 @@ const AdminLayout = () => {
                 onClick={() => setSidebarOpen(false)}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-lg transition
-                  ${active
-                    ? 'bg-black text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
+                  ${
+                    active
+                      ? "bg-black text-white"
+                      : "text-gray-700 hover:bg-gray-100"
                   }
                 `}
               >
@@ -171,14 +178,15 @@ const AdminLayout = () => {
             className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg transition"
           >
             <Home size={20} />
-            <span className="font-medium">Back to Store</span>
+            <span className="font-medium">Quay lại Cửa hàng</span>{" "}
+            {/* Dịch: Back to Store */}
           </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition"
           >
             <LogOut size={20} />
-            <span className="font-medium">Logout</span>
+            <span className="font-medium">Đăng xuất</span> {/* Dịch: Logout */}
           </button>
         </div>
       </aside>

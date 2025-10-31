@@ -91,13 +91,13 @@ const AdminProductForm = () => {
               setSizes([{ size: "", stock: "" }]);
             }
           } else {
-            toast.error("Could not find product to edit.");
+            toast.error("Không tìm thấy sản phẩm cần chỉnh sửa."); // Dịch: Could not find product to edit.
             navigate("/admin/products");
           }
         }
       } catch (error) {
         console.error("Load data error:", error);
-        toast.error("Failed to load initial data.");
+        toast.error("Không thể tải dữ liệu ban đầu."); // Dịch: Failed to load initial data.
       } finally {
         setPageLoading(false);
       }
@@ -165,23 +165,24 @@ const AdminProductForm = () => {
 
     // ✨ THAY ĐỔI: Kiểm tra mảng category_ids
     if (!formData.name || formData.category_ids.length === 0) {
-      toast.error("Tên sản phẩm và ít nhất một Danh mục là bắt buộc.");
+      toast.error("Tên sản phẩm và ít nhất một Danh mục là bắt buộc."); // Dịch: Product name and at least one Category are required.
       return;
     }
 
     if (images.toUpload.length === 0 && images.existing.length === 0) {
-      toast.error("Vui lòng thêm ít nhất một hình ảnh sản phẩm.");
+      toast.error("Vui lòng thêm ít nhất một hình ảnh sản phẩm."); // Dịch: Please add at least one product image.
       return;
     }
 
     setLoading(true);
-    const toastId = toast.loading("Đang xử lý hình ảnh...");
+    const toastId = toast.loading("Đang xử lý hình ảnh..."); // Dịch: Processing images...
 
     try {
       const uploadedUrls = [];
       for (let i = 0; i < images.toUpload.length; i++) {
         setUploadProgress(Math.round(((i + 1) / images.toUpload.length) * 100));
         toast.loading(`Đang tải ảnh ${i + 1}/${images.toUpload.length}...`, {
+          // Dịch: Uploading image 1/X...
           id: toastId,
         });
         const url = await compressAndUploadImage(images.toUpload[i]);
@@ -189,7 +190,7 @@ const AdminProductForm = () => {
       }
 
       const finalImageUrls = [...images.existing, ...uploadedUrls];
-      toast.loading("Đang lưu dữ liệu sản phẩm...", { id: toastId });
+      toast.loading("Đang lưu dữ liệu sản phẩm...", { id: toastId }); // Dịch: Saving product data...
 
       const submissionData = {
         name: formData.name,
@@ -218,7 +219,7 @@ const AdminProductForm = () => {
           finalSizes,
           formData.category_ids
         );
-        toast.success("Sản phẩm đã được cập nhật!", { id: toastId });
+        toast.success("Sản phẩm đã được cập nhật!", { id: toastId }); // Dịch: Product updated!
       } else {
         await createProduct(
           submissionData,
@@ -226,13 +227,13 @@ const AdminProductForm = () => {
           finalSizes,
           formData.category_ids
         );
-        toast.success("Sản phẩm đã được tạo!", { id: toastId });
+        toast.success("Sản phẩm đã được tạo!", { id: toastId }); // Dịch: Product created!
       }
 
       setTimeout(() => navigate("/admin/products"), 500);
     } catch (err) {
       console.error("❌ Submit error:", err);
-      toast.error(err.message || "Lưu sản phẩm thất bại.", { id: toastId });
+      toast.error(err.message || "Lưu sản phẩm thất bại.", { id: toastId }); // Dịch: Failed to save product.
     } finally {
       setLoading(false);
     }
@@ -251,12 +252,17 @@ const AdminProductForm = () => {
       <div>
         <h1 className="text-3xl font-bold">
           {isEditing ? "Chỉnh sửa sản phẩm" : "Tạo sản phẩm mới"}
-        </h1>
-        <p className="text-gray-600">Điền thông tin chi tiết cho sản phẩm.</p>
+        </h1>{" "}
+        {/* Dịch: Edit product / Create new product */}
+        <p className="text-gray-600">
+          Điền thông tin chi tiết cho sản phẩm.
+        </p>{" "}
+        {/* Dịch: Fill in product details. */}
       </div>
 
       <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Thông tin cơ bản</h2>
+        <h2 className="text-lg font-bold">Thông tin cơ bản</h2>{" "}
+        {/* Dịch: Basic Information */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             name="name"
@@ -287,7 +293,7 @@ const AdminProductForm = () => {
             type="number"
             value={formData.original_price}
             onChange={handleChange}
-            placeholder="Giá gốc (nếu có)"
+            placeholder="Giá gốc (Nếu đơn hàng có giảm giá thì viết vào đây)"
             className="p-3 border rounded"
           />
           <input
@@ -312,7 +318,7 @@ const AdminProductForm = () => {
 
       {/* ✨ GIAO DIỆN MỚI: Chọn nhiều danh mục */}
       <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Danh mục</h2>
+        <h2 className="text-lg font-bold">Danh mục</h2> {/* Dịch: Categories */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-48 overflow-y-auto">
           {categories.map((c) => (
             <label
@@ -333,7 +339,8 @@ const AdminProductForm = () => {
 
       {/* Sizes */}
       <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Kích thước & Tồn kho chi tiết</h2>
+        <h2 className="text-lg font-bold">Kích thước & Tồn kho chi tiết</h2>{" "}
+        {/* Dịch: Detailed Sizes & Stock */}
         {sizes.map((s, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
@@ -365,13 +372,14 @@ const AdminProductForm = () => {
           onClick={addSize}
           className="text-sm font-medium text-blue-600 hover:text-blue-800"
         >
-          + Thêm kích thước
+          + Thêm kích thước {/* Dịch: + Add size */}
         </button>
       </div>
 
       {/* Images */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h2 className="text-lg font-bold mb-4">Hình ảnh sản phẩm</h2>
+        <h2 className="text-lg font-bold mb-4">Hình ảnh sản phẩm</h2>{" "}
+        {/* Dịch: Product Images */}
         <ImageUpload
           existingImages={images.existing}
           onFilesChange={handleFilesChange}
@@ -379,14 +387,16 @@ const AdminProductForm = () => {
         />
         {images.toUpload.length > 0 && (
           <p className="text-sm text-gray-600 mt-2">
-            {images.toUpload.length} ảnh chờ tải lên
+            {images.toUpload.length} ảnh chờ tải lên{" "}
+            {/* Dịch: X images waiting to upload */}
           </p>
         )}
       </div>
 
       {/* Settings */}
       <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h2 className="text-lg font-bold mb-4">Cài đặt</h2>
+        <h2 className="text-lg font-bold mb-4">Cài đặt</h2>{" "}
+        {/* Dịch: Settings */}
         <div className="flex gap-6">
           <label className="flex items-center gap-2">
             <input
@@ -395,7 +405,7 @@ const AdminProductForm = () => {
               checked={formData.is_active}
               onChange={handleChange}
             />{" "}
-            Hiển thị
+            Hiển thị {/* Dịch: Display / Show */}
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -404,7 +414,7 @@ const AdminProductForm = () => {
               checked={formData.is_featured}
               onChange={handleChange}
             />{" "}
-            Nổi bật
+            Nổi bật {/* Dịch: Featured */}
           </label>
         </div>
       </div>
@@ -417,7 +427,7 @@ const AdminProductForm = () => {
           className="bg-gray-100 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-200 transition"
           disabled={loading}
         >
-          Hủy
+          Hủy {/* Dịch: Cancel */}
         </button>
         <button
           type="submit"
@@ -425,7 +435,8 @@ const AdminProductForm = () => {
           className="bg-black text-white px-6 py-3 rounded-lg disabled:bg-gray-400 flex items-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? "Đang lưu..." : "Lưu sản phẩm"}
+          {loading ? "Đang lưu..." : "Lưu sản phẩm"}{" "}
+          {/* Dịch: Saving... / Save product */}
         </button>
       </div>
     </form>

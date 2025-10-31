@@ -82,26 +82,28 @@ const CategoryModal = ({ category, onClose, onSave }) => {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <h2 className="text-2xl font-bold mb-6">
-            {data.id ? "Edit" : "Add"} Category
+            {data.id ? "Chỉnh sửa" : "Thêm"} Danh mục{" "}
+            {/* Dịch: Edit / Add Category */}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Image Upload */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Category Image
-              </label>
+                Ảnh Danh mục
+              </label>{" "}
+              {/* Dịch: Category Image */}
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition">
                 {imagePreview ? (
                   <div className="space-y-3">
                     <img
                       src={imagePreview}
-                      alt="Preview"
+                      alt="Xem trước"
                       className="w-full h-32 object-cover rounded-lg"
                     />
                     <label className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 text-sm">
                       <ImageIcon size={16} />
-                      <span>Change Image</span>
+                      <span>Đổi ảnh</span> {/* Dịch: Change Image */}
                       <input
                         type="file"
                         accept="image/*"
@@ -117,11 +119,13 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                       className="mx-auto text-gray-400 mb-2"
                     />
                     <p className="text-gray-600 text-sm mb-1">
-                      Click to upload
-                    </p>
+                      Nhấn để tải lên
+                    </p>{" "}
+                    {/* Dịch: Click to upload */}
                     <p className="text-xs text-gray-400">
-                      Recommended: 400x300px
-                    </p>
+                      Đề xuất: 400x300px
+                    </p>{" "}
+                    {/* Dịch: Recommended: 400x300px */}
                     <input
                       type="file"
                       accept="image/*"
@@ -136,13 +140,13 @@ const CategoryModal = ({ category, onClose, onSave }) => {
             {/* Name */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Category Name *
+                Tên danh mục *
               </label>
               <input
                 name="name"
                 value={data.name}
                 onChange={handleChange}
-                placeholder="Women's Fashion"
+                placeholder="Thời trang Nữ"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
                 required
               />
@@ -155,19 +159,20 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                 name="slug"
                 value={data.slug}
                 onChange={handleChange}
-                placeholder="womens-fashion"
+                placeholder="thoi-trang-nu"
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent font-mono text-sm"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                URL-friendly identifier
-              </p>
+                Định danh thân thiện với URL
+              </p>{" "}
+              {/* Dịch: URL-friendly identifier */}
             </div>
 
             {/* Display Order */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Display Order
+                Thứ tự hiển thị
               </label>
               <input
                 name="display_order"
@@ -178,7 +183,7 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Lower numbers appear first
+                Số thấp hơn xuất hiện đầu tiên
               </p>
             </div>
 
@@ -193,7 +198,7 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                   className="w-5 h-5 rounded border-gray-300"
                 />
                 <span className="text-sm font-medium">
-                  Active (Show in store)
+                  Kích hoạt ( hiển thị trong trang cửa hàng )
                 </span>
               </label>
             </div>
@@ -206,7 +211,7 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                 className="px-6 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                 disabled={uploading}
               >
-                Cancel
+                Hủy
               </button>
               <button
                 type="submit"
@@ -216,10 +221,10 @@ const CategoryModal = ({ category, onClose, onSave }) => {
                 {uploading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>Saving...</span>
+                    <span>Đang lưu...</span>
                   </>
                 ) : (
-                  <span>Save Category</span>
+                  <span>Lưu danh mục</span>
                 )}
               </button>
             </div>
@@ -273,7 +278,7 @@ const AdminCategories = () => {
   const handleDelete = async (id) => {
     if (
       window.confirm(
-        "Are you sure you want to delete this category? This action cannot be undone."
+        "Bạn có chắc chắn muốn xóa danh mục này không? Hành động này không thể hoàn tác." // Dịch: Are you sure you want to delete this category? This action cannot be undone.
       )
     ) {
       await deleteCategory(id);
@@ -294,7 +299,7 @@ const AdminCategories = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Categories</h1>
+          <h1 className="text-3xl font-bold">Danh mục sản phẩm</h1>
           <p className="text-gray-600">
             Sắp xếp sản phẩm của bạn vào các danh mục
           </p>
@@ -304,7 +309,7 @@ const AdminCategories = () => {
           className="bg-black text-white px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition"
         >
           <Plus size={20} />
-          <span>Add Category</span>
+          <span>Thêm Danh mục</span> {/* Dịch: Add Category */}
         </button>
       </div>
 
@@ -316,7 +321,7 @@ const AdminCategories = () => {
         />
         <input
           type="text"
-          placeholder="Search categories..."
+          placeholder="Tìm kiếm danh mục..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
@@ -328,8 +333,9 @@ const AdminCategories = () => {
         {filteredCategories.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             {searchTerm
-              ? "No categories found"
-              : "No categories yet. Add your first category!"}
+              ? "Không tìm thấy danh mục nào" // Dịch: No categories found
+              : "Chưa có danh mục nào. Hãy thêm danh mục đầu tiên của bạn!"}{" "}
+            {/* Dịch: No categories yet. Add your first category! */}
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
@@ -364,7 +370,7 @@ const AdminCategories = () => {
                     </div>
                     <span className="text-gray-400 text-sm">/{cat.slug}</span>
                     <span className="text-gray-400 text-sm ml-3">
-                      Order: {cat.display_order}
+                      Thứ tự: {cat.display_order} {/* Dịch: Order: */}
                     </span>
                   </div>
                 </div>
@@ -374,14 +380,14 @@ const AdminCategories = () => {
                   <button
                     onClick={() => setEditingCategory(cat)}
                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                    title="Edit"
+                    title="Chỉnh sửa"
                   >
                     <Edit size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(cat.id)}
                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Delete"
+                    title="Xóa"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -395,17 +401,18 @@ const AdminCategories = () => {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm">Total Categories</p>
+          <p className="text-gray-600 text-sm">Tổng số danh mục</p>
           <p className="text-2xl font-bold">{categories.length}</p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm">Active</p>
+          <p className="text-gray-600 text-sm">Có hiệu lực</p>
           <p className="text-2xl font-bold text-green-600">
             {categories.filter((c) => c.is_active).length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <p className="text-gray-600 text-sm">Inactive</p>
+          <p className="text-gray-600 text-sm">Không hiệu lực</p>{" "}
+          {/* Dịch: Inactive */}
           <p className="text-2xl font-bold text-red-600">
             {categories.filter((c) => !c.is_active).length}
           </p>
