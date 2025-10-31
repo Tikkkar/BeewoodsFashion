@@ -1,10 +1,17 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { TrendingUp, ShoppingBag, ArrowRight, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-import HeroSlider from '../components/hero/HeroSlider';
-import ProductCard from '../components/products/ProductCard';
-import QuickViewModal from '../components/products/QuickViewModal';
-import { useProducts, useBanners } from '../hooks/useProducts';
+import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  TrendingUp,
+  ShoppingBag,
+  ArrowRight,
+  Loader2,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import HeroSlider from "../components/hero/HeroSlider";
+import ProductCard from "../components/products/ProductCard";
+import QuickViewModal from "../components/products/QuickViewModal";
+import { useProducts, useBanners } from "../hooks/useProducts";
 
 const HomePage = ({ onAddToCart }) => {
   const [quickViewProduct, setQuickViewProduct] = useState(null);
@@ -19,12 +26,13 @@ const HomePage = ({ onAddToCart }) => {
     const container = featuredScrollRef.current;
     if (container) {
       const scrollAmount = container.clientWidth * 0.8;
-      const newScrollLeft = direction === 'right'
-        ? container.scrollLeft + scrollAmount
-        : container.scrollLeft - scrollAmount;
+      const newScrollLeft =
+        direction === "right"
+          ? container.scrollLeft + scrollAmount
+          : container.scrollLeft - scrollAmount;
       container.scrollTo({
         left: newScrollLeft,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
     }
   };
@@ -35,10 +43,13 @@ const HomePage = ({ onAddToCart }) => {
     const timer = setInterval(() => {
       const container = featuredScrollRef.current;
       if (container) {
-        if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
-          container.scrollTo({ left: 0, behavior: 'smooth' });
+        if (
+          container.scrollLeft + container.clientWidth >=
+          container.scrollWidth - 10
+        ) {
+          container.scrollTo({ left: 0, behavior: "smooth" });
         } else {
-          handleScroll('right');
+          handleScroll("right");
         }
       }
     }, 5000);
@@ -47,18 +58,131 @@ const HomePage = ({ onAddToCart }) => {
   }, [isHovered]);
 
   // =============================================
+  // LOGIC CHO CUSTOMER GRID CAROUSEL
+  // =============================================
+  const customerScrollRef = useRef(null);
+  const [isCustomerHovered, setIsCustomerHovered] = useState(false);
+
+  const customers = [
+    {
+      id: 1,
+      name: "Nguyễn Thu Hà",
+      role: "Khách hàng thân thiết",
+      image:
+        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+    },
+    {
+      id: 2,
+      name: "Phạm Mai Anh",
+      role: "Khách hàng mới",
+      image:
+        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
+    },
+    {
+      id: 3,
+      name: "Trần Minh Châu",
+      role: "Khách hàng VIP",
+      image:
+        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop",
+    },
+    {
+      id: 4,
+      name: "Lê Hoàng Anh",
+      role: "Khách hàng thân thiết",
+      image:
+        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
+    },
+    {
+      id: 5,
+      name: "Võ Thị Lan",
+      role: "Khách hàng VIP",
+      image:
+        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop",
+    },
+    {
+      id: 6,
+      name: "Hoàng Minh Tuấn",
+      role: "Khách hàng mới",
+      image:
+        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
+    },
+    {
+      id: 7,
+      name: "Đặng Thu Trang",
+      role: "Khách hàng thân thiết",
+      image:
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop",
+    },
+    {
+      id: 8,
+      name: "Ngô Văn Hùng",
+      role: "Khách hàng VIP",
+      image:
+        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
+    },
+  ];
+
+  const handleCustomerScroll = (direction) => {
+    const container = customerScrollRef.current;
+    if (container) {
+      const scrollAmount = container.clientWidth * 0.8;
+      const newScrollLeft =
+        direction === "right"
+          ? container.scrollLeft + scrollAmount
+          : container.scrollLeft - scrollAmount;
+      container.scrollTo({
+        left: newScrollLeft,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Auto-scroll for customers
+  useEffect(() => {
+    if (isCustomerHovered) return;
+
+    const timer = setInterval(() => {
+      const container = customerScrollRef.current;
+      if (container) {
+        if (
+          container.scrollLeft + container.clientWidth >=
+          container.scrollWidth - 10
+        ) {
+          container.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          handleCustomerScroll("right");
+        }
+      }
+    }, 4000); // Auto scroll every 4 seconds
+
+    return () => clearInterval(timer);
+  }, [isCustomerHovered]);
+
+  // =============================================
   // FETCH DATA TỪ SUPABASE
   // =============================================
-  const { products: featuredProducts, loading: featuredLoading, error: featuredError } = useProducts({ 
-    featured: true, 
-    limit: 12 
+  const {
+    products: featuredProducts,
+    loading: featuredLoading,
+    error: featuredError,
+  } = useProducts({
+    featured: true,
+    limit: 12,
   });
 
-  const { products: todayProducts, loading: todayLoading, error: todayError } = useProducts({ 
-    limit: 4 
+  const {
+    products: todayProducts,
+    loading: todayLoading,
+    error: todayError,
+  } = useProducts({
+    limit: 4,
   });
 
-  const { banners, loading: bannersLoading, error: bannersError } = useBanners();
+  const {
+    banners,
+    loading: bannersLoading,
+    error: bannersError,
+  } = useBanners();
 
   // =============================================
   // KẾT HỢP CÁC TRẠNG THÁI LOADING VÀ ERROR
@@ -70,7 +194,7 @@ const HomePage = ({ onAddToCart }) => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">❌ Lỗi khi tải dữ liệu</p>
+          <p className="text-red-600 mb-4">⌛ Lỗi khi tải dữ liệu</p>
           <p className="text-gray-600 text-sm">{combinedError}</p>
           <button
             onClick={() => window.location.reload()}
@@ -99,14 +223,12 @@ const HomePage = ({ onAddToCart }) => {
   // =============================================
   return (
     <div className="min-h-screen bg-white">
-      
       {/* 1. Hero Banner */}
       <HeroSlider banners={banners || []} />
 
       {/* 2. Sản Phẩm Bán Chạy - DẠNG SLIDER */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
-          
           <div className="text-center mb-8 md:mb-12">
             <div className="flex items-center justify-center gap-2 mb-3">
               <TrendingUp size={24} className="text-red-500" />
@@ -118,27 +240,30 @@ const HomePage = ({ onAddToCart }) => {
               Những sản phẩm được yêu thích nhất
             </p>
           </div>
-          
+
           <div
-            className="relative group" // Thêm class 'group' để điều khiển hiển thị nút bấm
+            className="relative group"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
             <button
-              onClick={() => handleScroll('left')}
+              onClick={() => handleScroll("left")}
               className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black rounded-full p-2 shadow-md transition-opacity opacity-0 group-hover:opacity-100"
               aria-label="Previous Product"
             >
               <ChevronLeft size={24} />
             </button>
-            
+
             <div
               ref={featuredScrollRef}
               className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
             >
               {featuredProducts.length > 0 ? (
                 featuredProducts.map((product) => (
-                  <div key={product.id} className="flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 snap-start px-2">
+                  <div
+                    key={product.id}
+                    className="flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 snap-start px-2"
+                  >
                     <ProductCard
                       product={product}
                       onAddToCart={onAddToCart}
@@ -154,7 +279,7 @@ const HomePage = ({ onAddToCart }) => {
             </div>
 
             <button
-              onClick={() => handleScroll('right')}
+              onClick={() => handleScroll("right")}
               className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/70 hover:bg-white text-black rounded-full p-2 shadow-md transition-opacity opacity-0 group-hover:opacity-100"
               aria-label="Next Product"
             >
@@ -212,67 +337,72 @@ const HomePage = ({ onAddToCart }) => {
         </div>
       </section>
 
-      {/* 5. Customer Feedback */}
+      {/* 5. Customer Grid Carousel - ✅ NEW: 4-5 photos at once */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
             <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
-              Khách Hàng Nói Gì Về Chúng Tôi
+              Khách Hàng Của Chúng Tôi
             </h2>
-            <p className="text-gray-600">Những phản hồi tích cực từ khách hàng</p>
+            <p className="text-gray-600">Những khách hàng tuyệt vời</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">★</span>
-                ))}
-              </div>
-              <p className="text-gray-700 mb-4 italic">
-                "Sản phẩm rất đẹp, chất lượng tốt. Giao hàng nhanh, đóng gói cẩn thận. Sẽ ủng hộ shop tiếp!"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Nguyễn Thu Hà</p>
-                  <p className="text-sm text-gray-500">Khách hàng thân thiết</p>
+
+          <div
+            className="relative group"
+            onMouseEnter={() => setIsCustomerHovered(true)}
+            onMouseLeave={() => setIsCustomerHovered(false)}
+          >
+            {/* Navigation Buttons */}
+            <button
+              onClick={() => handleCustomerScroll("left")}
+              className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Previous Customers"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            {/* Customer Grid Slider */}
+            <div
+              ref={customerScrollRef}
+              className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
+            >
+              {customers.map((customer) => (
+                <div
+                  key={customer.id}
+                  className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2"
+                >
+                  <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
+                    {/* Customer Photo */}
+                    <div className="aspect-square relative overflow-hidden">
+                      <img
+                        src={customer.image}
+                        alt={customer.name}
+                        className="w-full h-full object-cover transform group-hover/card:scale-110 transition-transform duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"></div>
+                    </div>
+
+                    {/* Customer Info */}
+                    <div className="p-4 text-center">
+                      <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
+                        {customer.name}
+                      </h3>
+                      <p className="text-xs md:text-sm text-gray-500">
+                        {customer.role}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">★</span>
-                ))}
-              </div>
-              <p className="text-gray-700 mb-4 italic">
-                "Thiết kế sang trọng, form dáng chuẩn. Mặc rất thoải mái và đẹp. Giá cả hợp lý!"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Phạm Mai Anh</p>
-                  <p className="text-sm text-gray-500">Khách hàng mới</p>
-                </div>
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <span key={i} className="text-yellow-400">★</span>
-                ))}
-              </div>
-              <p className="text-gray-700 mb-4 italic">
-                "Dịch vụ chăm sóc khách hàng tốt, nhiệt tình. Sản phẩm đúng như mô tả. Rất hài lòng!"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
-                <div>
-                  <p className="font-medium">Trần Minh Châu</p>
-                  <p className="text-sm text-gray-500">Khách hàng VIP</p>
-                </div>
-              </div>
-            </div>
+
+            <button
+              onClick={() => handleCustomerScroll("right")}
+              className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+              aria-label="Next Customers"
+            >
+              <ChevronRight size={24} />
+            </button>
           </div>
         </div>
       </section>

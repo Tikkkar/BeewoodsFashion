@@ -4,7 +4,7 @@
 
 export const brandData = {
   brand: {
-    name: "BeWo",
+    name: "BEWO",
     tagline: "Luxury Fashion",
     description: "Premium quality fashion for modern lifestyle",
   },
@@ -12,7 +12,7 @@ export const brandData = {
 
   // Cấu trúc menu đã được sửa lại với các URL slug duy nhất
   navigation: [
-    { text: "Về BeWo", url: "/about" },
+    { text: "Về BEWO", url: "/about" },
     { text: "Bộ Sưu Tập", url: "/products" },
     {
       text: "Tất Cả Sản Phẩm",
