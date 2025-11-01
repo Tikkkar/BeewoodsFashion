@@ -325,7 +325,7 @@ const ShippingPolicyPage = ({ brand }) => {
                     href="tel:0968877743"
                     className="font-semibold hover:text-blue-200 transition text-lg"
                   >
-                    096.88.777.43
+                    036 2014571
                   </a>
                 </div>
               </div>

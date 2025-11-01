@@ -161,23 +161,19 @@ export default function ChatWidget() {
 
   // Helper để lấy product URL
   function getProductUrl(content) {
-    console.log("🔍 getProductUrl - Analyzing content:", content);
 
     // Ưu tiên 1: Có product_slug hoặc slug
     if (content.product_slug) {
-      console.log("✅ Using product_slug:", content.product_slug);
       return `/product/${content.product_slug}`;
     }
     if (content.slug) {
-      console.log("✅ Using slug:", content.slug);
       return `/product/${content.slug}`;
     }
 
     // Ưu tiên 2: Parse slug từ product_link
     if (content.product_link) {
       try {
-        console.log("🔗 Trying to parse product_link:", content.product_link);
-
+    
         // Xử lý cả URL đầy đủ và relative path
         let pathname;
         if (content.product_link.startsWith("http")) {
@@ -187,18 +183,14 @@ export default function ChatWidget() {
           pathname = content.product_link;
         }
 
-        console.log("📍 Extracted pathname:", pathname);
 
         // Extract slug từ path: /products/abc-xyz-123 hoặc /product/abc-xyz-123
         const pathParts = pathname.split("/").filter((p) => p); // Remove empty strings
-        console.log("📦 Path parts:", pathParts);
 
         // Lấy phần cuối cùng của path (là slug)
         const slug = pathParts[pathParts.length - 1];
-        console.log("🎯 Extracted slug:", slug);
 
         if (slug && slug !== "products" && slug !== "product") {
-          console.log("✅ Using parsed slug from product_link:", slug);
           return `/product/${slug}`;
         }
       } catch (e) {
@@ -212,11 +204,9 @@ export default function ChatWidget() {
 
     // Ưu tiên 3: Fallback về ID
     if (content.product_id) {
-      console.log("⚠️ Fallback to product_id:", content.product_id);
       return `/product/${content.product_id}`;
     }
     if (content.id) {
-      console.log("⚠️ Fallback to id:", content.id);
       return `/product/${content.id}`;
     }
 
@@ -313,7 +303,6 @@ export default function ChatWidget() {
                     {messages.map((msg) => {
                       // Debug log
                       if (msg.message_type === "image") {
-                        console.log("Image message content:", msg.content);
                       }
 
                       return (

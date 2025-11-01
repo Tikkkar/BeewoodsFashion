@@ -482,7 +482,7 @@ const PaymentPolicyPage = ({ brand }) => {
                 href="tel:0968877743"
                 className="text-lg font-bold hover:text-gray-300"
               >
-                📞 096.88.777.43
+                📞 036 2014571
               </a>
             </div>
           </div>

@@ -2,7 +2,6 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 /* 2. Thiết lập các kiểu dáng cơ bản cho toàn bộ trang */
 @layer base {
   body {

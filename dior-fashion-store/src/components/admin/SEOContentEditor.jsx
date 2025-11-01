@@ -71,7 +71,6 @@ const SEOContentEditor = ({ initialProductId = null }) => {
     // Check Gemini config
     const config = checkGeminiConfig();
     setAiConfig(config);
-    console.log("🤖 Gemini status:", config.message);
   }, []);
 
   useEffect(() => {
@@ -409,9 +408,6 @@ const SEOContentEditor = ({ initialProductId = null }) => {
         .toString(36)
         .substring(7)}.${fileExt}`;
       const filePath = `products/${fileName}`;
-
-      console.log("📤 Uploading to Supabase Storage:", filePath);
-
       const { data, error } = await supabase.storage
         .from("product-images")
         .upload(filePath, file, {
@@ -427,13 +423,11 @@ const SEOContentEditor = ({ initialProductId = null }) => {
 
       const publicUrl = publicUrlData.publicUrl;
 
-      console.log("✅ Upload success:", publicUrl);
 
       updateBlock(blockId, { url: publicUrl });
 
       alert("✅ Tải ảnh lên thành công!");
     } catch (error) {
-      console.error("❌ Upload error:", error);
       alert("❌ Lỗi khi tải ảnh lên: " + error.message);
     } finally {
       setUploadingImage(false);

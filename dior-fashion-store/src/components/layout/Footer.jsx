@@ -132,34 +132,34 @@ const Footer = ({ brand }) => {
                     Giới thiệu
                   </Link>
                 </li>
-                <li>
+                {/* <li>
                   <Link to="/news" className="hover:text-white transition">
                     Tin tức
                   </Link>
-                </li>
-                <li>
+                </li> */}
+                {/* <li>
                   <Link
                     to="/promotions"
                     className="hover:text-white transition"
                   >
                     Khuyến mãi
                   </Link>
-                </li>
-                <li>
+                </li> */}
+                {/* <li>
                   <Link to="/stores" className="hover:text-white transition">
                     Hệ thống cửa hàng
                   </Link>
-                </li>
-                <li>
+                </li> */}
+                {/* <li>
                   <Link to="/careers" className="hover:text-white transition">
                     Tuyển dụng
                   </Link>
-                </li>
-                <li>
+                </li> */}
+                {/* <li>
                   <Link to="/contact" className="hover:text-white transition">
                     Liên hệ
                   </Link>
-                </li>
+                </li> */}
               </ul>
             </div>
 
@@ -212,11 +212,11 @@ const Footer = ({ brand }) => {
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
                     <p>Số 8 Tôn Đức Thắng, Phường Văn Miếu, TP Hà Nội</p>
                   </div>
-                  <p className="text-white font-medium mb-2">Cơ sở Hưng Yên</p>
+                  {/* <p className="text-white font-medium mb-2">Cơ sở Hưng Yên</p>
                   <div className="flex items-start gap-2">
                     <MapPin size={16} className="mt-1 flex-shrink-0" />
                     <p>Tobe Continute</p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </div>

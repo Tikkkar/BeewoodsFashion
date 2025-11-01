@@ -7,7 +7,6 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { testSupabaseConnection } from "./lib/testConnection";
 import { AuthProvider } from "./hooks/useAuth";
 import { useToast } from "./hooks/useToast";
 
@@ -304,12 +303,6 @@ function AppContent({
 }
 
 function App() {
-  // =============================================
-  // TEST SUPABASE CONNECTION
-  // =============================================
-  useEffect(() => {
-    testSupabaseConnection();
-  }, []);
 
   // =============================================
   // TOAST NOTIFICATIONS

@@ -61,7 +61,7 @@ const updateProductStock = async (cartItems) => {
 
     return { success: true };
   } catch (error) {
-    console.error("Error updating stock:", error);
+    // console.error("Error updating stock:", error); // Đã loại bỏ console.error
     return { success: false, error };
   }
 };
@@ -84,7 +84,7 @@ export const createOrder = async (orderData) => {
     const totalAfterDiscount = originalSubtotal - discountAmount;
     const finalTotal = totalAfterDiscount + shippingFee;
 
-    // ✨ THAY ĐỔI: Lấy user_id từ auth nếu user đã đăng nhập
+    // THAY ĐỔI: Lấy user_id từ auth nếu user đã đăng nhập
     let userId = null;
     const {
       data: { user },
@@ -101,13 +101,13 @@ export const createOrder = async (orderData) => {
       userId = publicUser?.id || null;
     }
 
-    // 2. ✨ THÊM: Generate order number
+    // 2. THÊM: Generate order number
     const orderNumber = generateOrderNumber();
 
     // 3. Tạo đối tượng payload
     const orderPayload = {
-      order_number: orderNumber, // ✨ THÊM dòng này
-      user_id: userId, // ✨ SỬA: Dùng userId từ auth
+      order_number: orderNumber, // THÊM dòng này
+      user_id: userId, // SỬA: Dùng userId từ auth
       customer_name: customerInfo.name,
       customer_email: customerInfo.email,
       customer_phone: customerInfo.phone,
@@ -126,7 +126,7 @@ export const createOrder = async (orderData) => {
       payment_status: "pending",
     };
 
-    console.log("📦 Đang tạo đơn hàng với payload:", orderPayload);
+    // console.log("📦 Đang tạo đơn hàng với payload:", orderPayload); // Đã loại bỏ console.log
 
     // 4. Chèn đơn hàng
     const { data: order, error: orderError } = await supabase
@@ -136,11 +136,11 @@ export const createOrder = async (orderData) => {
       .single();
 
     if (orderError) {
-      console.error("❌ Lỗi khi tạo đơn hàng:", orderError);
+      // console.error("❌ Lỗi khi tạo đơn hàng:", orderError); // Đã loại bỏ console.error
       throw orderError;
     }
 
-    console.log("✅ Đơn hàng đã tạo:", order);
+    // console.log("✅ Đơn hàng đã tạo:", order); // Đã loại bỏ console.log
 
     // 5. Chèn order items
     const orderItems = cartItems.map((item) => ({
@@ -159,7 +159,7 @@ export const createOrder = async (orderData) => {
       .insert(orderItems);
 
     if (itemsError) {
-      console.error("❌ Lỗi khi tạo chi tiết đơn hàng:", itemsError);
+      // console.error("❌ Lỗi khi tạo chi tiết đơn hàng:", itemsError); // Đã loại bỏ console.error
       // Rollback: xóa đơn hàng vừa tạo
       await supabase.from("orders").delete().eq("id", order.id);
       throw itemsError;
@@ -168,17 +168,17 @@ export const createOrder = async (orderData) => {
     // 6. Cập nhật tồn kho
     const stockResult = await updateProductStock(cartItems);
     if (!stockResult.success) {
-      console.warn(
-        "⚠️ Cảnh báo: Không thể cập nhật tồn kho:",
-        stockResult.error
-      );
+      // console.warn(
+      //   "⚠️ Cảnh báo: Không thể cập nhật tồn kho:",
+      //   stockResult.error
+      // ); // Đã loại bỏ console.warn
       // Không throw error ở đây vì đơn hàng đã tạo thành công
     }
 
-    console.log("✅ Đã tạo đơn hàng thành công:", order.order_number);
+    // console.log("✅ Đã tạo đơn hàng thành công:", order.order_number); // Đã loại bỏ console.log
     return { data: order, error: null };
   } catch (error) {
-    console.error("❌ Lỗi nghiêm trọng khi tạo đơn hàng:", error);
+    // console.error("❌ Lỗi nghiêm trọng khi tạo đơn hàng:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message || "Lỗi không xác định" };
   }
 };
@@ -203,7 +203,7 @@ export const getOrderById = async (orderId) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error("Error fetching order:", error);
+    // console.error("Error fetching order:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -228,7 +228,7 @@ export const getOrderByNumber = async (orderNumber) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error("Error fetching order:", error);
+    // console.error("Error fetching order:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -253,7 +253,7 @@ export const getUserOrders = async (userId) => {
 
     return { data, error: null };
   } catch (error) {
-    console.error("Error fetching user orders:", error);
+    // console.error("Error fetching user orders:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };

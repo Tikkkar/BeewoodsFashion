@@ -62,7 +62,7 @@ const OrderSuccessPage = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(false); // ✅ Mobile detection
+  const [isMobile, setIsMobile] = useState(false);
   const [alertState, setAlertState] = useState({
     message: null,
     type: "success",
@@ -107,9 +107,9 @@ const OrderSuccessPage = () => {
     return statusMap[status] || "Đang xử lý";
   };
 
-  // ✅ NEW: Manual ZNS consent for mobile
+  // NEW: Manual ZNS consent for mobile
   const handleManualZNSConsent = async () => {
-    console.log("📱 Mobile: Manual consent clicked");
+    // console.log("📱 Mobile: Manual consent clicked"); // Đã loại bỏ console.log
 
     if (!order) {
       showAlert("❌ Không tìm thấy thông tin đơn hàng", "error");
@@ -126,7 +126,7 @@ const OrderSuccessPage = () => {
         order_status: getOrderStatus(order.status),
       };
 
-      console.log("📤 Sending ZNS (mobile):", orderData);
+      // console.log("📤 Sending ZNS (mobile):", orderData); // Đã loại bỏ console.log
 
       const response = await fetch(
         "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
@@ -144,7 +144,7 @@ const OrderSuccessPage = () => {
       );
 
       const result = await response.json();
-      console.log("📥 ZNS response:", result);
+      // console.log("📥 ZNS response:", result); // Đã loại bỏ console.log
 
       if (result.success) {
         showAlert(
@@ -158,7 +158,7 @@ const OrderSuccessPage = () => {
         );
       }
     } catch (error) {
-      console.error("❌ Error sending ZNS:", error);
+      // console.error("❌ Error sending ZNS:", error); // Đã loại bỏ console.error
       showAlert(
         "❌ Không thể kết nối đến server. Vui lòng thử lại sau.",
         "error"
@@ -175,10 +175,10 @@ const OrderSuccessPage = () => {
           userAgent.toLowerCase()
         );
       setIsMobile(isMobileDevice);
-      console.log(
-        "📱 Device detection:",
-        isMobileDevice ? "Mobile" : "Desktop"
-      );
+      // console.log( // Đã loại bỏ console.log
+      //   "📱 Device detection:",
+      //   isMobileDevice ? "Mobile" : "Desktop"
+      // );
     };
     checkMobile();
   }, []);
@@ -192,7 +192,7 @@ const OrderSuccessPage = () => {
     const fetchOrder = async () => {
       const { data, error } = await getOrderByNumber(orderNumber);
       if (error) {
-        console.error("Error fetching order:", error);
+        // console.error("Error fetching order:", error); // Đã loại bỏ console.error
       } else {
         setOrder(data);
       }
@@ -217,11 +217,11 @@ const OrderSuccessPage = () => {
     document.body.appendChild(script);
 
     window.handleZaloConsent = function (response) {
-      console.log("🖥️ Desktop: Zalo Consent fired:", response);
+      // console.log("🖥️ Desktop: Zalo Consent fired:", response); // Đã loại bỏ console.log
       const { action, error, data, user_id } = response;
 
       if (action === "loaded_successfully") {
-        console.log("Zalo SDK loaded");
+        // console.log("Zalo SDK loaded"); // Đã loại bỏ console.log
         return;
       }
 
@@ -229,8 +229,8 @@ const OrderSuccessPage = () => {
         const zaloUserId =
           user_id || data?.user_id_by_app || order.customer_phone;
 
-        console.log("✅ Consent granted, sending ZNS...");
-        console.log("🆔 Zalo User ID:", zaloUserId);
+        // console.log("✅ Consent granted, sending ZNS..."); // Đã loại bỏ console.log
+        // console.log("🆔 Zalo User ID:", zaloUserId); // Đã loại bỏ console.log
 
         if (zaloUserId) {
           localStorage.setItem("zalo_user_id", zaloUserId);
@@ -249,7 +249,7 @@ const OrderSuccessPage = () => {
             : "Đang xử lý",
         };
 
-        console.log("📤 Sending order data:", orderData);
+        // console.log("📤 Sending order data:", orderData); // Đã loại bỏ console.log
 
         fetch(
           "https://ftqwpsftzbagidoudwoq.supabase.co/functions/v1/chatbot-process",
@@ -266,18 +266,18 @@ const OrderSuccessPage = () => {
           }
         )
           .then((res) => {
-            console.log("📥 Response status:", res.status);
+            // console.log("📥 Response status:", res.status); // Đã loại bỏ console.log
             return res.json();
           })
           .then((data) => {
-            console.log("✅ ZNS sent successfully:", data);
+            // console.log("✅ ZNS sent successfully:", data); // Đã loại bỏ console.log
             if (data.success) {
               showAlert(
                 "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
                 "success"
               );
             } else {
-              console.error("❌ Server returned error:", data.error);
+              // console.error("❌ Server returned error:", data.error); // Đã loại bỏ console.error
               showAlert(
                 "⚠️ Có lỗi xảy ra khi đăng ký thông báo. Vui lòng thử lại sau.",
                 "error"
@@ -285,20 +285,20 @@ const OrderSuccessPage = () => {
             }
           })
           .catch((err) => {
-            console.error("❌ Error sending ZNS:", err);
+            // console.error("❌ Error sending ZNS:", err); // Đã loại bỏ console.error
             showAlert(
               "❌ Không thể kết nối đến server. Vui lòng thử lại sau.",
               "error"
             );
           });
       } else if (action === "click_interaction_declined") {
-        console.log("❌ User declined consent");
+        // console.log("❌ User declined consent"); // Đã loại bỏ console.log
         showAlert("Bạn đã từ chối nhận thông báo Zalo.", "warning");
       }
     };
 
     const logScript = document.createElement("script");
-    logScript.innerHTML = `console.log("✅ Zalo SDK script injected successfully");`;
+    // logScript.innerHTML = `console.log("✅ Zalo SDK script injected successfully");`; // Đã loại bỏ console.log
     document.body.appendChild(logScript);
 
     return () => {
@@ -343,7 +343,7 @@ const OrderSuccessPage = () => {
           </p>
         </div>
 
-        {/* ✅ Zalo ZNS Consent - Mobile & Desktop */}
+        {/* Zalo ZNS Consent - Mobile & Desktop */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-md p-6 mb-6 border-2 border-blue-200">
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0">
@@ -369,7 +369,7 @@ const OrderSuccessPage = () => {
                 độc quyền qua Zalo OA. Hoàn toàn miễn phí!
               </p>
 
-              {/* ✅ Conditional render: Mobile button or Desktop widget */}
+              {/* Conditional render: Mobile button or Desktop widget */}
               {isMobile ? (
                 <button
                   onClick={handleManualZNSConsent}

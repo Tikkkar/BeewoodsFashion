@@ -26,13 +26,13 @@ export const fetchProducts = async (filters = {}) => {
     if (filters.search) {
       query = query.ilike('name', `%${filters.search}%`);
     }
-      // ✨ BỔ SUNG: BỘ LỌC SẢN PHẨM GIẢM GIÁ
+      // BỔ SUNG: BỘ LỌC SẢN PHẨM GIẢM GIÁ
     if (filters.onSale) {
       query = query
         .not('original_price', 'is', null) // Phải có giá gốc
         .filter('price', 'lt', 'original_price'); // Và giá bán phải NHỎ HƠN giá gốc
     }
-    // ✨ SỬA LỖI: Chuyển đổi giá trị bộ lọc giá thành số
+    // SỬA LỖI: Chuyển đổi giá trị bộ lọc giá thành số
     if (filters.minPrice) {
       const minPrice = parseInt(filters.minPrice, 10);
       if (!isNaN(minPrice)) {
@@ -46,7 +46,7 @@ export const fetchProducts = async (filters = {}) => {
       }
     }
     
-    // ✨ SỬA LỖI: Bổ sung logic sắp xếp theo tên Z-A
+    // SỬA LỖI: Bổ sung logic sắp xếp theo tên Z-A
     if (filters.sortBy === 'price-asc') {
         query = query.order('price', { ascending: true });
     } else if (filters.sortBy === 'price-desc') {
@@ -63,10 +63,10 @@ export const fetchProducts = async (filters = {}) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        console.warn(`No products found for category slug: ${filters.category}`);
+        // console.warn(`No products found for category slug: ${filters.category}`); // Đã loại bỏ console.warn
         return { data: [], error: null };
       }
-      console.error('❌ Supabase error:', error);
+      // console.error('❌ Supabase error:', error); // Đã loại bỏ console.error
       throw error;
     }
 
@@ -90,14 +90,17 @@ export const fetchProducts = async (filters = {}) => {
     return { data: transformedData, error: null };
 
   } catch (error) {
-    console.error('❌ Fetch products error:', error);
+    // console.error('❌ Fetch products error:', error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
 
+// =============================================
+// FETCH PRODUCT BY SLUG
+// =============================================
 export const fetchProductBySlug = async (slug) => {
   try {
-    console.log('🔍 Fetching product by slug:', slug);
+    // console.log('🔍 Fetching product by slug:', slug); // Đã loại bỏ console.log
     
     const { data, error } = await supabase
       .from('products')
@@ -128,7 +131,7 @@ export const fetchProductBySlug = async (slug) => {
       .single();
 
     if (error) {
-      console.error('❌ Error fetching product:', error);
+      // console.error('❌ Error fetching product:', error); // Đã loại bỏ console.error
       return { data: null, error: error.message };
     }
 
@@ -136,18 +139,18 @@ export const fetchProductBySlug = async (slug) => {
       return { data: null, error: 'Product not found' };
     }
 
-    console.log('✅ Raw product data:', data);
-    console.log('📦 Raw attributes:', data.attributes);
-    console.log('📦 Attributes type:', typeof data.attributes);
+    // console.log('✅ Raw product data:', data); // Đã loại bỏ console.log
+    // console.log('📦 Raw attributes:', data.attributes); // Đã loại bỏ console.log
+    // console.log('📦 Attributes type:', typeof data.attributes); // Đã loại bỏ console.log
 
-    // ✅ PARSE ATTRIBUTES NẾU LÀ STRING
+    // PARSE ATTRIBUTES NẾU LÀ STRING
     if (data.attributes) {
       if (typeof data.attributes === 'string') {
         try {
           data.attributes = JSON.parse(data.attributes);
-          console.log('✅ Parsed attributes from string');
+          // console.log('✅ Parsed attributes from string'); // Đã loại bỏ console.log
         } catch (e) {
-          console.error('❌ Error parsing attributes:', e);
+          // console.error('❌ Error parsing attributes:', e); // Đã loại bỏ console.error
           data.attributes = {};
         }
       }
@@ -155,9 +158,9 @@ export const fetchProductBySlug = async (slug) => {
       data.attributes = {};
     }
 
-    console.log('📝 Parsed attributes:', data.attributes);
-    console.log('📝 Content blocks:', data.attributes?.content_blocks);
-    console.log('📝 Content blocks length:', data.attributes?.content_blocks?.length || 0);
+    // console.log('📝 Parsed attributes:', data.attributes); // Đã loại bỏ console.log
+    // console.log('📝 Content blocks:', data.attributes?.content_blocks); // Đã loại bỏ console.log
+    // console.log('📝 Content blocks length:', data.attributes?.content_blocks?.length || 0); // Đã loại bỏ console.log
 
     // ✅ UPDATE VIEW COUNT (optional - comment nếu không cần)
     /*
@@ -185,13 +188,13 @@ export const fetchProductBySlug = async (slug) => {
       reviews: data.reviews || []
     };
 
-    console.log('✅ Final transformed data:', transformedData);
-    console.log('📦 Final attributes:', transformedData.attributes);
-    console.log('📝 Final content blocks:', transformedData.attributes?.content_blocks);
+    // console.log('✅ Final transformed data:', transformedData); // Đã loại bỏ console.log
+    // console.log('📦 Final attributes:', transformedData.attributes); // Đã loại bỏ console.log
+    // console.log('📝 Final content blocks:', transformedData.attributes?.content_blocks); // Đã loại bỏ console.log
 
     return { data: transformedData, error: null };
   } catch (error) {
-    console.error('❌ Exception in fetchProductBySlug:', error);
+    // console.error('❌ Exception in fetchProductBySlug:', error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -211,7 +214,7 @@ export const fetchCategories = async () => {
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    console.error('❌ Fetch categories error:', error);
+    // console.error('❌ Fetch categories error:', error); // Đã loại bỏ console.error
     return { data: [], error: error.message };
   }
 };
@@ -231,7 +234,7 @@ export const fetchBanners = async () => {
         if (error) throw error;
         return { data: data || [], error: null };
     } catch (error) {
-        console.error('❌ Fetch banners error:', error);
+        // console.error('❌ Fetch banners error:', error); // Đã loại bỏ console.error
         return { data: [], error: error.message };
     }
 };
@@ -271,7 +274,7 @@ export const searchProducts = async (searchTerm) => {
         }) || [];
         return { data: transformedData, error: null };
     } catch (error) {
-        console.error('❌ Search error:', error);
+        // console.error('❌ Search error:', error); // Đã loại bỏ console.error
         return { data: [], error: error.message };
     }
 };
@@ -309,7 +312,7 @@ export const fetchFeaturedProducts = async (limit = 8) => {
         }) || [];
         return { data: transformedData, error: null };
     } catch (error) {
-        console.error('❌ Featured products error:', error);
+        // console.error('❌ Featured products error:', error); // Đã loại bỏ console.error
         return { data: [], error: error.message };
     }
 };

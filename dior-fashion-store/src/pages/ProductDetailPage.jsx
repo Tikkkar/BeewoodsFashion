@@ -27,7 +27,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   // =============================================
   const { product: rawProduct, loading, error } = useProductDetail(slug);
 
-  // ✨ Map original_price (snake_case từ DB) sang originalPrice (camelCase)
+  // Map original_price (snake_case từ DB) sang originalPrice (camelCase)
   const product = rawProduct
     ? {
         ...rawProduct,
@@ -55,7 +55,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [showShippingPolicy, setShowShippingPolicy] = useState(false);
 
-  // ✨ NEW: States cho lightbox
+  // NEW: States cho lightbox
   const [showLightbox, setShowLightbox] = useState(false);
   const [lightboxImage, setLightboxImage] = useState(0);
 
@@ -95,37 +95,14 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
         ).toFixed(1)
       : "5.0";
 
-  // ✨ Kiểm tra xem có giảm giá không (giống ProductCard)
+  // Kiểm tra xem có giảm giá không (giống ProductCard)
   const isSale =
     product?.originalPrice && product.originalPrice > product.price;
 
   // =============================================
   // EFFECTS
   // =============================================
-  // Reset state khi sản phẩm thay đổi
-  useEffect(() => {
-    if (product) {
-      console.group("🔍 PRODUCT DETAIL PAGE DEBUG");
-      console.log("1. Product name:", product.name);
-      console.log("2. Product price:", product.price);
-      console.log("3. Product originalPrice:", product.originalPrice);
-      console.log("4. Is on sale?:", isSale);
-      console.log(
-        "5. Discount %:",
-        isSale
-          ? Math.round(
-              ((product.originalPrice - product.price) /
-                product.originalPrice) *
-                100
-            )
-          : 0
-      );
-      console.log("6. Has attributes?", !!product.attributes);
-      console.log("7. Attributes value:", product.attributes);
-      console.log("8. Content blocks:", product.attributes?.content_blocks);
-      console.groupEnd();
-    }
-  }, [product, isSale]);
+  // **Đã loại bỏ useEffect có console.log**
 
   // Kiểm tra trạng thái yêu thích
   useEffect(() => {
@@ -134,7 +111,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
     }
   }, [product, wishlist]);
 
-  // ✨ NEW: Auto-slide cho gallery chính (mỗi 3 giây)
+  // NEW: Auto-slide cho gallery chính (mỗi 3 giây)
   useEffect(() => {
     if (productImages.length <= 1) return;
 
@@ -145,7 +122,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
     return () => clearInterval(interval);
   }, [productImages.length]);
 
-  // ✨ NEW: Auto-slide cho lightbox (mỗi 3 giây)
+  // NEW: Auto-slide cho lightbox (mỗi 3 giây)
   useEffect(() => {
     if (!showLightbox || productImages.length <= 1) return;
 
@@ -230,11 +207,11 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
         alert("📋 Đã copy link sản phẩm!");
       }
     } catch (err) {
-      console.log("Error sharing:", err);
+      // **Đã loại bỏ console.log**
     }
   };
 
-  // ✨ NEW: Handlers cho lightbox
+  // NEW: Handlers cho lightbox
   const handleImageClick = () => {
     setLightboxImage(selectedImage);
     setShowLightbox(true);
@@ -303,7 +280,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
       </nav>
 
       <div className="grid md:grid-cols-2 gap-6 md:gap-8 lg:gap-12">
-        {/* ✨ ENHANCED: Image Gallery với Auto-slide & Lightbox */}
+        {/* ENHANCED: Image Gallery với Auto-slide & Lightbox */}
         <div className="space-y-3 md:space-y-4">
           {/* Main Image với click để mở lightbox */}
           <div
@@ -459,7 +436,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
             </div>
           </div>
 
-          {/* ✨ IMPROVED: Price Display - GIỐNG ProductCard */}
+          {/* IMPROVED: Price Display - GIỐNG ProductCard */}
           <div className="space-y-2">
             <div className="flex items-center gap-3 md:gap-4 flex-wrap">
               {/* Giá hiện tại - Luôn hiển thị */}
@@ -510,9 +487,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               <Check className="text-gray-400" size={20} />
               <div>
                 <div className="text-xs text-gray-500">Đổi trả dễ dàng</div>
-                <div className="text-xs md:text-sm font-medium">
-                  Trong 7 ngày
-                </div>
+                <div className="text-xs md:text-sm font-medium">Trong 7 ngày</div>
               </div>
             </div>
           </div>
@@ -739,7 +714,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
         </div>
       )}
 
-      {/* ✨ NEW: Lightbox Modal */}
+      {/* NEW: Lightbox Modal */}
       {showLightbox && (
         <div
           className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"

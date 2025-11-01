@@ -1,8 +1,7 @@
 import React from 'react';
 import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth'; // <-- ĐÃ THÊM: Import useAuth hook
-
+import { useAuth } from '../../hooks/useAuth';
 /**
  * Recursive Nav Item Component for nested submenus
  */
@@ -32,9 +31,7 @@ const RecursiveNavItem = ({ item }) => {
 const Header = ({ 
   brandName = "BeeWo", 
   cart = [], 
-  wishlist = [], 
   onCartClick = () => {}, 
-  onWishlistClick = () => {},
   navigation = [] 
 }) => {
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -52,7 +49,6 @@ const Header = ({
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      console.log('Search:', searchQuery);
       navigate(`/products?search=${searchQuery.trim()}`); // Chuyển hướng tới trang tìm kiếm
       setSearchOpen(false);
       setSearchQuery('');

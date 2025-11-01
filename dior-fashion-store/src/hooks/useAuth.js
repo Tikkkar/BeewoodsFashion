@@ -14,18 +14,15 @@ export const AuthProvider = ({ children }) => {
 
     const initAuth = async () => {
       try {
-        console.log('🔐 Initializing auth...');
         
         const { data: { session } } = await supabase.auth.getSession();
         
         if (mounted && session?.user) {
-          console.log('✅ Found existing session:', session.user.email);
           await loadUserProfile(session.user);
         } else {
-          console.log('ℹ️ No existing session');
         }
         
-        initialized.current = true; // ⚡ ĐÁNH DẤU ĐÃ INIT
+        initialized.current = true; 
       } catch (error) {
         console.error('Init auth error:', error);
         initialized.current = true;
@@ -36,33 +33,27 @@ export const AuthProvider = ({ children }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('🔐 Auth event:', event);
 
         if (!mounted) return;
 
         // ⚡ IGNORE INITIAL_SESSION - ĐÃ XỬ LÝ Ở initAuth
         if (event === 'INITIAL_SESSION') {
-          console.log('ℹ️ Ignoring INITIAL_SESSION (already handled)');
           return;
         }
 
         // ⚡ CHỈ XỬ LÝ SIGNED_IN NẾU ĐÃ INITIALIZED
         if (event === 'SIGNED_IN') {
           if (!initialized.current) {
-            console.log('ℹ️ Ignoring SIGNED_IN during initialization');
             return;
           }
           
           if (session?.user && !loadingProfile.current) {
-            console.log('👤 New sign in detected');
             await loadUserProfile(session.user);
           }
         } else if (event === 'SIGNED_OUT') {
-          console.log('👋 User signed out');
           setUser(null);
           loadingProfile.current = false;
         } else if (event === 'TOKEN_REFRESHED') {
-          console.log('🔄 Token refreshed silently');
         }
       }
     );
@@ -75,14 +66,12 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (authUser) => {
     if (loadingProfile.current) {
-      console.log('⏳ Profile already loading, skip...');
       return;
     }
 
     loadingProfile.current = true;
 
     try {
-      console.log('👤 Loading profile for:', authUser.email);
 
       const { data: profile, error } = await supabase
         .from('users')
@@ -101,7 +90,7 @@ export const AuthProvider = ({ children }) => {
         role: 'customer'
       };
 
-      console.log('✅ Profile loaded:', finalProfile.email, 'Role:', finalProfile.role);
+    
 
       setUser({
         ...authUser,
@@ -129,7 +118,6 @@ export const AuthProvider = ({ children }) => {
    // ✅ THÊM HÀM LOGOUT
   const logout = async () => {
     try {
-      console.log('👋 Logging out...');
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -138,7 +126,6 @@ export const AuthProvider = ({ children }) => {
       }
       
       setUser(null);
-      console.log('✅ Logged out successfully');
     } catch (error) {
       console.error('❌ Logout failed:', error);
       throw error;

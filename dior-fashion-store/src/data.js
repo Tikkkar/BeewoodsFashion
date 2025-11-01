@@ -34,27 +34,9 @@ export const brandData = {
         { text: "Bộ", url: "/category/bo-do" },
       ],
     },
-    { text: "Cửa Hàng", url: "/stores" },
-    { text: "Ưu Đãi Độc Quyền", url: "/sale-off" },
-    { text: "Tin Tức", url: "/news" },
-    { text: "Tuyển Dụng", url: "/recruitment" },
-  ],
-
-  footerSections: [
-    {
-      title: "Shop",
-      links: [
-        { name: "All Products", path: "/products" },
-        { name: "New Arrivals", path: "/products?featured=true" },
-      ],
-    },
-    {
-      title: "Support",
-      links: [
-        { name: "Shipping Policy", path: "/shipping-policy" },
-        { name: "Return Policy", path: "/return-policy" },
-        { name: "Privacy Policy", path: "/privacy-policy" },
-      ],
-    },
+    // { text: "Cửa Hàng", url: "/stores" },
+    // { text: "Ưu Đãi Độc Quyền", url: "/sale-off" },
+    // { text: "Tin Tức", url: "/news" },
+    // { text: "Tuyển Dụng", url: "/recruitment" },
   ],
 };

@@ -221,8 +221,7 @@ const AboutPage = ({ brand }) => {
               <p className="text-gray-300 leading-relaxed">
                 Mang đến những sản phẩm thời trang chất lượng cao, giá cả hợp
                 lý, giúp mọi người tự tin thể hiện phong cách riêng và nâng tầm
-                vẻ đẹp bản thân. {brand?.name || "BeeWo"}
-                cam kết xây dựng một cộng đồng yêu thời trang, sống tích cực và
+                vẻ đẹp bản thân. {brand?.name || "BeeWo"} cam kết xây dựng một cộng đồng yêu thời trang, sống tích cực và
                 lan tỏa năng lượng tích cực.
               </p>
             </div>

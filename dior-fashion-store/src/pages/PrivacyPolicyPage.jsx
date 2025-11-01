@@ -318,7 +318,7 @@ const PrivacyPolicyPage = ({ brand }) => {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Hotline</p>
                       <a href="tel:0968877743" className="text-sm font-bold text-blue-600 hover:underline">
-                        096.88.777.43
+                        036 2014571
                       </a>
                     </div>
                   </div>
@@ -352,7 +352,7 @@ const PrivacyPolicyPage = ({ brand }) => {
                   <div>
                     <p className="text-xs text-gray-600">Gọi điện trực tiếp</p>
                     <a href="tel:0968877743" className="text-lg font-bold text-green-700 hover:underline">
-                      096.88.777.43
+                      036 2014571
                     </a>
                   </div>
                 </div>

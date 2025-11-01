@@ -8,10 +8,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const genAI = new GoogleGenerativeAI(
   process.env.REACT_APP_GEMINI_API_KEY || ""
 );
-console.log(
-  "🔑 Gemini API Key:",
-  process.env.REACT_APP_GEMINI_API_KEY ? "Loaded ✅" : "Missing ❌"
-);
 
 interface SEOContentRequest {
   productName: string;
@@ -88,13 +84,10 @@ export async function generateSEOContent(
 
     const prompt = buildSEOPrompt(request);
 
-    console.log("🤖 Generating SEO content with Gemini...");
 
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
-
-    console.log("📝 Raw AI response:", text.substring(0, 200));
 
     // Parse JSON response - loại bỏ markdown wrapper
     const parsed = parseGeminiJSON(text);
@@ -150,7 +143,6 @@ export async function analyzeProductImage(
       };
     } else {
       // URL image - convert to base64 first
-      console.log("🔄 Converting URL image to base64...");
       const response = await fetch(imageData);
       const blob = await response.blob();
       const base64 = await blobToBase64(blob);
@@ -162,7 +154,6 @@ export async function analyzeProductImage(
           mimeType: blob.type,
         },
       };
-      console.log("✅ Image converted successfully");
     }
 
     const prompt = `Phân tích hình ảnh này của sản phẩm thời trang${
@@ -195,7 +186,6 @@ TRẢ VỀ JSON (chỉ JSON, không có text khác):
     const response = result.response;
     const text = response.text();
 
-    console.log("🖼️ Image analysis result:", text.substring(0, 200));
 
     // Parse JSON - loại bỏ markdown wrapper
     const parsed = parseGeminiJSON(text);

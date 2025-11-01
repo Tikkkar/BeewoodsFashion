@@ -3,7 +3,6 @@ import { X, Trash2, ShoppingBag, Plus, Minus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const CartSidebar = ({ isOpen, onClose, cart, onRemoveItem, onUpdateQuantity }) => {
-  console.log("Dữ liệu trong giỏ hàng:", cart); // <-- THÊM DÒNG NÀY ĐỂ DEBUG
   const navigate = useNavigate();
 
   const formatPrice = (price) => {

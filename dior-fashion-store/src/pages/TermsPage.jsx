@@ -468,7 +468,7 @@ const TermsPage = ({ brand }) => {
           <Phone size={32} className="mx-auto mb-3" />
           <p className="text-sm text-gray-300 mb-2">Hotline đặt hàng & hỗ trợ</p>
           <a href="tel:0865644468" className="text-2xl font-bold hover:text-gray-300 transition">
-            08.656.444.68
+            036 2014571
           </a>
         </div>
 
@@ -477,7 +477,7 @@ const TermsPage = ({ brand }) => {
           <Phone size={32} className="mx-auto mb-3" />
           <p className="text-sm text-gray-300 mb-2">Hotline phản ánh chất lượng</p>
           <a href="tel:0968877743" className="text-2xl font-bold hover:text-gray-300 transition">
-            096.88.777.43
+            036 2014571
           </a>
         </div>
       </div>
@@ -485,8 +485,8 @@ const TermsPage = ({ brand }) => {
       <div className="text-center mt-6">
         <p className="text-sm text-gray-300">
           Email: 
-          <a href="mailto:hagoomarketing@gmail.com" className="underline hover:text-white ml-1">
-            hagoomarketing@gmail.com
+          <a href="chamsockhachhangbewo@gmail.com" className="underline hover:text-white ml-1">
+            chamsockhachhangbewo@gmail.com
           </a>
         </p>
       </div>
