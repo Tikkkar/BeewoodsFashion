@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import {
   CheckCircle,
@@ -10,7 +10,6 @@ import {
 } from "lucide-react";
 import { getOrderByNumber } from "../lib/api/orders";
 
-// --- CUSTOM ALERT COMPONENT ---
 const CustomAlert = ({ message, type, onClose }) => {
   const bgColor =
     type === "success"
@@ -66,6 +65,7 @@ const OrderSuccessPage = () => {
     message: null,
     type: "success",
   });
+  const widgetRef = useRef(null);
 
   const orderNumber = location.state?.orderNumber;
 
@@ -141,18 +141,18 @@ const OrderSuccessPage = () => {
 
       if (result.success) {
         showAlert(
-          "✅ Đã đăng ký nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
+          "✅ Đã đăng ký nhận thông báo qua Zalo!",
           "success"
         );
       } else {
         showAlert(
-          `⚠️ ${result.error || "Có lỗi xảy ra khi đăng ký thông báo"}`,
+          `⚠️ ${result.error || "Có lỗi xảy ra"}`,
           "error"
         );
       }
     } catch (error) {
       showAlert(
-        "❌ Không thể kết nối đến server. Vui lòng thử lại sau.",
+        "❌ Không thể kết nối. Vui lòng thử lại sau.",
         "error"
       );
     }
@@ -185,25 +185,21 @@ const OrderSuccessPage = () => {
     fetchOrder();
   }, [orderNumber, navigate]);
 
-  // ✅ FIX: Zalo SDK với proper data handling
+  // ✅ FINAL FIX: Proper Zalo SDK loading
   useEffect(() => {
     if (!order || isMobile) return;
 
-    // Remove existing script
-    const existedScript = document.querySelector(
-      'script[src="https://sp.zalo.me/plugins/sdk.js"]'
+    // Clean up existing scripts
+    const existingScripts = document.querySelectorAll(
+      'script[src*="zalo.me"]'
     );
-    if (existedScript) existedScript.remove();
+    existingScripts.forEach((s) => s.remove());
 
-    // Load Zalo SDK
-    const script = document.createElement("script");
-    script.src = "https://sp.zalo.me/plugins/sdk.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    // ✅ FIX: Global callback function
+    // Define callback BEFORE loading SDK
     window.handleZaloConsent = function (response) {
-      const { action, error, data, user_id } = response;
+      console.log("Zalo response:", response);
+      
+      const { action, error, data, user_id } = response || {};
 
       if (action === "loaded_successfully") return;
 
@@ -240,32 +236,38 @@ const OrderSuccessPage = () => {
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {
-              showAlert(
-                "✅ Đã đồng ý nhận thông báo! Bạn sẽ nhận được cập nhật đơn hàng qua Zalo.",
-                "success"
-              );
+              showAlert("✅ Đã đăng ký nhận thông báo Zalo!", "success");
             } else {
-              showAlert(
-                "⚠️ Có lỗi xảy ra khi đăng ký thông báo.",
-                "error"
-              );
+              showAlert("⚠️ Có lỗi xảy ra.", "error");
             }
           })
           .catch(() => {
-            showAlert(
-              "❌ Không thể kết nối đến server.",
-              "error"
-            );
+            showAlert("❌ Không thể kết nối.", "error");
           });
       } else if (action === "click_interaction_declined") {
-        showAlert("Bạn đã từ chối nhận thông báo Zalo.", "warning");
+        showAlert("Bạn đã từ chối nhận thông báo.", "warning");
       }
     };
 
+    // Load SDK after a short delay to ensure DOM is ready
+    setTimeout(() => {
+      const script = document.createElement("script");
+      script.src = "https://sp.zalo.me/plugins/sdk.js";
+      script.async = true;
+      script.onload = () => {
+        console.log("Zalo SDK loaded");
+        // Parse the widget after SDK loads
+        if (window.ZaloSocialSDK) {
+          setTimeout(() => {
+            window.ZaloSocialSDK.parse();
+          }, 500);
+        }
+      };
+      document.body.appendChild(script);
+    }, 1000);
+
     return () => {
-      if (script.parentNode) {
-        script.parentNode.removeChild(script);
-      }
+      delete window.handleZaloConsent;
     };
   }, [order, isMobile, showAlert]);
 
@@ -306,7 +308,7 @@ const OrderSuccessPage = () => {
           </p>
         </div>
 
-        {/* ✅ FIX: Zalo Widget với correct data attributes */}
+        {/* Zalo Consent Widget */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg shadow-md p-6 mb-6 border-2 border-blue-200">
           <div className="flex items-start gap-4">
             <div className="flex-shrink-0">
@@ -325,34 +327,33 @@ const OrderSuccessPage = () => {
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-lg mb-2 text-blue-900">
-                📱 Nhận thông báo đơn hàng qua Zalo
+                📱 Nhận thông báo qua Zalo
               </h3>
               <p className="text-sm text-blue-800 mb-4">
-                Đồng ý để nhận thông báo cập nhật trạng thái đơn hàng và ưu đãi
-                độc quyền qua Zalo OA.
+                Đồng ý nhận thông báo cập nhật đơn hàng qua Zalo OA
               </p>
 
               {isMobile ? (
                 <button
                   onClick={handleManualZNSConsent}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors duration-200 shadow-md"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow-md"
                 >
-                  ✓ Đồng ý nhận thông báo Zalo
+                  ✓ Đồng ý nhận thông báo
                 </button>
               ) : (
                 <div
+                  ref={widgetRef}
                   className="zalo-consent-widget"
                   data-callback="handleZaloConsent"
                   data-oaid="870752253827008707"
-                  data-user-external-id={order?.customer_phone || ""}
+                  data-user-external-id={order.customer_phone}
                   data-appid="2783779431140209468"
-                  data-reason-msg="Nhận thông báo đơn hàng"
+                  data-reason-msg="Nhan thong bao don hang"
                 ></div>
               )}
 
               <p className="text-xs text-blue-600 mt-3">
-                ✓ Nhận thông báo đơn hàng ngay lập tức
-                <br />✓ Cập nhật trạng thái giao hàng
+                ✓ Cập nhật trạng thái giao hàng
                 <br />✓ Ưu đãi độc quyền
               </p>
             </div>
@@ -374,30 +375,18 @@ const OrderSuccessPage = () => {
             </p>
           </div>
 
-          {/* Customer Info */}
           <div className="mb-6">
             <h3 className="font-semibold mb-3">Thông tin người nhận:</h3>
             <div className="text-sm space-y-1 text-gray-700">
-              <p>
-                <strong>Họ tên:</strong> {order.customer_name}
-              </p>
-              <p>
-                <strong>Số điện thoại:</strong> {order.customer_phone}
-              </p>
-              <p>
-                <strong>Email:</strong> {order.customer_email}
-              </p>
-              <p>
-                <strong>Địa chỉ:</strong> {order.shipping_address},{" "}
-                {order.shipping_ward}, {order.shipping_district},{" "}
-                {order.shipping_city}
-              </p>
+              <p><strong>Họ tên:</strong> {order.customer_name}</p>
+              <p><strong>SĐT:</strong> {order.customer_phone}</p>
+              <p><strong>Email:</strong> {order.customer_email}</p>
+              <p><strong>Địa chỉ:</strong> {order.shipping_address}, {order.shipping_ward}, {order.shipping_district}, {order.shipping_city}</p>
             </div>
           </div>
 
-          {/* Order Items */}
           <div className="mb-6">
-            <h3 className="font-semibold mb-3">Sản phẩm đã đặt:</h3>
+            <h3 className="font-semibold mb-3">Sản phẩm:</h3>
             <div className="space-y-3">
               {order.items?.map((item) => (
                 <div key={item.id} className="flex gap-4 border-b pb-3">
@@ -412,16 +401,13 @@ const OrderSuccessPage = () => {
                     <p className="text-sm text-gray-600">SL: {item.quantity}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold">
-                      {formatPrice(item.subtotal)}
-                    </p>
+                    <p className="font-semibold">{formatPrice(item.subtotal)}</p>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Order Total */}
           <div className="border-t pt-4">
             <div className="flex justify-between mb-2">
               <span>Tạm tính:</span>
@@ -434,19 +420,17 @@ const OrderSuccessPage = () => {
             {order.discount_amount > 0 && (
               <div className="flex justify-between mb-2">
                 <span>Giảm giá:</span>
-                <span>- {formatPrice(order.discount_amount || 0)}</span>
+                <span>- {formatPrice(order.discount_amount)}</span>
               </div>
             )}
             <div className="flex justify-between text-xl font-bold">
               <span>Tổng cộng:</span>
-              <span className="text-red-600">
-                {formatPrice(order.total_amount || 0)}
-              </span>
+              <span className="text-red-600">{formatPrice(order.total_amount)}</span>
             </div>
           </div>
         </div>
 
-        {/* Order Status Timeline */}
+        {/* Status Timeline */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h3 className="font-semibold mb-4">Trạng Thái Đơn Hàng</h3>
           <div className="space-y-4">
@@ -466,7 +450,7 @@ const OrderSuccessPage = () => {
                 <Package className="w-5 h-5 text-gray-600" />
               </div>
               <div>
-                <p className="font-medium">Đang chuẩn bị hàng</p>
+                <p className="font-medium">Đang chuẩn bị</p>
                 <p className="text-sm text-gray-500">Chờ xử lý</p>
               </div>
             </div>
@@ -475,14 +459,13 @@ const OrderSuccessPage = () => {
                 <Truck className="w-5 h-5 text-gray-600" />
               </div>
               <div>
-                <p className="font-medium">Đang giao hàng</p>
+                <p className="font-medium">Đang giao</p>
                 <p className="text-sm text-gray-500">Chờ xử lý</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4">
           <Link
             to="/"
@@ -498,15 +481,11 @@ const OrderSuccessPage = () => {
           </Link>
         </div>
 
-        {/* Support Info */}
         <div className="mt-8 text-center text-sm text-gray-600">
           <p className="mb-2">
-            Bạn có thể theo dõi đơn hàng qua email:{" "}
-            <strong>{order.customer_email}</strong>
+            Email: <strong>{order.customer_email}</strong>
           </p>
-          <p>
-            Liên hệ: <strong>036 2014571</strong> nếu cần hỗ trợ
-          </p>
+          <p>Hotline: <strong>036 2014571</strong></p>
         </div>
       </div>
     </div>
