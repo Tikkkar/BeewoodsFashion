@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Lấy thông tin từ environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
 // Kiểm tra xem có thiếu config không
 if (!supabaseUrl || !supabaseAnonKey) {
