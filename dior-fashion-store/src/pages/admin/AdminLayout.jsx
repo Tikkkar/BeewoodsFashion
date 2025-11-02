@@ -16,6 +16,7 @@ import {
   Menu,
   X,
   Home,
+  Target,
 } from "lucide-react";
 
 const AdminLayout = () => {
@@ -75,6 +76,11 @@ const AdminLayout = () => {
       title: "Hội thoại", // Dịch: Conversations
       path: "/admin/chatbot/conversations",
       icon: MessageSquare,
+    },
+    {
+      title: "Ad Targeting", // Dịch: Conversations
+      path: "/admin/ad-targeting",
+      icon: Target,
     },
     // {
     //   title: "Kịch bản", // Dịch: Scenarios

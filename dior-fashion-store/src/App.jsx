@@ -37,7 +37,7 @@ import ChatWidget from "./components/chatbot/ChatWidget";
 import LoginPage from "./pages/auth/LoginPage";
 import RegisterPage from "./pages/auth/RegisterPage";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-
+import AdTargeting from "./pages/admin/AdTargeting";
 // Admin Pages
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -226,6 +226,7 @@ function AppContent({
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="analytics" element={<AdminAnalytics />} />
+              <Route path="ad-targeting" element={<AdTargeting />} />
               {/* Products */}
               <Route path="products" element={<AdminProducts />} />
               <Route path="products/new" element={<AdminProductForm />} />
