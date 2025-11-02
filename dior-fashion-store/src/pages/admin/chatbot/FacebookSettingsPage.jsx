@@ -89,7 +89,7 @@ export default function FacebookSettingsPage() {
   }
 
   function copyWebhookUrl() {
-    const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/chatbot-webhook`;
+    const url = `${process.env.REACT_APP_SUPABASE_URL|| import.meta.env.REACT_APP_SUPABASE_URL }/functions/v1/chatbot-webhook`;
     navigator.clipboard.writeText(url);
     success('Webhook URL copied to clipboard!');
   }
@@ -109,7 +109,7 @@ export default function FacebookSettingsPage() {
     );
   }
 
-  const webhookUrl = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/chatbot-webhook`;
+  const webhookUrl = `${process.env.REACT_APP_SUPABASE_URL|| import.meta.env.REACT_APP_SUPABASE_URL}/functions/v1/chatbot-webhook`;
 
   return (
     <div className="p-8">

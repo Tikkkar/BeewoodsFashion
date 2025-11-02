@@ -93,12 +93,12 @@ const AdminOrderDetail = () => {
 
       // Call Edge Function
       const response = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/chatbot-process`,
+        `${process.env.REACT_APP_SUPABASE_URL || import.meta.env.REACT_APP_SUPABASE_URL}/functions/v1/chatbot-process`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            Authorization: `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY || import.meta.env.REACT_APP_SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify(znsPayload),
         }
