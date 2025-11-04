@@ -129,7 +129,7 @@ const AdminLayout = () => {
       >
         {/* Sidebar Header */}
         <div className="h-16 border-b border-gray-200 flex items-center justify-center">
-          <h1 className="text-2xl font-bold tracking-widest">BEEWO</h1>
+          <h1 className="text-2xl font-bold tracking-widest">BEWO</h1>
         </div>
 
         {/* User Info */}

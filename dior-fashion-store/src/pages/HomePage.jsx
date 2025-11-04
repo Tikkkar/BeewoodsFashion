@@ -11,58 +11,24 @@ import {
 import HeroSlider from "../components/hero/HeroSlider";
 import ProductCard from "../components/products/ProductCard";
 import QuickViewModal from "../components/products/QuickViewModal";
-import { useProducts, useBanners } from "../hooks/useProducts";
+import { useProducts, useBanners, useCategories } from "../hooks/useProducts";
 
 const HomePage = ({ onAddToCart }) => {
+  // ======= Hooks / state: MUST be at top-level (not after returns) =======
   const [quickViewProduct, setQuickViewProduct] = useState(null);
 
-  // =============================================
-  // LOGIC CHO SLIDER SẢN PHẨM BÁN CHẠY
-  // =============================================
+  // Slider bán chạy
   const featuredScrollRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
 
-  const handleScroll = (direction) => {
-    const container = featuredScrollRef.current;
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8;
-      const newScrollLeft =
-        direction === "right"
-          ? container.scrollLeft + scrollAmount
-          : container.scrollLeft - scrollAmount;
-      container.scrollTo({
-        left: newScrollLeft,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (isHovered) return;
-
-    const timer = setInterval(() => {
-      const container = featuredScrollRef.current;
-      if (container) {
-        if (
-          container.scrollLeft + container.clientWidth >=
-          container.scrollWidth - 10
-        ) {
-          container.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          handleScroll("right");
-        }
-      }
-    }, 5000);
-
-    return () => clearInterval(timer);
-  }, [isHovered]);
-
-  // =============================================
-  // LOGIC CHO CUSTOMER GRID CAROUSEL
-  // =============================================
+  // Customer carousel hover
   const customerScrollRef = useRef(null);
   const [isCustomerHovered, setIsCustomerHovered] = useState(false);
 
+  // **activeCategory state - bây giờ sẽ lưu slug thực tế hoặc "all"**
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  // Customer sample data
   const customers = [
     {
       id: 1,
@@ -122,6 +88,42 @@ const HomePage = ({ onAddToCart }) => {
     },
   ];
 
+  // =============================================
+  // LOGIC & EFFECTS
+  // =============================================
+  const handleScroll = (direction) => {
+    const container = featuredScrollRef.current;
+    if (container) {
+      const scrollAmount = container.clientWidth * 0.8;
+      const newScrollLeft =
+        direction === "right"
+          ? container.scrollLeft + scrollAmount
+          : container.scrollLeft - scrollAmount;
+      container.scrollTo({
+        left: newScrollLeft,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (isHovered) return;
+    const timer = setInterval(() => {
+      const container = featuredScrollRef.current;
+      if (container) {
+        if (
+          container.scrollLeft + container.clientWidth >=
+          container.scrollWidth - 10
+        ) {
+          container.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          handleScroll("right");
+        }
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [isHovered]);
+
   const handleCustomerScroll = (direction) => {
     const container = customerScrollRef.current;
     if (container) {
@@ -137,10 +139,8 @@ const HomePage = ({ onAddToCart }) => {
     }
   };
 
-  // Auto-scroll for customers
   useEffect(() => {
     if (isCustomerHovered) return;
-
     const timer = setInterval(() => {
       const container = customerScrollRef.current;
       if (container) {
@@ -153,14 +153,22 @@ const HomePage = ({ onAddToCart }) => {
           handleCustomerScroll("right");
         }
       }
-    }, 4000); // Auto scroll every 4 seconds
-
+    }, 4000);
     return () => clearInterval(timer);
   }, [isCustomerHovered]);
 
   // =============================================
-  // FETCH DATA TỪ SUPABASE
+  // FETCH DATA TỪ HOOKS
   // =============================================
+  
+  // Fetch danh mục từ database
+  const {
+    categories: dbCategories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useCategories();
+
+  // Fetch sản phẩm featured (không đổi)
   const {
     products: featuredProducts,
     loading: featuredLoading,
@@ -170,13 +178,17 @@ const HomePage = ({ onAddToCart }) => {
     limit: 12,
   });
 
+  // Fetch sản phẩm "Mua gì hôm nay" - thay đổi filter dựa trên activeCategory
+  const todayFilters = {
+    limit: 20, // Tăng limit để có nhiều sản phẩm hơn
+    ...(activeCategory !== "all" && { category: activeCategory }), // Chỉ thêm category filter nếu không phải "all"
+  };
+
   const {
     products: todayProducts,
     loading: todayLoading,
     error: todayError,
-  } = useProducts({
-    limit: 4,
-  });
+  } = useProducts(todayFilters);
 
   const {
     banners,
@@ -184,12 +196,20 @@ const HomePage = ({ onAddToCart }) => {
     error: bannersError,
   } = useBanners();
 
-  // =============================================
-  // KẾT HỢP CÁC TRẠNG THÁI LOADING VÀ ERROR
-  // =============================================
-  const isLoading = featuredLoading || todayLoading || bannersLoading;
-  const combinedError = featuredError || todayError || bannersError;
+  const isLoading = featuredLoading || todayLoading || bannersLoading || categoriesLoading;
+  const combinedError = featuredError || todayError || bannersError || categoriesError;
 
+  // =============================================
+  // XỬ LÝ CATEGORIES - Thêm "Tất cả" vào đầu danh sách
+  // =============================================
+  const displayCategories = [
+    { id: "all", name: "Tất cả", slug: "all" },
+    ...(dbCategories || []),
+  ];
+
+  // =============================================
+  // ERROR & LOADING STATES
+  // =============================================
   if (combinedError) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -226,7 +246,7 @@ const HomePage = ({ onAddToCart }) => {
       {/* 1. Hero Banner */}
       <HeroSlider banners={banners || []} />
 
-      {/* 2. Sản Phẩm Bán Chạy - DẠNG SLIDER */}
+      {/* 2. Sản Phẩm Bán Chạy */}
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
@@ -292,7 +312,7 @@ const HomePage = ({ onAddToCart }) => {
       {/* 3. Mua Gì Hôm Nay */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-8 md:mb-12">
+          <div className="text-center mb-8 md:mb-10">
             <div className="flex items-center justify-center gap-2 mb-3">
               <ShoppingBag size={24} className="text-black" />
               <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase">
@@ -303,8 +323,35 @@ const HomePage = ({ onAddToCart }) => {
               Gợi ý sản phẩm cho bạn
             </p>
           </div>
-          {todayProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+
+          {/* Thanh nút danh mục - Lấy từ database */}
+          <div className="flex flex-wrap justify-center gap-3 mb-6">
+            {displayCategories.map((cat) => {
+              const active = activeCategory === cat.slug;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.slug)}
+                  className={`px-5 py-3 border-2 rounded-md text-sm md:text-base transition-all duration-150 ${
+                    active
+                      ? "bg-black text-white border-black shadow"
+                      : "bg-white text-gray-800 border-gray-800 hover:shadow-sm"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Loading state cho khi đổi category */}
+          {todayLoading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-black" />
+              <p className="text-gray-600">Đang tải sản phẩm...</p>
+            </div>
+          ) : todayProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
               {todayProducts.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -316,7 +363,7 @@ const HomePage = ({ onAddToCart }) => {
             </div>
           ) : (
             <div className="text-center py-12 text-gray-500">
-              <p>Không có sản phẩm nào</p>
+              <p>Không có sản phẩm nào trong danh mục này</p>
             </div>
           )}
         </div>
@@ -337,7 +384,7 @@ const HomePage = ({ onAddToCart }) => {
         </div>
       </section>
 
-      {/* 5. Customer Grid Carousel - ✅ NEW: 4-5 photos at once */}
+      {/* 5. Customer Grid Carousel */}
       <section className="py-12 md:py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-8 md:mb-12">
@@ -352,16 +399,13 @@ const HomePage = ({ onAddToCart }) => {
             onMouseEnter={() => setIsCustomerHovered(true)}
             onMouseLeave={() => setIsCustomerHovered(false)}
           >
-            {/* Navigation Buttons */}
             <button
               onClick={() => handleCustomerScroll("left")}
               className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
-              aria-label="Previous Customers"
             >
               <ChevronLeft size={24} />
             </button>
 
-            {/* Customer Grid Slider */}
             <div
               ref={customerScrollRef}
               className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
@@ -372,7 +416,6 @@ const HomePage = ({ onAddToCart }) => {
                   className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2"
                 >
                   <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
-                    {/* Customer Photo */}
                     <div className="aspect-square relative overflow-hidden">
                       <img
                         src={customer.image}
@@ -381,8 +424,6 @@ const HomePage = ({ onAddToCart }) => {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"></div>
                     </div>
-
-                    {/* Customer Info */}
                     <div className="p-4 text-center">
                       <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
                         {customer.name}
@@ -399,7 +440,6 @@ const HomePage = ({ onAddToCart }) => {
             <button
               onClick={() => handleCustomerScroll("right")}
               className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
-              aria-label="Next Customers"
             >
               <ChevronRight size={24} />
             </button>

@@ -29,7 +29,7 @@ const RecursiveNavItem = ({ item }) => {
 };
 
 const Header = ({ 
-  brandName = "BeeWo", 
+  brandName = "BEWO", 
   cart = [], 
   onCartClick = () => {}, 
   navigation = [] 

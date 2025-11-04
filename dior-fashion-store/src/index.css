@@ -1,7 +1,84 @@
+/* ================================================
+   GLOBAL STYLES - Roboto Font
+   ================================================
+   Thêm vào src/index.css hoặc src/App.css
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap');
+
+/* Apply Roboto globally */
+* {
+  font-family: 'Roboto', sans-serif;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  font-variant: tabular-nums;
+  font-size: 14px;
+  line-height: 1.5715;
+  font-feature-settings: 'tnum';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #000;
+  background: #fff;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  color: #000;
+}
+
+/* Buttons */
+button, .btn {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+}
+
+/* Input fields */
+input, textarea, select {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Links */
+a {
+  font-family: 'Roboto', sans-serif;
+}
+
+/* Banner specific styles */
+.hero-banner-title {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.hero-banner-subtitle {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+}
+
+.hero-banner-button {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* Font weights utility classes */
+.font-thin { font-weight: 100; }
+.font-light { font-weight: 300; }
+.font-normal { font-weight: 400; }
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 700; }
+.font-black { font-weight: 900; }
+
+
 /* 1. Khai báo các lớp cơ sở của Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* 2. Thiết lập các kiểu dáng cơ bản cho toàn bộ trang */
 @layer base {
   body {
@@ -55,6 +132,7 @@
   animation: scale-in 0.3s ease-out;
 }
 
+
 /* ============================================
    🔧 CHATBOT WIDGET - ABOVE ZALO (RIGHT SIDE)
    ============================================ */
@@ -85,6 +163,7 @@ button[class*="chat"] {
     right: 15px !important;
   }
 }
+
 
 /* ============================================
    🔧 ADMIN LAYOUT

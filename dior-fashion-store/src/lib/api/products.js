@@ -63,10 +63,8 @@ export const fetchProducts = async (filters = {}) => {
 
     if (error) {
       if (error.code === 'PGRST116') {
-        // console.warn(`No products found for category slug: ${filters.category}`); // Đã loại bỏ console.warn
         return { data: [], error: null };
       }
-      // console.error('❌ Supabase error:', error); // Đã loại bỏ console.error
       throw error;
     }
 
@@ -90,7 +88,6 @@ export const fetchProducts = async (filters = {}) => {
     return { data: transformedData, error: null };
 
   } catch (error) {
-    // console.error('❌ Fetch products error:', error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -100,8 +97,6 @@ export const fetchProducts = async (filters = {}) => {
 // =============================================
 export const fetchProductBySlug = async (slug) => {
   try {
-    // console.log('🔍 Fetching product by slug:', slug); // Đã loại bỏ console.log
-    
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -131,7 +126,6 @@ export const fetchProductBySlug = async (slug) => {
       .single();
 
     if (error) {
-      // console.error('❌ Error fetching product:', error); // Đã loại bỏ console.error
       return { data: null, error: error.message };
     }
 
@@ -139,42 +133,18 @@ export const fetchProductBySlug = async (slug) => {
       return { data: null, error: 'Product not found' };
     }
 
-    // console.log('✅ Raw product data:', data); // Đã loại bỏ console.log
-    // console.log('📦 Raw attributes:', data.attributes); // Đã loại bỏ console.log
-    // console.log('📦 Attributes type:', typeof data.attributes); // Đã loại bỏ console.log
-
     // PARSE ATTRIBUTES NẾU LÀ STRING
     if (data.attributes) {
       if (typeof data.attributes === 'string') {
         try {
           data.attributes = JSON.parse(data.attributes);
-          // console.log('✅ Parsed attributes from string'); // Đã loại bỏ console.log
         } catch (e) {
-          // console.error('❌ Error parsing attributes:', e); // Đã loại bỏ console.error
           data.attributes = {};
         }
       }
     } else {
       data.attributes = {};
     }
-
-    // console.log('📝 Parsed attributes:', data.attributes); // Đã loại bỏ console.log
-    // console.log('📝 Content blocks:', data.attributes?.content_blocks); // Đã loại bỏ console.log
-    // console.log('📝 Content blocks length:', data.attributes?.content_blocks?.length || 0); // Đã loại bỏ console.log
-
-    // ✅ UPDATE VIEW COUNT (optional - comment nếu không cần)
-    /*
-    if (data.id) {
-      supabase
-        .from('products')
-        .update({ 
-          view_count: (data.view_count || 0) + 1 
-        })
-        .eq('id', data.id)
-        .then(() => console.log('✅ View count updated'))
-        .catch(err => console.error('❌ View count failed:', err));
-    }
-    */
 
     // Transform data
     const transformedData = {
@@ -188,13 +158,8 @@ export const fetchProductBySlug = async (slug) => {
       reviews: data.reviews || []
     };
 
-    // console.log('✅ Final transformed data:', transformedData); // Đã loại bỏ console.log
-    // console.log('📦 Final attributes:', transformedData.attributes); // Đã loại bỏ console.log
-    // console.log('📝 Final content blocks:', transformedData.attributes?.content_blocks); // Đã loại bỏ console.log
-
     return { data: transformedData, error: null };
   } catch (error) {
-    // console.error('❌ Exception in fetchProductBySlug:', error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -214,27 +179,53 @@ export const fetchCategories = async () => {
     if (error) throw error;
     return { data: data || [], error: null };
   } catch (error) {
-    // console.error('❌ Fetch categories error:', error); // Đã loại bỏ console.error
     return { data: [], error: error.message };
   }
 };
 
 // =============================================
-// FETCH BANNERS
+// FETCH BANNERS - ✅ FIXED
 // =============================================
 export const fetchBanners = async () => {
     try {
         const { data, error } = await supabase
             .from('banners')
-            .select('id, title, subtitle, image_url, button_text, button_link, display_order')
-            .eq('is_active', true)
+            .select(`
+                id,
+                title,
+                subtitle,
+                image_url,
+                mobile_image_url,
+                button_text,
+                button_link,
+                display_order,
+                is_active,
+                text_color,
+                title_size,
+                subtitle_size,
+                button_style,
+                text_position,
+                overlay_opacity,
+                animation,
+                start_date,
+                end_date,
+                height_mobile,
+                height_tablet,
+                height_desktop,
+                height_large,
+                show_content,
+                created_at
+            `)
             .order('display_order', { ascending: true })
             .limit(10);
 
         if (error) throw error;
+        
+        console.log('✅ Fetched banners from API:', data);
+        
         return { data: data || [], error: null };
     } catch (error) {
-        // console.error('❌ Fetch banners error:', error); // Đã loại bỏ console.error
+        console.error('❌ Fetch banners error:', error);
         return { data: [], error: error.message };
     }
 };
@@ -274,7 +265,6 @@ export const searchProducts = async (searchTerm) => {
         }) || [];
         return { data: transformedData, error: null };
     } catch (error) {
-        // console.error('❌ Search error:', error); // Đã loại bỏ console.error
         return { data: [], error: error.message };
     }
 };
@@ -312,7 +302,6 @@ export const fetchFeaturedProducts = async (limit = 8) => {
         }) || [];
         return { data: transformedData, error: null };
     } catch (error) {
-        // console.error('❌ Featured products error:', error); // Đã loại bỏ console.error
         return { data: [], error: error.message };
     }
 };

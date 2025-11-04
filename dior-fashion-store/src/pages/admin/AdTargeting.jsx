@@ -3,8 +3,9 @@ import PropTypes from 'prop-types';
 import {
   Target, Users, Heart, Briefcase, Sparkles, AlertCircle, FileText,
   UploadCloud, X, Loader, Download, BrainCircuit, Clapperboard, Lightbulb, XCircle,
+  CheckCircle, Info, TrendingUp, DollarSign,
 } from 'lucide-react';
-import { generateAdTargeting } from '../../services/geminiAdTargetingService.ts';
+import { generateEnhancedAdTargeting } from '../../services/geminiAdTargetingService.ts';
 
 const AdTargeting = () => {
   const [image, setImage] = useState(null);
@@ -12,6 +13,7 @@ const AdTargeting = () => {
   const [result, setResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState(null);
+  const [enableValidation, setEnableValidation] = useState(true); // NEW: Toggle validation
 
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -87,9 +89,12 @@ const AdTargeting = () => {
       const base64 = await fileToBase64(image.file);
       const request = {
         imageData: base64,
-        productName: image.name.split('.').slice(0, -1).join('.') // Lấy tên file không bao gồm extension
+        productName: image.name.split('.').slice(0, -1).join('.'),
+        validateWithFacebook: enableValidation, // NEW: Pass validation flag
       };
-      const targetingResult = await generateAdTargeting(request);
+      
+      // NEW: Use enhanced service
+      const targetingResult = await generateEnhancedAdTargeting(request);
       setResult(targetingResult);
     } catch (err) {
       console.error('Error:', err);
@@ -132,16 +137,97 @@ const AdTargeting = () => {
     colorClass: PropTypes.string,
   };
 
+  // NEW: Validation Badge Component
+  const ValidationBadge = ({ validated }) => {
+    if (!validated) return null;
+    
+    const confidence = validated.confidence || 0;
+    let badgeClass = 'bg-gray-200 text-gray-700';
+    let icon = <Info className="w-3 h-3" />;
+    
+    if (confidence >= 90) {
+      badgeClass = 'bg-green-100 text-green-700';
+      icon = <CheckCircle className="w-3 h-3" />;
+    } else if (confidence >= 75) {
+      badgeClass = 'bg-yellow-100 text-yellow-700';
+      icon = <AlertCircle className="w-3 h-3" />;
+    } else if (confidence > 0) {
+      badgeClass = 'bg-red-100 text-red-700';
+      icon = <XCircle className="w-3 h-3" />;
+    }
+    
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${badgeClass}`}>
+        {icon}
+        {confidence}%
+      </span>
+    );
+  };
+
+  ValidationBadge.propTypes = {
+    validated: PropTypes.shape({
+      confidence: PropTypes.number,
+    }),
+  };
+
+  // NEW: Validated Tag with alternatives
+  const ValidatedTag = ({ original, validated, colorClass }) => {
+    if (!validated) {
+      return (
+        <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${colorClass}`}>
+          {original}
+        </span>
+      );
+    }
+
+    const { isValid, confidence, fbMatch, alternatives } = validated;
+    
+    return (
+      <div className="relative group">
+        <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${colorClass} inline-flex items-center gap-1.5`}>
+          {isValid ? (
+            <CheckCircle className="w-3 h-3 text-green-600" />
+          ) : (
+            <XCircle className="w-3 h-3 text-red-600" />
+          )}
+          {fbMatch?.name || original}
+          <span className="text-[10px] opacity-70">({confidence}%)</span>
+        </span>
+        
+        {/* Tooltip with alternatives */}
+        {!isValid && alternatives && alternatives.length > 0 && (
+          <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-10 bg-white border shadow-lg rounded p-2 w-64">
+            <p className="text-xs font-semibold text-gray-700 mb-1">Gợi ý thay thế:</p>
+            {alternatives.slice(0, 3).map((alt, i) => (
+              <p key={i} className="text-xs text-gray-600">• {alt.name}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  ValidatedTag.propTypes = {
+    original: PropTypes.string.isRequired,
+    validated: PropTypes.shape({
+      isValid: PropTypes.bool,
+      confidence: PropTypes.number,
+      fbMatch: PropTypes.object,
+      alternatives: PropTypes.array,
+    }),
+    colorClass: PropTypes.string,
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto p-4 sm:p-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-6 text-white shadow-lg">
         <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
           <Target className="w-8 h-8" />
-          Phân Tích Target Facebook Ads (v4)
+          Phân Tích Target Facebook Ads (Enhanced)
         </h1>
         <p className="text-indigo-100 text-lg">
-          AI phân tích ảnh sản phẩm, đề xuất 3 nhóm đối tượng chi tiết và sâu sắc.
+          AI phân tích ảnh sản phẩm + Facebook validation để đề xuất targeting chính xác nhất
         </p>
       </div>
 
@@ -149,8 +235,24 @@ const AdTargeting = () => {
       <div className="bg-white rounded-lg p-6 shadow-md">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-indigo-600" />
-          1. Upload Ảnh Sản Phẩm (1 ảnh)
+          1. Upload Ảnh Sản Phẩm
         </h3>
+
+        {/* NEW: Validation Toggle */}
+        <div className="mb-4 flex items-center gap-3 bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <input
+            type="checkbox"
+            id="enable-validation"
+            checked={enableValidation}
+            onChange={(e) => setEnableValidation(e.target.checked)}
+            className="w-4 h-4 text-indigo-600 rounded"
+          />
+          <label htmlFor="enable-validation" className="text-sm cursor-pointer flex-1">
+            <span className="font-semibold text-indigo-700">Validate với Facebook API</span>
+            <span className="text-gray-600 ml-2">(Khuyến nghị - kiểm tra targeting có tồn tại trên FB)</span>
+          </label>
+          <Info className="w-4 h-4 text-blue-500" />
+        </div>
 
         <div
           onDragEnter={handleDrag}
@@ -209,15 +311,31 @@ const AdTargeting = () => {
       {/* Results */}
       {result && (
         <div className="space-y-6">
-          {/* Action Bar */}
-          <div className="bg-white rounded-lg p-4 shadow-md flex justify-between items-center">
-            <div className="flex items-center gap-2 text-green-600">
-              <AlertCircle className="w-5 h-5" />
-              <span className="font-medium">Phân tích hoàn tất!</span>
+          {/* NEW: Metadata Bar */}
+          <div className="bg-white rounded-lg p-4 shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2 text-green-600">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">Phân tích hoàn tất!</span>
+                </div>
+                {result.metadata && (
+                  <>
+                    <div className="text-sm text-gray-600">
+                      ⏱️ <span className="font-medium">{(result.metadata.processingTime / 1000).toFixed(1)}s</span>
+                    </div>
+                    {result.metadata.fbApiCallsUsed > 0 && (
+                      <div className="text-sm text-gray-600">
+                        🔍 <span className="font-medium">{result.metadata.fbApiCallsUsed}</span> FB API calls
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <button onClick={handleExport} className="px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg flex items-center gap-2 text-sm">
+                <Download className="w-4 h-4" /> Xuất JSON
+              </button>
             </div>
-            <button onClick={handleExport} className="px-3 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg flex items-center gap-2 text-sm">
-              <Download className="w-4 h-4" /> Xuất JSON
-            </button>
           </div>
 
           {/* Product Analysis */}
@@ -231,10 +349,59 @@ const AdTargeting = () => {
           {result.targetingOptions.map((option, index) => (
             <div key={index} className="bg-white rounded-lg shadow-lg border-l-4 border-indigo-500 overflow-hidden">
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-indigo-700 mb-2">{option.optionName}</h3>
-                <p className="text-gray-600 italic mb-6">{option.summary}</p>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-indigo-700 mb-2">{option.optionName}</h3>
+                    <p className="text-gray-600 italic">{option.summary}</p>
+                  </div>
+                  
+                  {/* NEW: Overall Confidence Badge */}
+                  {option.validation && (
+                    <div className="shrink-0 text-right">
+                      <p className="text-xs text-gray-500 mb-1">Độ tin cậy</p>
+                      <ValidationBadge validated={{ confidence: option.validation.overallConfidence }} />
+                    </div>
+                  )}
+                </div>
+
+                {/* NEW: Validation Warnings */}
+                {option.validation?.warnings && option.validation.warnings.length > 0 && (
+                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4 rounded">
+                    <p className="text-sm font-semibold text-yellow-800 mb-1">⚠️ Cảnh báo:</p>
+                    {option.validation.warnings.map((warning, i) => (
+                      <p key={i} className="text-sm text-yellow-700">{warning}</p>
+                    ))}
+                  </div>
+                )}
+
+                {/* NEW: Metrics Section */}
+                {option.metrics && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg">
+                    <div className="text-center">
+                      <TrendingUp className="w-5 h-5 mx-auto mb-1 text-blue-600" />
+                      <p className="text-xs text-gray-600 mb-1">Estimated Reach</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {(option.metrics.estimatedReach.min / 1000).toFixed(0)}K - {(option.metrics.estimatedReach.max / 1000).toFixed(0)}K
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <DollarSign className="w-5 h-5 mx-auto mb-1 text-green-600" />
+                      <p className="text-xs text-gray-600 mb-1">Avg CPM</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {(option.metrics.estimatedCosts.cpm.average / 1000).toFixed(0)}K VND
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <Target className="w-5 h-5 mx-auto mb-1 text-purple-600" />
+                      <p className="text-xs text-gray-600 mb-1">Competition</p>
+                      <p className="text-sm font-bold text-gray-800 capitalize">
+                        {option.metrics.competitionLevel}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
-                {/* --- MỤC MỚI: TÂM LÝ HỌC --- */}
+                {/* Psychographics */}
                 <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><BrainCircuit className="w-5 h-5 text-teal-500" /> Tâm Lý Học & Nỗi Đau</h4>
                 <div className="space-y-3 mb-6 text-sm bg-teal-50/50 p-4 rounded-lg border border-teal-100">
                   <div>
@@ -274,7 +441,7 @@ const AdTargeting = () => {
                   <div><p className="font-medium text-gray-600 mb-1">Công cụ thường dùng:</p><TagList items={option.lifestyleAndInterests.toolsTheyUse} colorClass="bg-gray-200 text-gray-800" /></div>
                 </div>
 
-                {/* --- MỤC MỚI: MEDIA CONSUMPTION --- */}
+                {/* Media Consumption */}
                 <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><Clapperboard className="w-5 h-5 text-orange-500" /> Thói Quen Tiêu Thụ Nội Dung</h4>
                 <div className="space-y-3 mb-6 text-sm">
                   <div><p className="font-medium text-gray-600 mb-1">Influencers/Creators:</p><TagList items={option.mediaConsumption.influencersOrCreators} colorClass="bg-orange-100 text-orange-700" /></div>
@@ -282,7 +449,7 @@ const AdTargeting = () => {
                   <div><p className="font-medium text-gray-600 mb-1">Nền tảng MXH ưa thích:</p><TagList items={option.mediaConsumption.preferredSocialPlatforms} colorClass="bg-orange-100 text-orange-700" /></div>
                 </div>
                 
-                {/* --- MỤC MỚI: CREATIVE ANGLE --- */}
+                {/* Creative Angle */}
                 <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><Lightbulb className="w-5 h-5 text-amber-500" /> Gợi Ý Sáng Tạo & Tiếp Cận</h4>
                 <div className="space-y-4 mb-6 text-sm bg-amber-50/50 p-4 rounded-lg border border-amber-100">
                     <div>
@@ -299,17 +466,68 @@ const AdTargeting = () => {
                     </div>
                 </div>
                 
-                {/* Facebook Targeting */}
+                {/* Facebook Targeting - Enhanced with Validation */}
                 <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200 mt-6">
-                  <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-indigo-800"><Target className="w-5 h-5" /> Gợi Ý Target Facebook Ads</h4>
+                  <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-indigo-800">
+                    <Target className="w-5 h-5" /> 
+                    Gợi Ý Target Facebook Ads
+                    {option.validation && (
+                      <span className="text-xs font-normal text-indigo-600">
+                        (Validated: {option.validation.overallConfidence}%)
+                      </span>
+                    )}
+                  </h4>
                   <div className="space-y-4 text-sm">
-                    <div><p className="font-semibold text-indigo-700 mb-1">Sở thích (Detailed Targeting):</p><TagList items={option.facebookTargeting.detailedInterests} colorClass="bg-indigo-200/80 text-indigo-800" /></div>
-                    <div><p className="font-semibold text-indigo-700 mb-1">Hành vi (Behaviors):</p><TagList items={option.facebookTargeting.detailedBehaviors} colorClass="bg-indigo-200/80 text-indigo-800" /></div>
-                    <div><p className="font-semibold text-indigo-700 mb-1">Nhân khẩu học (Demographics):</p><TagList items={option.facebookTargeting.detailedDemographics} colorClass="bg-indigo-200/80 text-indigo-800" /></div>
-                    {/* --- MỤC MỚI: EXCLUSIONS --- */}
+                    {/* Validated Interests */}
+                    <div>
+                      <p className="font-semibold text-indigo-700 mb-2">Sở thích (Detailed Targeting):</p>
+                      {option.validation?.validatedInterests ? (
+                        <div className="flex flex-wrap gap-2">
+                          {option.validation.validatedInterests.map((vi, i) => (
+                            <ValidatedTag
+                              key={i}
+                              original={vi.original}
+                              validated={vi}
+                              colorClass="bg-indigo-200/80 text-indigo-800"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <TagList items={option.facebookTargeting.detailedInterests} colorClass="bg-indigo-200/80 text-indigo-800" />
+                      )}
+                    </div>
+
+                    {/* Validated Behaviors */}
+                    <div>
+                      <p className="font-semibold text-indigo-700 mb-2">Hành vi (Behaviors):</p>
+                      {option.validation?.validatedBehaviors ? (
+                        <div className="flex flex-wrap gap-2">
+                          {option.validation.validatedBehaviors.map((vb, i) => (
+                            <ValidatedTag
+                              key={i}
+                              original={vb.original}
+                              validated={vb}
+                              colorClass="bg-indigo-200/80 text-indigo-800"
+                            />
+                          ))}
+                        </div>
+                      ) : (
+                        <TagList items={option.facebookTargeting.detailedBehaviors} colorClass="bg-indigo-200/80 text-indigo-800" />
+                      )}
+                    </div>
+
+                    {/* Demographics */}
+                    <div>
+                      <p className="font-semibold text-indigo-700 mb-2">Nhân khẩu học (Demographics):</p>
+                      <TagList items={option.facebookTargeting.detailedDemographics} colorClass="bg-indigo-200/80 text-indigo-800" />
+                    </div>
+
+                    {/* Exclusions */}
                     <hr className="border-indigo-200"/>
                     <div>
-                      <p className="font-semibold text-red-700 mb-1 flex items-center gap-1.5"><XCircle size={16}/> Loại trừ (Exclusions):</p>
+                      <p className="font-semibold text-red-700 mb-2 flex items-center gap-1.5">
+                        <XCircle size={16}/> Loại trừ (Exclusions):
+                      </p>
                       <TagList items={option.facebookTargeting.exclusions} colorClass="bg-slate-200 text-slate-700" />
                     </div>
                   </div>
