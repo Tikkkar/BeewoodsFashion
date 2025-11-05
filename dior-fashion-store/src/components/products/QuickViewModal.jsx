@@ -16,15 +16,14 @@ import { useProductById } from "../../hooks/useProducts";
 const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart }) => {
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
-  
-  // ✨ SỬA LỖI: Fetch dữ liệu đầy đủ từ database khi mở modal
-  const { product: detailedProduct, loading: productLoading } = useProductById(
+
+  // Lấy dữ liệu chi tiết sản phẩm
+  const { product: detailedProduct } = useProductById(
     isOpen && initialProduct ? initialProduct.id : null
   );
-  
-  // Sử dụng detailedProduct nếu có, fallback về initialProduct
+
   const product = detailedProduct || initialProduct;
-  
+
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
@@ -32,26 +31,32 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
   const [showFullDescription, setShowFullDescription] = useState(false);
 
   useEffect(() => {
-    if (isOpen && product) {
+    if (isOpen && initialProduct) {
       setQuantity(1);
       setImageLoaded(false);
-      setShowFullDescription(false); // Reset khi mở modal mới
+      setShowFullDescription(false);
 
-      // ✨ CẢI TIẾN: Xử lý sizes từ database (array of strings hoặc array of objects)
-      if (product.sizes && product.sizes.length > 0) {
+      // Preload hình ảnh
+      if (initialProduct.imagePrimary) {
+        const img = new Image();
+        img.src = initialProduct.imagePrimary;
+        img.onload = () => setImageLoaded(true);
+      }
+
+      // Xử lý sizes
+      const currentProduct = detailedProduct || initialProduct;
+      if (currentProduct.sizes && currentProduct.sizes.length > 0) {
         const firstSize =
-          typeof product.sizes[0] === "object"
-            ? product.sizes[0].size
-            : product.sizes[0];
+          typeof currentProduct.sizes[0] === "object"
+            ? currentProduct.sizes[0].size
+            : currentProduct.sizes[0];
         setSelectedSize(firstSize);
       } else {
         setSelectedSize("");
       }
 
-      const wishlist = JSON.parse(
-        localStorage.getItem("bewo_wishlist") || "[]"
-      );
-      setIsWishlisted(wishlist.some((item) => item.id === product.id));
+      const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
+      setIsWishlisted(wishlist.some((item) => item.id === initialProduct.id));
 
       document.body.style.overflow = "hidden";
     } else {
@@ -61,20 +66,21 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
     return () => {
       document.body.style.overflow = "unset";
     };
-  }, [isOpen, product]);
+  }, [isOpen, initialProduct, detailedProduct]);
 
   if (!isOpen || !initialProduct) return null;
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatPrice = (price) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
-  };
 
   const handleAddToCart = () => {
     if (!product) return;
-    
+    const sizes =
+      product?.sizes?.map((s) => (typeof s === "object" ? s.size : s)) || [];
+
     if (!selectedSize && sizes.length > 0) {
       showError("Vui lòng chọn size!");
       return;
@@ -92,7 +98,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
 
   const handleToggleWishlist = () => {
     if (!product) return;
-    
+
     const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
     const exists = wishlist.find((item) => item.id === product.id);
 
@@ -111,7 +117,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
     window.dispatchEvent(new Event("wishlistUpdated"));
   };
 
-  // ✨ CẢI TIẾN: Xử lý sizes từ database
   const sizes = product?.sizes
     ? product.sizes.map((s) => (typeof s === "object" ? s.size : s))
     : [];
@@ -119,16 +124,13 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
   const discount =
     product?.originalPrice && product.originalPrice > product.price
       ? Math.round(
-          ((product.originalPrice - product.price) / product.originalPrice) *
-            100
+          ((product.originalPrice - product.price) / product.originalPrice) * 100
         )
       : null;
 
-  // ✨ CẢI TIẾN: Tính rating từ reviews trong database
   const avgRating =
     product?.reviews && product.reviews.length > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-        product.reviews.length
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
       : 5;
 
   return (
@@ -150,15 +152,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
             <X size={20} />
           </button>
 
-          {/* ✨ LOADING STATE khi fetch data */}
-          {productLoading ? (
-            <div className="flex items-center justify-center min-h-[500px]">
-              <div className="text-center">
-                <Loader2 className="w-12 h-12 animate-spin text-black mx-auto mb-4" />
-                <p className="text-gray-600">Đang tải thông tin sản phẩm...</p>
-              </div>
-            </div>
-          ) : !product ? (
+          {!initialProduct ? (
             <div className="flex items-center justify-center min-h-[500px]">
               <div className="text-center">
                 <p className="text-gray-600 mb-4">Không thể tải sản phẩm</p>
@@ -172,7 +166,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
             </div>
           ) : (
             <div className="flex flex-col md:grid md:grid-cols-2 flex-1 overflow-hidden">
-              {/* Left: Product Image */}
               <div className="relative bg-gray-100 flex items-center justify-center h-[45vh] md:h-full flex-shrink-0">
                 {!imageLoaded && (
                   <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
@@ -192,10 +185,9 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                 )}
               </div>
 
-              {/* Right: Product Info (cho phép cuộn) */}
               <div className="flex flex-col p-6 md:p-8 overflow-y-auto flex-1">
                 <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
-                  
+                  {product.category}
                 </div>
 
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
@@ -224,7 +216,10 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                       product.stock > 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
-                    • {product.stock > 0 ? `Còn ${product.stock} sản phẩm` : "Hết hàng"}
+                    •{" "}
+                    {product.stock > 0
+                      ? `Còn ${product.stock} sản phẩm`
+                      : "Hết hàng"}
                   </span>
                 </div>
 
@@ -240,17 +235,17 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                     )}
                 </div>
 
-                {/* ✨ MÔ TẢ SẢN PHẨM TỪ DATABASE với Xem thêm/Thu gọn */}
                 <div className="mb-6">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900 mb-2">
                     Mô tả sản phẩm
                   </h3>
                   {(() => {
-                    const description = product.description || 
-                      "Thông tin chi tiết về sản phẩm đang được cập nhật. Vui lòng xem thêm chi tiết hoặc liên hệ với chúng tôi để biết thêm thông tin.";
+                    const description =
+                      product.description ||
+                      "Thông tin chi tiết về sản phẩm đang được cập nhật.";
                     const maxLength = 200;
                     const isLongDescription = description.length > maxLength;
-                    
+
                     return (
                       <div>
                         <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">
@@ -260,11 +255,15 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                         </p>
                         {isLongDescription && (
                           <button
-                            onClick={() => setShowFullDescription(!showFullDescription)}
+                            onClick={() =>
+                              setShowFullDescription(!showFullDescription)
+                            }
                             className="text-black text-sm font-medium mt-2 hover:underline flex items-center gap-1"
                           >
                             {showFullDescription ? "Thu gọn" : "Xem thêm"}
-                            <span className="text-xs">{showFullDescription ? "▲" : "▼"}</span>
+                            <span className="text-xs">
+                              {showFullDescription ? "▲" : "▼"}
+                            </span>
                           </button>
                         )}
                       </div>
