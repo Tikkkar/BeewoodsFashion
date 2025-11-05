@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchProducts, fetchProductBySlug, fetchCategories, fetchBanners } from '../lib/api/products';
+import { fetchProducts, fetchProductBySlug, fetchProductById, fetchCategories, fetchBanners } from '../lib/api/products';
 
 // =============================================
 // HOOK: USE PRODUCTS
@@ -30,7 +30,6 @@ export const useProducts = (filters = {}) => {
         if (!mounted) return;
 
         if (fetchError) {
-          // console.error('❌ Products fetch error:', fetchError); // Đã loại bỏ console.error
           setError(fetchError);
           setProducts([]);
         } else {
@@ -40,7 +39,6 @@ export const useProducts = (filters = {}) => {
         clearTimeout(timeoutId);
         if (!mounted) return;
         
-        // console.error('❌ Products fetch exception:', err); // Đã loại bỏ console.error
         setError(err.message);
         setProducts([]);
       } finally {
@@ -59,6 +57,72 @@ export const useProducts = (filters = {}) => {
   }, [JSON.stringify(filters)]);
 
   return { products, loading, error };
+};
+
+// =============================================
+// HOOK: USE PRODUCT BY ID (for QuickView)
+// =============================================
+export const useProductById = (productId) => {
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!productId) {
+      setProduct(null);
+      setLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    let timeoutId;
+
+    const loadProduct = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            setError('Không thể tải chi tiết sản phẩm');
+            setLoading(false);
+          }
+        }, 10000);
+
+        const { data, error: fetchError } = await fetchProductById(productId);
+        
+        clearTimeout(timeoutId);
+
+        if (!mounted) return;
+
+        if (fetchError) {
+          setError(fetchError);
+          setProduct(null);
+        } else {
+          setProduct(data);
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (!mounted) return;
+        
+        setError(err.message);
+        setProduct(null);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProduct();
+
+    return () => {
+      mounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [productId]);
+
+  return { product, loading, error };
 };
 
 // =============================================
@@ -83,7 +147,6 @@ export const useProductDetail = (slug) => {
         
         timeoutId = setTimeout(() => {
           if (mounted) {
-            // console.error('⏱️ Product fetch timeout'); // Đã loại bỏ console.error
             setError('Không thể tải sản phẩm');
             setLoading(false);
           }
@@ -96,7 +159,6 @@ export const useProductDetail = (slug) => {
         if (!mounted) return;
 
         if (fetchError) {
-          // console.error('❌ Product fetch error:', fetchError); // Đã loại bỏ console.error
           setError(fetchError);
           setProduct(null);
         } else {
@@ -107,23 +169,12 @@ export const useProductDetail = (slug) => {
               try {
                 data.attributes = JSON.parse(data.attributes);
               } catch (e) {
-                // console.error('❌ Error parsing attributes:', e); // Đã loại bỏ console.error
                 data.attributes = {};
               }
             }
           } else if (data) {
-            // Nếu không có attributes, set default empty object
             data.attributes = {};
           }
-          const hasContentBlocks = 
-            data?.attributes?.content_blocks && 
-            Array.isArray(data.attributes.content_blocks) &&
-            data.attributes.content_blocks.length > 0;
-          
-          // if (hasContentBlocks) {
-          //   console.table(data.attributes.content_blocks); // Đã loại bỏ console.table
-          // }
-          // console.groupEnd(); // Đã loại bỏ console.groupEnd
           
           setProduct(data);
         }
@@ -131,7 +182,6 @@ export const useProductDetail = (slug) => {
         clearTimeout(timeoutId);
         if (!mounted) return;
         
-        // console.error('❌ Product fetch exception:', err); // Đã loại bỏ console.error
         setError(err.message);
         setProduct(null);
       } finally {
@@ -169,7 +219,6 @@ export const useCategories = () => {
         
         timeoutId = setTimeout(() => {
           if (mounted) {
-            // console.error('⏱️ Categories fetch timeout'); // Đã loại bỏ console.error
             setError('Không thể tải danh mục');
             setLoading(false);
           }
@@ -182,7 +231,6 @@ export const useCategories = () => {
         if (!mounted) return;
 
         if (fetchError) {
-          // console.error('❌ Categories fetch error:', fetchError); // Đã loại bỏ console.error
           setError(fetchError);
           setCategories([]);
         } else {
@@ -192,7 +240,6 @@ export const useCategories = () => {
         clearTimeout(timeoutId);
         if (!mounted) return;
         
-        // console.error('❌ Categories fetch exception:', err); // Đã loại bỏ console.error
         setError(err.message);
         setCategories([]);
       } finally {
@@ -230,7 +277,6 @@ export const useBanners = () => {
         
         timeoutId = setTimeout(() => {
           if (mounted) {
-            // console.error('⏱️ Banners fetch timeout'); // Đã loại bỏ console.error
             setError('Không thể tải banners');
             setLoading(false);
           }
@@ -243,7 +289,6 @@ export const useBanners = () => {
         if (!mounted) return;
 
         if (fetchError) {
-          // console.error('❌ Banners fetch error:', fetchError); // Đã loại bỏ console.error
           setError(fetchError);
           setBanners([]);
         } else {
@@ -253,7 +298,6 @@ export const useBanners = () => {
         clearTimeout(timeoutId);
         if (!mounted) return;
         
-        // console.error('❌ Banners fetch exception:', err); // Đã loại bỏ console.error
         setError(err.message);
         setBanners([]);
       } finally {

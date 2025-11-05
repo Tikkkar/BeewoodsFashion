@@ -64,6 +64,7 @@ export async function syncChatbotOrderToMainOrders(
     const { data: mainOrder, error: orderError } = await supabase
       .from("orders")
       .insert({
+        tenant_id: chatbotOrder.tenant_id,
         user_id: userId,
         order_number: orderNumber,
         customer_name: chatbotOrder.customer_name,

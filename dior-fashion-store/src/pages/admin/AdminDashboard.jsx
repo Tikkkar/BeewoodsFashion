@@ -6,10 +6,11 @@ import {
   TrendingUp,
   ShoppingBag,
   Package,
-  DollarSign,
+  DollarSign, 
   Clock,
   Loader2,
   Search,
+  Users,
 } from "lucide-react";
 
 const AdminDashboard = () => {
@@ -321,6 +322,31 @@ const AdminDashboard = () => {
               <span>
                 {stats.productsWithSEO} / {stats.totalProducts} đã tối ưu
               </span>
+              <TrendingUp size={14} />
+            </div>
+          </Link>
+
+          {/* Customer Feedbacks - NEW */}
+          <Link
+            to="/admin/feedbacks"
+            className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg border-2 border-pink-200 p-6 hover:border-pink-400 hover:shadow-lg transition-all group relative overflow-hidden"
+          >
+            <div className="absolute top-2 right-2">
+              <span className="bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                MỚI
+              </span>
+            </div>
+            <div className="w-12 h-12 bg-pink-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-pink-200 transition">
+              <Users className="text-pink-600" size={28} />
+            </div>
+            <h3 className="text-lg font-bold mb-2 text-gray-900">
+              Feedback Khách hàng
+            </h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Quản lý ảnh khách hàng trên trang chủ
+            </p>
+            <div className="flex items-center justify-between text-xs text-pink-600 font-medium">
+              <span>Quản lý feedback</span>
               <TrendingUp size={14} />
             </div>
           </Link>

@@ -86,6 +86,7 @@ function validateAddressFunctionCall(args: any): boolean {
 export async function callGemini(
   context: any,
   userMessage: string,
+  apiKey?: string
 ): Promise<GeminiResponse> {
   try {
     const model = genAI.getGenerativeModel({

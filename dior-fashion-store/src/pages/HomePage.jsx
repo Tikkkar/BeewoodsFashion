@@ -12,6 +12,7 @@ import HeroSlider from "../components/hero/HeroSlider";
 import ProductCard from "../components/products/ProductCard";
 import QuickViewModal from "../components/products/QuickViewModal";
 import { useProducts, useBanners, useCategories } from "../hooks/useProducts";
+import { supabase } from "../lib/supabase";
 
 const HomePage = ({ onAddToCart }) => {
   // ======= Hooks / state: MUST be at top-level (not after returns) =======
@@ -21,72 +22,48 @@ const HomePage = ({ onAddToCart }) => {
   const featuredScrollRef = useRef(null);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Customer carousel hover
+  // Customer carousel from database
   const customerScrollRef = useRef(null);
   const [isCustomerHovered, setIsCustomerHovered] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [customersLoading, setCustomersLoading] = useState(true);
 
   // **activeCategory state - bây giờ sẽ lưu slug thực tế hoặc "all"**
   const [activeCategory, setActiveCategory] = useState("all");
 
-  // Customer sample data
-  const customers = [
-    {
-      id: 1,
-      name: "Nguyễn Thu Hà",
-      role: "Khách hàng thân thiết",
-      image:
-        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-    },
-    {
-      id: 2,
-      name: "Phạm Mai Anh",
-      role: "Khách hàng mới",
-      image:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop",
-    },
-    {
-      id: 3,
-      name: "Trần Minh Châu",
-      role: "Khách hàng VIP",
-      image:
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop",
-    },
-    {
-      id: 4,
-      name: "Lê Hoàng Anh",
-      role: "Khách hàng thân thiết",
-      image:
-        "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
-    },
-    {
-      id: 5,
-      name: "Võ Thị Lan",
-      role: "Khách hàng VIP",
-      image:
-        "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop",
-    },
-    {
-      id: 6,
-      name: "Hoàng Minh Tuấn",
-      role: "Khách hàng mới",
-      image:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop",
-    },
-    {
-      id: 7,
-      name: "Đặng Thu Trang",
-      role: "Khách hàng thân thiết",
-      image:
-        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop",
-    },
-    {
-      id: 8,
-      name: "Ngô Văn Hùng",
-      role: "Khách hàng VIP",
-      image:
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
-    },
-  ];
+  // =============================================
+  // FETCH CUSTOMER FEEDBACKS FROM DATABASE
+  // =============================================
+  useEffect(() => {
+    fetchCustomerFeedbacks();
+  }, []);
+
+  const fetchCustomerFeedbacks = async () => {
+    try {
+      setCustomersLoading(true);
+      const { data, error } = await supabase
+        .from('customer_feedbacks')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true });
+
+      if (error) throw error;
+      
+      // Transform data to match the expected format
+      const transformedData = data.map(feedback => ({
+        id: feedback.id,
+        name: feedback.customer_name,
+        role: 'Khách hàng', // Default role
+        image: feedback.customer_image,
+      }));
+      
+      setCustomers(transformedData || []);
+    } catch (error) {
+      console.error('Error fetching customer feedbacks:', error);
+    } finally {
+      setCustomersLoading(false);
+    }
+  };
 
   // =============================================
   // LOGIC & EFFECTS
@@ -140,7 +117,7 @@ const HomePage = ({ onAddToCart }) => {
   };
 
   useEffect(() => {
-    if (isCustomerHovered) return;
+    if (isCustomerHovered || customers.length === 0) return;
     const timer = setInterval(() => {
       const container = customerScrollRef.current;
       if (container) {
@@ -155,7 +132,7 @@ const HomePage = ({ onAddToCart }) => {
       }
     }, 4000);
     return () => clearInterval(timer);
-  }, [isCustomerHovered]);
+  }, [isCustomerHovered, customers.length]);
 
   // =============================================
   // FETCH DATA TỪ HOOKS
@@ -180,7 +157,7 @@ const HomePage = ({ onAddToCart }) => {
 
   // Fetch sản phẩm "Mua gì hôm nay" - thay đổi filter dựa trên activeCategory
   const todayFilters = {
-    limit: 20, // Tăng limit để có nhiều sản phẩm hơn
+    limit: 15, // Tăng limit để có nhiều sản phẩm hơn
     ...(activeCategory !== "all" && { category: activeCategory }), // Chỉ thêm category filter nếu không phải "all"
   };
 
@@ -384,68 +361,86 @@ const HomePage = ({ onAddToCart }) => {
         </div>
       </section>
 
-      {/* 5. Customer Grid Carousel */}
-      <section className="py-12 md:py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
-              Khách Hàng Của Chúng Tôi
-            </h2>
-            <p className="text-gray-600">Những khách hàng tuyệt vời</p>
-          </div>
-
-          <div
-            className="relative group"
-            onMouseEnter={() => setIsCustomerHovered(true)}
-            onMouseLeave={() => setIsCustomerHovered(false)}
-          >
-            <button
-              onClick={() => handleCustomerScroll("left")}
-              className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
-            >
-              <ChevronLeft size={24} />
-            </button>
-
-            <div
-              ref={customerScrollRef}
-              className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
-            >
-              {customers.map((customer) => (
-                <div
-                  key={customer.id}
-                  className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2"
-                >
-                  <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
-                    <div className="aspect-square relative overflow-hidden">
-                      <img
-                        src={customer.image}
-                        alt={customer.name}
-                        className="w-full h-full object-cover transform group-hover/card:scale-110 transition-transform duration-500"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"></div>
-                    </div>
-                    <div className="p-4 text-center">
-                      <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
-                        {customer.name}
-                      </h3>
-                      <p className="text-xs md:text-sm text-gray-500">
-                        {customer.role}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* 5. Customer Feedbacks - FROM DATABASE */}
+      {!customersLoading && customers.length > 0 && (
+        <section className="py-12 md:py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center mb-8 md:mb-12">
+              <h2 className="text-2xl md:text-3xl font-bold tracking-wide uppercase mb-2">
+                Khách Hàng Của BEWO
+              </h2>
+              <p className="text-gray-600">Cảm Ơn Vì Đã Tin Tưởng Và Đồng Hành Cùng BEWO</p>
             </div>
 
-            <button
-              onClick={() => handleCustomerScroll("right")}
-              className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+            <div
+              className="relative group"
+              onMouseEnter={() => setIsCustomerHovered(true)}
+              onMouseLeave={() => setIsCustomerHovered(false)}
             >
-              <ChevronRight size={24} />
-            </button>
+              {customers.length > 4 && (
+                <>
+                  <button
+                    onClick={() => handleCustomerScroll("left")}
+                    className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+
+                  <button
+                    onClick={() => handleCustomerScroll("right")}
+                    className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+                  >
+                    <ChevronRight size={24} />
+                  </button>
+                </>
+              )}
+
+              <div
+                ref={customerScrollRef}
+                className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
+              >
+                {customers.map((customer) => (
+                  <div
+                    key={customer.id}
+                    className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2"
+                  >
+                    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
+                      <div className="aspect-square relative overflow-hidden">
+                        <img
+                          src={customer.image}
+                          alt={customer.name}
+                          className="w-full h-full object-cover transform group-hover/card:scale-110 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"></div>
+                      </div>
+                      <div className="p-4 text-center">
+                        <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
+                          {customer.name}
+                        </h3>
+                        <p className="text-xs md:text-sm text-gray-500">
+                          {customer.role}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* Loading state for customers */}
+      {customersLoading && (
+        <section className="py-12 md:py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-black" />
+              <p className="text-gray-600">Đang tải khách hàng...</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Quick View Modal */}
       <QuickViewModal

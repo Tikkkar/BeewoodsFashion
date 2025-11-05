@@ -10,6 +10,7 @@ import { createSupabaseClient } from "../utils/supabaseClient.ts";
  * Automatically called after saving customer/bot messages
  */
 export async function createMessageEmbedding(
+  tenantId: string,    
   conversationId: string,
   messageId: string,
   content: string,
@@ -60,6 +61,7 @@ export async function createMessageEmbedding(
  * Called when conversation ends or periodically
  */
 export async function createSummaryEmbedding(
+  tenantId: string, 
   conversationId: string,
   summaryText: string,
   keyPoints: string[] = [],

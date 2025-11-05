@@ -304,4 +304,106 @@ export const fetchFeaturedProducts = async (limit = 8) => {
     } catch (error) {
         return { data: [], error: error.message };
     }
+    
+};
+// =============================================
+// FETCH PRODUCT BY ID (for QuickView)
+// =============================================
+export const fetchProductById = async (productId) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select(`
+        *,
+        categories!inner(id, name, slug),
+        product_images (
+          id,
+          image_url,
+          is_primary,
+          display_order
+        ),
+        product_sizes (
+          id,
+          size,
+          stock
+        ),
+        reviews (
+          id,
+          rating,
+          comment,
+          user_id,
+          is_verified_purchase,
+          created_at
+        )
+      `)
+      .eq('id', productId)
+      .eq('is_active', true)
+      .single();
+
+    if (error) {
+      return { data: null, error: error.message };
+    }
+
+    if (!data) {
+      return { data: null, error: 'Product not found' };
+    }
+
+    // Parse attributes nếu là string
+    if (data.attributes) {
+      if (typeof data.attributes === 'string') {
+        try {
+          data.attributes = JSON.parse(data.attributes);
+        } catch (e) {
+          data.attributes = {};
+        }
+      }
+    } else {
+      data.attributes = {};
+    }
+
+    // Transform data để dễ sử dụng
+    const transformedData = {
+      id: data.id,
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      price: parseFloat(data.price),
+      originalPrice: data.original_price ? parseFloat(data.original_price) : null,
+      stock: data.stock,
+      category: data.categories?.name || 'Uncategorized',
+      categorySlug: data.categories?.slug,
+      
+      // Images
+      images: data.product_images
+        ?.sort((a, b) => a.display_order - b.display_order)
+        .map(img => img.image_url) || [],
+      imagePrimary: data.product_images
+        ?.sort((a, b) => a.display_order - b.display_order)
+        .find(img => img.is_primary)?.image_url || 
+        data.product_images?.[0]?.image_url || '/placeholder.png',
+      imageSecondary: data.product_images
+        ?.sort((a, b) => a.display_order - b.display_order)
+        .find(img => !img.is_primary)?.image_url || 
+        data.product_images?.[1]?.image_url,
+      
+      // Sizes - chỉ lấy size còn hàng
+      sizes: data.product_sizes
+        ?.filter(s => s.stock > 0)
+        .map(s => s.size) || [],
+      
+      // Reviews
+      reviews: data.reviews || [],
+      
+      // Metadata
+      isFeatured: data.is_featured,
+      viewCount: data.view_count,
+      attributes: data.attributes,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+
+    return { data: transformedData, error: null };
+  } catch (error) {
+    return { data: null, error: error.message };
+  }
 };

@@ -1,3 +1,7 @@
+// ============================================
+// messageHandler.ts - Updated with Multi-Tenant Support
+// ============================================
+
 import { createSupabaseClient } from "../utils/supabaseClient.ts";
 import { calculateCost } from "../utils/formatters.ts";
 import { buildContext } from "../services/contextService.ts";
@@ -33,7 +37,15 @@ import {
   createConversationSummary,
 } from "../services/memoryService.ts";
 
-export async function handleMessage(body: any) {
+// 🔥 NEW: Import tenant context service
+import {
+  getTenantContext,
+  checkUsageLimit,
+  trackUsage,
+  trackAIUsage,
+} from "../services/tenantContextService.ts";
+
+export async function handleMessage(body: any, request?: Request) {
   const {
     platform,
     customer_fb_id,
@@ -52,11 +64,35 @@ export async function handleMessage(body: any) {
     message: message_text.substring(0, 50),
   });
 
-  const supabase = createSupabaseClient(); // ======================================== // 1. GET OR CREATE CONVERSATION // ========================================
+  const supabase = createSupabaseClient();
 
+  // ========================================
+  // 🔥 NEW: GET TENANT CONTEXT
+  // ========================================
+  console.log("🔍 Getting tenant context...");
+  const tenantContext = await getTenantContext(request);
+  console.log(`✅ Tenant: ${tenantContext.tenantInfo.business_name} (${tenantContext.tenantId})`);
+
+  // ========================================
+  // 🔥 NEW: CHECK USAGE LIMITS
+  // ========================================
+  const limitCheck = await checkUsageLimit(tenantContext.tenantId, 'messages');
+  if (!limitCheck.allowed) {
+    console.warn(`⚠️ Usage limit reached for tenant ${tenantContext.tenantId}`);
+    return {
+      success: false,
+      error: limitCheck.message,
+      limit_reached: true
+    };
+  }
+
+  // ========================================
+  // 1. GET OR CREATE CONVERSATION
+  // ========================================
   const { data: conversationId, error: convError } = await supabase.rpc(
     "get_or_create_conversation",
     {
+      p_tenant_id: tenantContext.tenantId, // 🔥 NEW: Pass tenant_id
       p_platform: platform,
       p_customer_fb_id: customer_fb_id || null,
       p_customer_zalo_id: customer_zalo_id || null,
@@ -67,11 +103,20 @@ export async function handleMessage(body: any) {
     }
   );
 
-  if (convError) throw new Error(`Conversation error: ${convError.message}`); // ======================================== // 2. SAVE CUSTOMER MESSAGE // ========================================
+  if (convError) {
+    console.error("Conversation error:", convError);
+    throw new Error(`Conversation error: ${convError.message}`);
+  }
 
+  console.log(`✅ Conversation ID: ${conversationId}`);
+
+  // ========================================
+  // 2. SAVE CUSTOMER MESSAGE
+  // ========================================
   const { data: customerMessage, error: msgError } = await supabase
     .from("chatbot_messages")
     .insert({
+      tenant_id: tenantContext.tenantId, // 🔥 NEW: Add tenant_id
       conversation_id: conversationId,
       sender_type: "customer",
       message_type: "text",
@@ -83,53 +128,81 @@ export async function handleMessage(body: any) {
   if (msgError) {
     console.error("Error saving customer message:", msgError);
     throw msgError;
-  } // 🔥 2.1. CREATE EMBEDDING FOR CUSTOMER MESSAGE
+  }
 
-  createMessageEmbedding(conversationId, customerMessage.id, message_text, {
-    sender_type: "customer",
-    platform: dbPlatform,
-    customer_fb_id: customer_fb_id || null,
-    user_id: user_id || null,
-    session_id: session_id || null,
-  }).catch((err) => console.error("❌ Customer embedding error:", err)); // ======================================== // 3. BUILD CONTEXT (includes memory retrieval) // ========================================
+  // 2.1. CREATE EMBEDDING FOR CUSTOMER MESSAGE
+  createMessageEmbedding(
+    tenantContext.tenantId, // 🔥 NEW: Pass tenant_id
+    conversationId,
+    customerMessage.id,
+    message_text,
+    {
+      sender_type: "customer",
+      platform: dbPlatform,
+      customer_fb_id: customer_fb_id || null,
+      user_id: user_id || null,
+      session_id: session_id || null,
+    }
+  ).catch((err) => console.error("❌ Customer embedding error:", err));
 
-  const context = await buildContext(supabase, conversationId, message_text);
+  // ========================================
+  // 3. BUILD CONTEXT (includes memory retrieval)
+  // ========================================
+  const context = await buildContext(
+    supabase,
+    tenantContext.tenantId, // 🔥 NEW: Pass tenant_id for tenant-isolated context
+    conversationId,
+    message_text
+  );
 
   console.log("Context built:", {
     hasProfile: !!context.profile,
     historyCount: context.history?.length || 0,
     memoryCount: context.memory?.length || 0,
     summaryAvailable: !!context.summary,
-  }); // ======================================== // 4. GENERATE RESPONSE // ========================================
+  });
 
-  const llmResult = await callGemini(context, message_text);
-  let responseText = llmResult.text; // ✅ Changed const to let
+  // ========================================
+  // 4. GENERATE RESPONSE
+  // ========================================
+  // 🔥 NEW: Use tenant's Gemini API key if available
+  const geminiApiKey = tenantContext.apiKeys.gemini?.apiKey || undefined;
+  
+  const llmResult = await callGemini(context, message_text, geminiApiKey);
+  let responseText = llmResult.text;
   const tokensUsed = llmResult.tokens;
   const recommendationType = llmResult.type;
   const productCards = llmResult.products;
   const functionCalls = llmResult.functionCalls || [];
-  let imageResult: any = null; // ⭐ THÊM DÒNG NÀY
+  let imageResult: any = null;
+
   console.log("Response generated:", {
     type: recommendationType,
     products: productCards.length,
     tokens: tokensUsed,
     functionCalls: functionCalls.length,
-  }); // 4.1. EXECUTE FUNCTION CALLS ⭐ NEW // ========================================
+  });
+
+  // ========================================
+  // 4.1. EXECUTE FUNCTION CALLS
   // ========================================
   if (functionCalls.length > 0) {
     console.log(`🔧 Executing ${functionCalls.length} function call(s)`);
     for (const fnCall of functionCalls) {
       try {
         let functionResult: any = { success: false };
-        switch (
-          fnCall.name // ======================================== // FUNCTION 1: Save Customer Info // ========================================
-        ) {
+        
+        switch (fnCall.name) {
+          // ======================================
+          // FUNCTION 1: Save Customer Info
+          // ======================================
           case "save_customer_info":
             functionResult = await saveCustomerProfile(
               conversationId,
               fnCall.args
             );
-            console.log("✅ Customer profile saved:", functionResult.message); // Get AI continuation response
+            console.log("✅ Customer profile saved:", functionResult.message);
+            
             if (functionResult.success) {
               const continuation = await callGeminiWithFunctionResult(
                 context,
@@ -141,12 +214,17 @@ export async function handleMessage(body: any) {
                 responseText = continuation.text;
               }
             }
-            break; // ======================================== // FUNCTION 2: Save Address // ========================================
+            break;
+
+          // ======================================
+          // FUNCTION 2: Save Address
+          // ======================================
           case "save_address":
             console.log(
               "🤖 AI args BEFORE processing:",
               JSON.stringify(fnCall.args, null, 2)
-            ); // ⭐ VALIDATE args trước khi gọi function
+            );
+            
             if (!fnCall.args.address_line || !fnCall.args.city) {
               console.error("❌ Missing required fields:", fnCall.args);
               functionResult = {
@@ -154,12 +232,13 @@ export async function handleMessage(body: any) {
                 message: "Thiếu thông tin địa chỉ",
               };
               break;
-            } // Check if address_line looks like phone number
+            }
+            
             if (/^[\d\s]+$/.test(fnCall.args.address_line)) {
               console.error(
                 "❌ address_line is phone number!",
                 fnCall.args.address_line
-              ); // Try to fix by using extractAndSaveAddress instead
+              );
               const fixResult = await extractAndSaveAddress(
                 conversationId,
                 message_text
@@ -169,7 +248,8 @@ export async function handleMessage(body: any) {
                 message: fixResult ? "Đã lưu địa chỉ" : "Không thể lưu địa chỉ",
               };
               break;
-            } // ⭐ USE STANDARDIZED SERVICE
+            }
+            
             const result = await saveAddressStandardized(conversationId, {
               full_name: fnCall.args.full_name,
               phone: fnCall.args.phone,
@@ -178,9 +258,11 @@ export async function handleMessage(body: any) {
               district: fnCall.args.district,
               city: fnCall.args.city,
             });
+            
             console.log("💾 Save result:", result);
             functionResult = result;
             console.log("✅ Address saved (standardized):", result.message);
+            
             if (result.success) {
               const continuation = await callGeminiWithFunctionResult(
                 context,
@@ -192,19 +274,27 @@ export async function handleMessage(body: any) {
                 responseText = continuation.text;
               }
             }
-            break; // ======================================== // FUNCTION 3: Add to Cart // ========================================
+            break;
+
+          // ======================================
+          // FUNCTION 3: Add to Cart
+          // ======================================
           case "add_to_cart":
-            const { product_id, size, quantity = 1 } = fnCall.args; // Get product details
+            const { product_id, size, quantity = 1 } = fnCall.args;
+            
+            // 🔥 MODIFIED: Filter by tenant_id
             const { data: product } = await supabase
               .from("products")
               .select(
                 `
-                id, name, price,
-                images:product_images(image_url, is_primary)
-              `
+                id, name, price,
+                images:product_images(image_url, is_primary)
+              `
               )
+              .eq("tenant_id", tenantContext.tenantId)
               .eq("id", product_id)
               .single();
+            
             if (product) {
               const primaryImage = product.images?.find(
                 (img: any) => img.is_primary
@@ -225,7 +315,8 @@ export async function handleMessage(body: any) {
                 message: `Đã thêm ${product.name} vào giỏ hàng`,
                 cart_count: updatedCart.length,
               };
-              console.log("✅ Added to cart:", product.name, "x", quantity); // Get AI continuation
+              console.log("✅ Added to cart:", product.name, "x", quantity);
+              
               const continuation = await callGeminiWithFunctionResult(
                 context,
                 message_text,
@@ -242,7 +333,10 @@ export async function handleMessage(body: any) {
               };
             }
             break;
-          // ======================================== // FUNCTION 4: Create Order // ========================================
+
+          // ======================================
+          // FUNCTION 4: Create Order
+          // ======================================
           case "confirm_and_create_order":
             if (fnCall.args.confirmed) {
               const orderResult = await handleOrderCreation({
@@ -259,26 +353,35 @@ export async function handleMessage(body: any) {
               }
             }
             break;
-          // ======================================== // FUNCTION 5: Send Product Image ⭐ MỚI // ========================================
+
+          // ======================================
+          // FUNCTION 5: Send Product Image
+          // ======================================
           case "send_product_image":
-            const { product_id: imgProductId } = fnCall.args; // Get product with images
+            const { product_id: imgProductId } = fnCall.args;
+            
+            // 🔥 MODIFIED: Filter by tenant_id
             const { data: imgProduct } = await supabase
               .from("products")
               .select(
                 `id, name, price, slug,
                 images:product_images(image_url, is_primary)`
               )
+              .eq("tenant_id", tenantContext.tenantId)
               .eq("id", imgProductId)
               .single();
+            
             if (imgProduct) {
               const primaryImage = imgProduct.images?.find(
                 (img: any) => img.is_primary
               );
               const imageUrl =
                 primaryImage?.image_url || imgProduct.images?.[0]?.image_url;
+              
               if (imageUrl) {
-                // Save image message to database
+                // 🔥 MODIFIED: Add tenant_id when saving image message
                 await supabase.from("chatbot_messages").insert({
+                  tenant_id: tenantContext.tenantId,
                   conversation_id: conversationId,
                   sender_type: "bot",
                   message_type: "image",
@@ -289,7 +392,8 @@ export async function handleMessage(body: any) {
                     product_price: imgProduct.price,
                     product_link: `http://bewo.com.vn/products/${imgProduct.slug}`,
                   },
-                }); // Send to respective platform
+                });
+                
                 if (platform === "facebook" && access_token && customer_fb_id) {
                   await sendFacebookImage(
                     customer_fb_id,
@@ -308,7 +412,8 @@ export async function handleMessage(body: any) {
                     access_token,
                     imgProduct
                   );
-                } // Platform web không cần gửi riêng, chỉ cần return image_url trong response // ✅ Set functionResult 1 LẦN DUY NHẤT (bao gồm image_url và product)
+                }
+                
                 functionResult = {
                   success: true,
                   message: `Đã gửi ảnh sản phẩm ${imgProduct.name}`,
@@ -316,7 +421,8 @@ export async function handleMessage(body: any) {
                   product: imgProduct,
                 };
                 console.log("✅ Product image sent:", imgProduct.name);
-                imageResult = functionResult; // Get AI continuation response
+                imageResult = functionResult;
+                
                 const continuation = await callGeminiWithFunctionResult(
                   context,
                   message_text,
@@ -339,18 +445,19 @@ export async function handleMessage(body: any) {
               };
             }
             break;
+
           default:
             console.log("⚠️ Unknown function:", fnCall.name);
-        } // <-- Đóng khối switch
+        }
       } catch (error: any) {
         console.error(`❌ Function execution error (${fnCall.name}):`, error);
       }
     }
   }
+
   // ========================================
   // 4.5. CHECK ORDER CONFIRMATION
   // ========================================
-  // Check if customer just confirmed address
   if (isConfirmation(message_text)) {
     const recentBotMessages =
       context.history?.filter((m: any) => m.sender_type === "bot").slice(-2) ||
@@ -364,7 +471,6 @@ export async function handleMessage(body: any) {
     if (justAskedForConfirmation) {
       console.log("✅ Customer confirmed address - Creating order");
 
-      // Create order
       const orderResult = await handleOrderCreation({
         conversationId,
         message_text,
@@ -372,10 +478,8 @@ export async function handleMessage(body: any) {
       });
 
       if (orderResult.success) {
-        // Override response with order confirmation
         responseText = orderResult.message;
       } else {
-        // If order creation failed, use the error message
         responseText = orderResult.message;
       }
     }
@@ -394,18 +498,17 @@ export async function handleMessage(body: any) {
     });
 
     if (orderResult.success) {
-      // Override AI response with order confirmation
       responseText = orderResult.message;
 
-      // Save order confirmation message
+      // 🔥 MODIFIED: Add tenant_id
       await supabase.from("chatbot_messages").insert({
+        tenant_id: tenantContext.tenantId,
         conversation_id: conversationId,
         sender_type: "bot",
         message_type: "text",
         content: { text: responseText },
       });
     } else if (orderResult.needAddress || orderResult.needProducts) {
-      // AI will handle asking for address/products
       responseText = orderResult.message;
     }
   }
@@ -416,6 +519,7 @@ export async function handleMessage(body: any) {
   const { data: botMessage, error: botMsgError } = await supabase
     .from("chatbot_messages")
     .insert({
+      tenant_id: tenantContext.tenantId, // 🔥 NEW: Add tenant_id
       conversation_id: conversationId,
       sender_type: "bot",
       message_type: productCards.length > 0 ? "product_card" : "text",
@@ -434,28 +538,59 @@ export async function handleMessage(body: any) {
     throw botMsgError;
   }
 
-  // 🔥 5.1. CREATE EMBEDDING FOR BOT RESPONSE
-  createMessageEmbedding(conversationId, botMessage.id, responseText, {
-    sender_type: "bot",
-    platform: dbPlatform,
-    has_products: productCards.length > 0,
-    product_count: productCards.length,
-    recommendation_type: recommendationType,
-    product_ids: productCards.map((p: any) => p.id),
-  }).catch((err) => console.error("❌ Bot embedding error:", err));
+  // 5.1. CREATE EMBEDDING FOR BOT RESPONSE
+  createMessageEmbedding(
+    tenantContext.tenantId, // 🔥 NEW: Pass tenant_id
+    conversationId,
+    botMessage.id,
+    responseText,
+    {
+      sender_type: "bot",
+      platform: dbPlatform,
+      has_products: productCards.length > 0,
+      product_count: productCards.length,
+      recommendation_type: recommendationType,
+      product_ids: productCards.map((p: any) => p.id),
+    }
+  ).catch((err) => console.error("❌ Bot embedding error:", err));
 
   // ========================================
   // 6. LOG USAGE
   // ========================================
   if (tokensUsed > 0) {
+    // 🔥 MODIFIED: Add tenant_id
     await supabase.from("chatbot_usage_logs").insert({
+      tenant_id: tenantContext.tenantId,
       conversation_id: conversationId,
       input_tokens: Math.floor(tokensUsed * 0.4),
       output_tokens: Math.floor(tokensUsed * 0.6),
       cost: calculateCost(tokensUsed),
       model: "gemini-2.0-flash-exp",
     });
+
+    // 🔥 NEW: Track AI usage in detail
+    trackAIUsage(
+      tenantContext.tenantId,
+      conversationId,
+      "gemini-2.0-flash-exp",
+      Math.floor(tokensUsed * 0.4),
+      Math.floor(tokensUsed * 0.6),
+      calculateCost(tokensUsed),
+      'chatbot'
+    ).catch((err) => console.error("❌ AI usage tracking error:", err));
   }
+
+  // 🔥 NEW: Track message usage
+  trackUsage(
+    tenantContext.tenantId,
+    'message',
+    1,
+    {
+      conversation_id: conversationId,
+      platform: dbPlatform,
+      has_products: productCards.length > 0
+    }
+  ).catch((err) => console.error("❌ Usage tracking error:", err));
 
   // ========================================
   // 6.5. EXTRACT AND SAVE ADDRESS (if provided)
@@ -507,6 +642,7 @@ export async function handleMessage(body: any) {
 
         if (summary) {
           await createSummaryEmbedding(
+            tenantContext.tenantId, // 🔥 NEW: Pass tenant_id
             conversationId,
             summary.summary_text,
             summary.key_points || []
@@ -528,8 +664,9 @@ export async function handleMessage(body: any) {
       productCards
     );
   }
+
   // ========================================
-  // 10.5. SEND TO ZALO (if applicable)  ⭐ THÊM SECTION NÀY
+  // 10.5. SEND TO ZALO (if applicable)
   // ========================================
   if (platform === "zalo" && access_token && customer_zalo_id) {
     await sendZaloMessage(
@@ -539,6 +676,7 @@ export async function handleMessage(body: any) {
       productCards
     );
   }
+
   // ========================================
   // 11. RETURN RESPONSE
   // ========================================
@@ -556,5 +694,10 @@ export async function handleMessage(body: any) {
       has_summary: !!context.summary,
       embeddings_created: true,
     },
+    // 🔥 NEW: Add tenant info for debugging
+    tenant: {
+      id: tenantContext.tenantId,
+      name: tenantContext.tenantInfo.business_name
+    }
   };
 }

@@ -117,12 +117,34 @@ const ProductsPage = ({ onAddToCart }) => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <div className="bg-gray-900 text-white flex-shrink-0">
-        <div className="max-w-7xl mx-auto px-4 py-6 text-center">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">{pageTitle}</h1>
-          <p className="text-gray-300 text-sm">
-            {isLoading ? 'Đang tìm kiếm...' : `${allProducts.length} sản phẩm`}
-          </p>
+      {/* ✨ HEADER CẢI TIẾN - Nền sáng đồng bộ với toàn trang */}
+      <div className="bg-gradient-to-b from-gray-50 to-white border-b border-gray-200 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900 tracking-tight">
+            {pageTitle}
+          </h1>
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <span className="text-gray-500 text-sm flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Đang tìm kiếm...
+              </span>
+            ) : (
+              <>
+                <span className="text-gray-600 text-sm font-medium">
+                  {allProducts.length} sản phẩm
+                </span>
+                {(filters.search || filters.category || filters.onSale || priceRange) && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                      Có bộ lọc
+                    </span>
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -162,7 +184,7 @@ const ProductsPage = ({ onAddToCart }) => {
               </div>
             </div>
 
- <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex-1">
                 <h3 className="text-xs font-semibold mb-2 uppercase tracking-wider text-gray-600">Khoảng giá & Khuyến mãi</h3>
                 <div className="flex flex-wrap gap-2 items-center">

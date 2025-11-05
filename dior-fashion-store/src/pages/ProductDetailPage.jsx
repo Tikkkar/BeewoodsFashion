@@ -665,9 +665,9 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
             <div className="max-w-3xl">
               <div className="space-y-2 md:space-y-3">
                 {[
-                  { label: "Chất liệu", value: "Cotton cao cấp, pha spandex" },
+                  // { label: "Chất liệu", value: "Cotton cao cấp, pha spandex" },
                   { label: "Xuất xứ", value: "Việt Nam" },
-                  { label: "Màu sắc", value: product.category || "Đa dạng" },
+                  // { label: "Màu sắc", value: product.category || "Đa dạng" },
                   { label: "Size", value: sizes.join(", ") },
                   {
                     label: "Hướng dẫn giặt",
@@ -678,7 +678,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                     label: "Hướng dẫn bảo quản",
                     value: "Phơi ở nơi thoáng mát, tránh ánh nắng trực tiếp",
                   },
-                  { label: "Thương hiệu", value: brand?.name || "DIOR STORE" },
+                  { label: "Thương hiệu", value: brand?.name || "BEWO" },
                 ].map((item, index) => (
                   <div
                     key={index}

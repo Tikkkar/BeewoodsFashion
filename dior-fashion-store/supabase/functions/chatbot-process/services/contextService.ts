@@ -7,6 +7,7 @@ import { getStandardizedAddress } from "./addressService.ts";
 
 export async function buildContext(
   supabase: any,
+  tenantId: string,
   conversationId: string,
   message: string,
 ) {
