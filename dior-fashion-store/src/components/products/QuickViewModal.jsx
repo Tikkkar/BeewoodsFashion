@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   X,
   ShoppingCart,
-  Heart,
   Star,
   ExternalLink,
   Minus,
@@ -17,7 +16,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
   const navigate = useNavigate();
   const { error: showError, success: showSuccess } = useToast();
 
-  // Lấy dữ liệu chi tiết sản phẩm
+  // Lấy dữ liệu chi tiết sản phẩm (Quick View)
   const { product: detailedProduct } = useProductById(
     isOpen && initialProduct ? initialProduct.id : null
   );
@@ -26,7 +25,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
 
   const [selectedSize, setSelectedSize] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [showFullDescription, setShowFullDescription] = useState(false);
 
@@ -36,16 +34,16 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
       setImageLoaded(false);
       setShowFullDescription(false);
 
-      // Preload hình ảnh
+      // Preload ảnh
       if (initialProduct.imagePrimary) {
         const img = new Image();
         img.src = initialProduct.imagePrimary;
         img.onload = () => setImageLoaded(true);
       }
 
-      // Xử lý sizes
+      // Gán size mặc định
       const currentProduct = detailedProduct || initialProduct;
-      if (currentProduct.sizes && currentProduct.sizes.length > 0) {
+      if (currentProduct?.sizes?.length > 0) {
         const firstSize =
           typeof currentProduct.sizes[0] === "object"
             ? currentProduct.sizes[0].size
@@ -54,9 +52,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
       } else {
         setSelectedSize("");
       }
-
-      const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
-      setIsWishlisted(wishlist.some((item) => item.id === initialProduct.id));
 
       document.body.style.overflow = "hidden";
     } else {
@@ -96,27 +91,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
     navigate(`/product/${product.slug}`);
   };
 
-  const handleToggleWishlist = () => {
-    if (!product) return;
-
-    const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
-    const exists = wishlist.find((item) => item.id === product.id);
-
-    if (exists) {
-      const newWishlist = wishlist.filter((item) => item.id !== product.id);
-      localStorage.setItem("bewo_wishlist", JSON.stringify(newWishlist));
-      setIsWishlisted(false);
-      showSuccess("Đã xóa khỏi danh sách yêu thích");
-    } else {
-      wishlist.push(product);
-      localStorage.setItem("bewo_wishlist", JSON.stringify(wishlist));
-      setIsWishlisted(true);
-      showSuccess("Đã thêm vào danh sách yêu thích");
-    }
-
-    window.dispatchEvent(new Event("wishlistUpdated"));
-  };
-
   const sizes = product?.sizes
     ? product.sizes.map((s) => (typeof s === "object" ? s.size : s))
     : [];
@@ -130,8 +104,15 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
 
   const avgRating =
     product?.reviews && product.reviews.length > 0
-      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length
+      ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+        product.reviews.length
       : 5;
+
+  const shouldShowCategory = (cat) => {
+    if (!cat) return false;
+    const normalized = String(cat).trim().toLowerCase();
+    return normalized !== "uncategorized" && normalized !== "không phân loại";
+  };
 
   return (
     <>
@@ -166,6 +147,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
             </div>
           ) : (
             <div className="flex flex-col md:grid md:grid-cols-2 flex-1 overflow-hidden">
+              {/* Hình ảnh sản phẩm */}
               <div className="relative bg-gray-100 flex items-center justify-center h-[45vh] md:h-full flex-shrink-0">
                 {!imageLoaded && (
                   <div className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center">
@@ -185,10 +167,14 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                 )}
               </div>
 
+              {/* Thông tin sản phẩm */}
               <div className="flex flex-col p-6 md:p-8 overflow-y-auto flex-1">
-                <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
-                  {product.category}
-                </div>
+                {/* Chỉ hiển thị category nếu hợp lệ */}
+                {shouldShowCategory(product?.category) && (
+                  <div className="text-xs uppercase tracking-widest text-gray-500 mb-2">
+                    {product.category}
+                  </div>
+                )}
 
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
                   {product.name}
@@ -235,6 +221,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                     )}
                 </div>
 
+                {/* Mô tả sản phẩm */}
                 <div className="mb-6">
                   <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-900 mb-2">
                     Mô tả sản phẩm
@@ -271,6 +258,7 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                   })()}
                 </div>
 
+                {/* Size + số lượng + hành động */}
                 <div className="mt-auto space-y-6">
                   {sizes.length > 0 && (
                     <div className="space-y-3">
@@ -345,24 +333,6 @@ const QuickViewModal = ({ product: initialProduct, isOpen, onClose, onAddToCart 
                       {product.stock === 0 ? "Hết hàng" : "Thêm vào giỏ hàng"}
                     </button>
 
-                    <button
-                      onClick={handleToggleWishlist}
-                      className={`w-full py-3 rounded-lg border-2 font-medium transition-all flex items-center justify-center gap-2 ${
-                        isWishlisted
-                          ? "border-red-500 text-red-500 bg-red-50 hover:bg-red-100"
-                          : "border-gray-300 hover:border-black hover:bg-gray-50"
-                      }`}
-                    >
-                      <Heart
-                        size={18}
-                        fill={isWishlisted ? "currentColor" : "none"}
-                      />
-                      <span className="text-sm">
-                        {isWishlisted
-                          ? "Đã thêm vào yêu thích"
-                          : "Thêm vào yêu thích"}
-                      </span>
-                    </button>
                     <button
                       onClick={handleViewFullDetails}
                       className="w-full flex items-center justify-center gap-2 py-3 border-2 border-gray-300 rounded-lg hover:border-black hover:bg-gray-50 transition-all text-sm font-medium"
