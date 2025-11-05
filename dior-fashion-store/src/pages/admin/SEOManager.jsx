@@ -1,10 +1,17 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import SEOContentEditor from "../../components/admin/SEOContentEditor";
 
+/**
+ * SEOManagerPage (simplified)
+ * - Chỉ hiển thị SEOContentEditor
+ * - Lấy productId từ query param ?productId=...
+ */
 const SEOManagerPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const productId = searchParams.get("productId") || null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -16,6 +23,7 @@ const SEOManagerPage = () => {
               <button
                 onClick={() => navigate("/admin")}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
+                aria-label="Back to admin"
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -24,22 +32,24 @@ const SEOManagerPage = () => {
                   Quản lý SEO & Nội dung
                 </h1>
                 <p className="text-sm text-gray-600">
-                  Tối ưu hóa SEO và nội dung chi tiết cho từng sản phẩm
+                  Tạo & chỉnh sửa SEO cho sản phẩm
                 </p>
               </div>
             </div>
-            <Link
-              to="/admin/products"
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
-            >
-              Danh sách sản phẩm
-            </Link>
+
+            <div>
+              {/* reserved for future top-right actions (kept empty intentionally) */}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Content */}
-      <SEOContentEditor />
+      {/* Main content: chỉ SEOContentEditor */}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <SEOContentEditor initialProductId={productId} />
+        </div>
+      </main>
     </div>
   );
 };

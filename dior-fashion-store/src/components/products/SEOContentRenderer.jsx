@@ -1,14 +1,30 @@
 import React from "react";
 
-const SEOContentRenderer = ({ contentBlocks, fallbackDescription }) => {
-  // Kiểm tra có content blocks không
-  const hasContentBlocks =
-    contentBlocks && Array.isArray(contentBlocks) && contentBlocks.length > 0;
+/**
+ * SEOContentRenderer
+ * Props:
+ * - contentBlocks: array of blocks returned by AI (type: text|image)
+ * - fallbackDescription: string, shown if no blocks
+ * - productImages: array of image URLs from DB to use as fallback
+ */
+const isPlaceholder = (u) =>
+  !u || typeof u !== "string" || u.trim() === "" || /^(exam|placeholder|null|undefined)$/i.test(u.trim());
 
-  if (!hasContentBlocks) {
-    // Fallback: Hiển thị mô tả thường
+const SEOContentRenderer = ({ contentBlocks = [], fallbackDescription, productImages = [] }) => {
+  const hasBlocks = Array.isArray(contentBlocks) && contentBlocks.length > 0;
+  const firstProductImage = (productImages || []).find((u) => !isPlaceholder(u));
+
+  if (!hasBlocks) {
     return (
       <div className="space-y-4">
+        {firstProductImage && (
+          <img
+            src={firstProductImage}
+            alt="Ảnh sản phẩm"
+            className="w-full rounded-lg shadow-md mb-3 object-cover"
+            loading="lazy"
+          />
+        )}
         <p className="text-gray-700 leading-relaxed">
           {fallbackDescription || "Đang cập nhật thông tin sản phẩm..."}
         </p>
@@ -16,42 +32,65 @@ const SEOContentRenderer = ({ contentBlocks, fallbackDescription }) => {
     );
   }
 
-  // Render content blocks
   return (
     <div className="space-y-6">
-      {contentBlocks.map((block, index) => (
-        <div key={block.id || index}>
-          {block.type === "text" ? (
-            <div>
-              {block.title && (
-                <h3 className="text-xl font-bold mb-3 text-gray-900">
-                  {block.title}
-                </h3>
-              )}
-              <div
-                className="text-gray-700 leading-relaxed prose max-w-none"
-                dangerouslySetInnerHTML={{ __html: block.content }}
-              />
-            </div>
-          ) : block.type === "image" ? (
-            <figure className="my-6">
-              {block.url && (
-                <img
-                  src={block.url}
-                  alt={block.alt || "Product image"}
-                  className="w-full rounded-lg shadow-md"
-                  loading="lazy"
+      {contentBlocks.map((block, idx) => {
+        const type = block.type || block.kind || "text";
+        const title = block.title || block.heading || "";
+        const content = block.content || block.html || "";
+        const url = (block.url || block.image || block.src || "").trim();
+        const alt = block.alt || block.alt_text || `Ảnh sản phẩm ${idx + 1}`;
+        const caption = block.caption || block.note || "";
+
+        // If the AI returned a placeholder or invalid url, fallback to productImages
+        const imageUrl = !isPlaceholder(url) ? url : firstProductImage;
+
+        return (
+          <section key={block.id || idx} className="prose max-w-none">
+            {type === "text" && (
+              <div>
+                {title && <h3 className="text-xl font-bold mb-3 text-gray-900">{title}</h3>}
+                <div
+                  className="text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: content }}
                 />
-              )}
-              {block.caption && (
-                <figcaption className="text-center text-sm text-gray-500 mt-3 italic">
-                  {block.caption}
-                </figcaption>
-              )}
-            </figure>
-          ) : null}
-        </div>
-      ))}
+              </div>
+            )}
+
+            {type === "image" && (
+              <figure className="my-6">
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={alt}
+                    className="w-full rounded-lg shadow-md"
+                    loading="lazy"
+                  />
+                ) : null}
+                {caption && (
+                  <figcaption className="text-center text-sm text-gray-500 mt-3 italic">
+                    {caption}
+                  </figcaption>
+                )}
+              </figure>
+            )}
+
+            {type !== "text" && type !== "image" && (imageUrl || content) && (
+              <div>
+                {imageUrl && (
+                  <img src={imageUrl} alt={alt} className="w-full rounded-lg shadow-md" loading="lazy" />
+                )}
+                {content && (
+                  <div
+                    className="text-gray-700 leading-relaxed"
+                    dangerouslySetInnerHTML={{ __html: content }}
+                  />
+                )}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 };
