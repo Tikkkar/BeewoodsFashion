@@ -8,18 +8,142 @@
    Playfair Display: serif thanh lịch cho tiêu đề giống ảnh. */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:wght@300;400;500;600;700&display=swap');
 
-/* =========== CSS Variables for fonts =========== */
+/* =========== CSS Variables for fonts & colors =========== */
 :root {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
     Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
   --font-serif: "Playfair Display", "Georgia", Cambria, "Times New Roman", serif;
-  --text-color: #000000;
-  --muted-color: #6b7280; /* tailwind gray-500 */
+
+  /* Text */
+  --text-color: #0f172a;    /* near-gray-900 */
+  --muted-color: #6b7280;   /* tailwind gray-500 */
+
+  /* BRAND PALETTE (change here to update whole site) */
+  --brand-50:  #f5f3ff;
+  --brand-100: #ede9fe;
+  --brand-200: #ddd6fe;
+  --brand-300: #c4b5fd;
+  --brand-400: #a78bfa;
+  --brand-500: #8b5cf6;
+  --brand-600: #7c3aed;
+  --brand-700: #6d28d9;
+  --brand-800: #5b21b6;
+  --brand-900: #4c1d95;
+
+  /* Accent / Info / Success / Danger */
+  --accent-600: #2563eb;  /* blue-600 */
+  --info-600: #1d4ed8;
+  --success-600: #16a34a;
+  --danger-600: #ef4444;
+
+  /* Surfaces */
+  --surface-50:  #ffffff;
+  --surface-100: #f8fafc;
+  --surface-200: #f1f5f9;
+  --surface-border: #e6e8ee;
 }
 
-/* =========== Global base ===========
-   Mục tiêu: áp dụng font toàn cục, cải thiện rendering cho desktop/mobile
-   =========== */
+/* Semantic color utilities (use these in components) */
+.brand-gradient {
+  background: linear-gradient(90deg, var(--brand-900), var(--brand-700));
+}
+
+.brand-gradient-soft {
+  background: linear-gradient(135deg, var(--brand-50), var(--brand-100));
+}
+
+.brand-bg {
+  background-color: var(--brand-50);
+}
+
+.brand-surface {
+  background-color: var(--surface-50);
+}
+
+.brand-border {
+  border-color: var(--brand-200);
+}
+
+.brand-text {
+  color: var(--brand-800);
+}
+
+.brand-color {
+  color: var(--brand-600);
+}
+
+.brand-accent {
+  color: var(--accent-600);
+}
+
+.brand-muted {
+  color: var(--muted-color);
+}
+
+.brand-cta {
+  background-color: var(--brand-600);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.brand-cta-hover:hover {
+  background-color: var(--brand-700);
+}
+
+/* Small surface variations */
+.surface-muted {
+  background-color: var(--brand-50);
+}
+
+/* Icon helper to unify icon colors */
+.icon-brand {
+  color: var(--brand-600);
+}
+
+/* Accent / info / success / danger badges */
+.badge-info {
+  background: rgba(37,99,235,0.08);
+  color: var(--accent-600);
+  border: 1px solid rgba(37,99,235,0.12);
+}
+
+.badge-success {
+  background: rgba(16,185,129,0.08);
+  color: var(--success-600);
+  border: 1px solid rgba(16,185,129,0.12);
+}
+
+.badge-danger {
+  background: rgba(239,68,68,0.06);
+  color: var(--danger-600);
+  border: 1px solid rgba(239,68,68,0.10);
+}
+
+/* Buttons using brand */
+.btn-brand {
+  @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium;
+  background-color: var(--brand-600);
+  color: white;
+}
+.btn-brand:hover { background-color: var(--brand-700); }
+
+/* Text gradient utility (keeps previous style but tied to vars) */
+.text-gradient-custom {
+  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-700) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Provide Tailwind-compatible color helper classes (limited) */
+.bg-brand-50 { background-color: var(--brand-50); }
+.bg-brand-100 { background-color: var(--brand-100); }
+.bg-brand-600 { background-color: var(--brand-600); }
+.text-brand-600 { color: var(--brand-600); }
+.text-brand-800 { color: var(--brand-800); }
+.border-brand-200 { border-color: var(--brand-200); }
+
+/* =========== Global base =========== */
 *,
 *::before,
 *::after {
@@ -41,7 +165,7 @@ body {
   padding: 0;
   font-family: var(--font-sans);
   color: var(--text-color);
-  background: #ffffff;
+  background: var(--surface-100);
   font-size: 14px;
   line-height: 1.5715;
   font-variant: tabular-nums;
@@ -271,12 +395,7 @@ button[class*="chat"] {
 @keyframes float { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-10px);} }
 
 /* 11. Text gradient */
-.text-gradient-custom {
-  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+/* Already defined above as .text-gradient-custom */
 
 /* 12. Glass effect */
 .glass-effect {
@@ -292,6 +411,6 @@ button[class*="chat"] {
 .custom-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
 
 /* 14. Focus visible */
-*:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
+*:focus-visible { outline: 2px solid var(--brand-400); outline-offset: 2px; }
 
 /* End of file */

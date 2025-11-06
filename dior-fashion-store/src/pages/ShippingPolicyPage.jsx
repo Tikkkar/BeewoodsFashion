@@ -310,10 +310,10 @@ const ShippingPolicyPage = ({ brand }) => {
                   <Mail size={24} className="mx-auto mb-2" />
                   <p className="text-xs text-blue-200 mb-1">Email hỗ trợ</p>
                   <a 
-                    href="mailto:hagoomarketing@gmail.com"
+                    href="mailto:chamsockhachhangbewo@gmail.com"
                     className="font-semibold hover:text-blue-200 transition"
                   >
-                    hagoomarketing@gmail.com
+                    chamsockhachhangbewo@gmail.com
                   </a>
                 </div>
 
@@ -362,7 +362,7 @@ const ShippingPolicyPage = ({ brand }) => {
               <div className="w-16 h-16 bg-orange-600 text-white rounded-full flex items-center justify-center mx-auto mb-3">
                 <Shield size={28} />
               </div>
-              <h4 className="font-bold mb-2">Đổi Trả Dễ Dàng</h4>
+              <h4 className="font-bold mb-2"> Đổi Trả Dễ Dàng</h4>
               <p className="text-sm text-gray-600">Hỗ trợ 100% nếu hàng lỗi</p>
             </div>
           </div>

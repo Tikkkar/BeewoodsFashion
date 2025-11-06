@@ -200,7 +200,7 @@ const Footer = ({ brand }) => {
                 Phương thức thanh toán
               </p>
               <div className="flex items-center justify-center gap-4 flex-wrap">
-                <div className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-black text-gray-900 shadow-sm">
+                {/* <div className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-black text-gray-900 shadow-sm">
                   VISA
                 </div>
                 <div className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-black text-gray-900 shadow-sm">
@@ -210,8 +210,8 @@ const Footer = ({ brand }) => {
                   MOMO
                 </div>
                 <div className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-black text-gray-900 shadow-sm">
-                  VNPAY
-                </div>
+                  VNPAY */}
+                {/* </div> */}
                 <div className="px-4 py-2 bg-white border-2 border-gray-300 rounded-lg text-xs font-black text-gray-900 shadow-sm">
                   COD
                 </div>

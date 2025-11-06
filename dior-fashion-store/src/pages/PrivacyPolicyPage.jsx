@@ -292,10 +292,10 @@ const PrivacyPolicyPage = ({ brand }) => {
           <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-lg p-6">
             <div className="space-y-4">
               <div>
-                <h3 className="font-bold text-lg mb-2">CÔNG TY CỔ PHẦN THỜI TRANG THIẾT KẾ HAGOO</h3>
+                <h3 className="font-bold text-lg mb-2">Hộ Kinh Doanh BEWO</h3>
                 <p className="text-sm text-gray-600 mb-3">
-                  Giấy chứng nhận đăng ký thuế số <strong>8122998460-001</strong><br />
-                  Do Chi cục thuế Quận Hoàng Mai cấp ngày 11/08/2023
+                  Mã Số Kinh Doanh <strong>4201842677-001</strong><br />
+                  Đăng Kí Lần Đầu Ngày 09 Tháng 06 Năm 2025
                 </p>
               </div>
 
@@ -306,7 +306,7 @@ const PrivacyPolicyPage = ({ brand }) => {
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Địa chỉ</p>
                       <p className="text-sm font-medium">
-                        Ngõ 6 P. Bùi Huy Bích, Thịnh Liệt, Hoàng Mai, Hà Nội
+                        SB 15-13 Vinhomes Ocean Park 2, Xã Long Hưng, Huyện Văn Giang, Tỉnh Hưng Yên, Việt Nam
                       </p>
                     </div>
                   </div>
@@ -365,8 +365,8 @@ const PrivacyPolicyPage = ({ brand }) => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-600">Gửi email</p>
-                    <a href="mailto:hagoomarketing@gmail.com" className="text-sm font-bold text-blue-700 hover:underline break-all">
-                      hagoomarketing@gmail.com
+                    <a href="mailto:chamsockhachhangbewo@gmail.com" className="text-sm font-bold text-blue-700 hover:underline break-all">
+                      chamsockhachhangbewo@gmail.com
                     </a>
                   </div>
                 </div>
@@ -408,8 +408,8 @@ const PrivacyPolicyPage = ({ brand }) => {
 
             <div className="mt-6 pt-6 border-t border-purple-500">
               <p className="text-sm text-center">
-                Liên hệ ngay: <a href="tel:0968877743" className="font-bold underline hover:text-purple-200">096.88.777.43</a> hoặc 
-                <a href="mailto:hagoomarketing@gmail.com" className="font-bold underline hover:text-purple-200 ml-1">email</a> để được hỗ trợ
+                Liên hệ ngay: <a href="tel:036 2014571" className="font-bold underline hover:text-purple-200">036 2014571</a> hoặc 
+                <a href="mailto:chamsockhachhangbewo@gmail.com" className="font-bold underline hover:text-purple-200 ml-1">email</a> để được hỗ trợ
               </p>
             </div>
           </div>
