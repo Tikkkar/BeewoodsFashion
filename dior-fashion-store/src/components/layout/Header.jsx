@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+
 /**
  * Recursive Nav Item Component for nested submenus
  */
@@ -39,30 +40,26 @@ const Header = ({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedMobile, setExpandedMobile] = React.useState({});
   
-  // --- SỬA LỖI ---
-  // Lấy trạng thái đăng nhập thật từ useAuth hook thay vì dùng mock data
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  // --- HẾT SỬA LỖI ---
-
   const navigate = useNavigate();
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/products?search=${searchQuery.trim()}`); // Chuyển hướng tới trang tìm kiếm
+      navigate(`/products?search=${searchQuery.trim()}`);
       setSearchOpen(false);
       setSearchQuery('');
     }
   };
 
   const handleLogout = async () => {
-  try {
-    await logout();
-    navigate('/');
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-};
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
 
   const toggleMobileSubmenu = (index) => {
     setExpandedMobile(prev => ({
@@ -71,7 +68,6 @@ const Header = ({
     }));
   };
   
-  // Giữ lại demoNavigation làm dữ liệu dự phòng nếu cần
   const demoNavigation = [
     { text: 'Về BeeWo', url: '/about' },
     { text: 'Bộ Sưu Tập', url: '/products' },
@@ -85,31 +81,42 @@ const Header = ({
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Mobile Menu & Search */}
-          <div className="flex items-center gap-3 md:hidden">
+          {/* Left Side - Mobile Menu & Brand Name */}
+          <div className="flex items-center gap-3">
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 rounded-lg transition md:hidden"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
+            
+            {/* Brand Name - Always visible on left */}
+            <Link to="/" className="flex items-center">
+              <h1 className="text-xl md:text-2xl font-bold tracking-widest uppercase">
+                {brandName}
+              </h1>
+            </Link>
+          </div>
+
+          {/* Center - Logo Image */}
+          <Link to="/" className="absolute left-1/2 -translate-x-1/2 flex items-center">
+            <img 
+              src="https://image2url.com/images/1762405291178-3c948423-ae0b-4be5-8d85-ab843865c994.png" 
+              alt={`${brandName} Logo`} 
+              className="h-10 md:h-14 w-auto object-contain"
+            />
+          </Link>
+
+          {/* Right Side - Icons */}
+          <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={() => setSearchOpen(!searchOpen)} 
-              className="p-2 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 hover:bg-gray-100 rounded-lg transition md:hidden" 
+              title="Tìm kiếm"
             >
               <Search size={20} />
             </button>
-          </div>
-
-          {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <h1 className="text-xl md:text-2xl font-bold tracking-widest uppercase">
-              {brandName}
-            </h1>
-          </Link>
-
-          {/* Right Icons */}
-          <div className="flex items-center gap-2 md:gap-3">
+            
             <button 
               onClick={() => setSearchOpen(!searchOpen)} 
               className="hidden md:flex p-2 hover:bg-gray-100 rounded-lg transition" 

@@ -1,96 +1,163 @@
 /* ================================================
-   GLOBAL STYLES - Roboto Font
-   ================================================
-   Thêm vào src/index.css hoặc src/App.css
-*/
+   GLOBAL STYLES - Inter (body) + Playfair Display (headings)
+   File: src/index.css
+   ================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap');
+/* =========== Google Fonts =========== */
+/* Inter: rất rõ ràng cho thân chữ.
+   Playfair Display: serif thanh lịch cho tiêu đề giống ảnh. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:wght@300;400;500;600;700&display=swap');
 
-/* Apply Roboto globally */
-* {
-  font-family: 'Roboto', sans-serif;
+/* =========== CSS Variables for fonts =========== */
+:root {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  --font-serif: "Playfair Display", "Georgia", Cambria, "Times New Roman", serif;
+  --text-color: #000000;
+  --muted-color: #6b7280; /* tailwind gray-500 */
+}
+
+/* =========== Global base ===========
+   Mục tiêu: áp dụng font toàn cục, cải thiện rendering cho desktop/mobile
+   =========== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  font-family: 'Roboto', sans-serif;
-  font-variant: tabular-nums;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  color: var(--text-color);
+  background: #ffffff;
   font-size: 14px;
   line-height: 1.5715;
+  font-variant: tabular-nums;
   font-feature-settings: 'tnum';
+  -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #000;
-  background: #fff;
 }
 
-/* Headings */
+/* =====================
+   Utility font classes
+   ===================== */
+.font-sans-custom {
+  font-family: var(--font-sans) !important;
+}
+
+.font-serif-custom {
+  font-family: var(--font-serif) !important;
+}
+
+/* =====================
+   Headings (serif, elegant)
+   ===================== */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  color: #000;
+  font-family: var(--font-serif);
+  color: var(--text-color);
+  margin: 0;
+  line-height: 1.1;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Buttons */
-button, .btn {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 500;
+/* Specific heading style to match provided image:
+   - uppercase small caps feeling
+   - light-medium weight
+   - letter spacing */
+h1, h2 {
+  font-weight: 500; /* Playfair Display medium looks elegant */
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: clamp(1.25rem, 2.2vw, 2rem); /* responsive */
 }
 
-/* Input fields */
-input, textarea, select {
-  font-family: 'Roboto', sans-serif;
+/* Smaller headings / card titles */
+h3, h4 {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+/* Body text keep Inter */
+p, span, a, li, button, input, textarea, select {
+  font-family: var(--font-sans);
 }
 
 /* Links */
 a {
-  font-family: 'Roboto', sans-serif;
+  color: inherit;
+  text-decoration: none;
 }
 
-/* Banner specific styles */
-.hero-banner-title {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.hero-banner-subtitle {
-  font-family: 'Roboto', sans-serif;
-  font-weight: 300;
-  letter-spacing: 0.1em;
-}
-
-.hero-banner-button {
-  font-family: 'Roboto', sans-serif;
+/* Buttons */
+button, .btn {
+  font-family: var(--font-sans);
   font-weight: 500;
-  letter-spacing: 0.05em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Font weights utility classes */
-.font-thin { font-weight: 100; }
-.font-light { font-weight: 300; }
-.font-normal { font-weight: 400; }
-.font-medium { font-weight: 500; }
-.font-bold { font-weight: 700; }
-.font-black { font-weight: 900; }
+/* Inputs */
+input, textarea, select {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+}
 
+/* Small/Muted text */
+.text-muted, .muted {
+  color: var(--muted-color);
+}
 
-/* 1. Khai báo các lớp cơ sở của Tailwind CSS */
+/* Font weight utility classes */
+.font-thin { font-weight: 100 !important; }
+.font-light { font-weight: 300 !important; }
+.font-normal { font-weight: 400 !important; }
+.font-medium { font-weight: 500 !important; }
+.font-bold { font-weight: 700 !important; }
+.font-black { font-weight: 900 !important; }
+
+/* ===========================================
+   Preserve Tailwind base/components/utilities
+   (If using Tailwind, these directives should
+    remain at the top of your compiled CSS
+    or in a separate file processed by Tailwind)
+   =========================================== */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* 2. Thiết lập các kiểu dáng cơ bản cho toàn bộ trang */
+/* Layer base overrides for Tailwind (keeps fonts consistent) */
 @layer base {
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
-      Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     @apply bg-white text-gray-900;
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4 {
+    /* ensure Tailwind headings inherit our serif */
+    font-family: var(--font-serif);
   }
 }
 
-/* 3. Các lớp tiện ích tùy chỉnh */
+/* ===========================================
+   Utilities and custom classes (kept from your file)
+   =========================================== */
+
+/* Scrollbar hide utilities */
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -101,43 +168,16 @@ a {
   }
 }
 
-/* 4. Các hiệu ứng */
-@keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+/* Hide scrollbar (generic) */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
-@keyframes scale-in {
-  from {
-    transform: scale(0.95);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-slide-in {
-  animation: slide-in 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-}
-
-.animate-scale-in {
-  animation: scale-in 0.3s ease-out;
-}
-
-
-/* ============================================
-   🔧 CHATBOT WIDGET - ABOVE ZALO (RIGHT SIDE)
-   ============================================ */
-
-/* Chatbot ở TRÊN, bên PHẢI */
+/* 1. Chatbot widget (kept) */
 .chatbot-widget,
 [class*="chatbot"],
 .chat-widget-container,
@@ -147,13 +187,13 @@ div[class*="chat-widget"],
 [id*="chatbot"],
 button[class*="chat"] {
   position: fixed !important;
-  bottom: 110px !important; /* 110px từ đáy */
-  right: 20px !important; /* Bên phải */
+  bottom: 110px !important;
+  right: 20px !important;
   left: auto !important;
   z-index: 1000 !important;
 }
 
-/* Mobile - giữ nguyên layout */
+/* Mobile - chatbot positions */
 @media (max-width: 768px) {
   .chatbot-widget,
   [class*="chatbot"],
@@ -164,16 +204,8 @@ button[class*="chat"] {
   }
 }
 
-
-/* ============================================
-   🔧 ADMIN LAYOUT
-   ============================================ */
-
-.admin-layout {
-  position: relative;
-  z-index: 1;
-}
-
+/* 2. Admin layout (kept) */
+.admin-layout { position: relative; z-index: 1; }
 .admin-sidebar {
   position: fixed;
   left: 0;
@@ -181,203 +213,85 @@ button[class*="chat"] {
   height: 100vh;
   background: white !important;
   z-index: 10;
-  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 2px 0 4px rgba(0,0,0,0.1);
 }
-
-.admin-content {
-  position: relative;
-  z-index: 1;
-}
-
+.admin-content { position: relative; z-index: 1; }
 .admin-layout::before,
-.admin-layout::after {
-  display: none !important;
-}
+.admin-layout::after { display: none !important; }
 
-/* ============================================
-   🔧 TOAST ANIMATION
-   ============================================ */
-
+/* 3. Toast animation (kept) */
 @keyframes toast-in {
-  from {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
+.animate-toast-in { animation: toast-in 0.3s ease-out; }
 
-.animate-toast-in {
-  animation: toast-in 0.3s ease-out;
-}
-/* ============================================
-   🔧 HIDE SCROLLBAR
-   ============================================ */
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+/* 4. Generic animations preserved */
+@keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+@keyframes scale-in { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.animate-slide-in { animation: slide-in 0.4s cubic-bezier(0.25,0.46,0.45,0.94); }
+.animate-scale-in { animation: scale-in 0.3s ease-out; }
 
-/* ============================================
-   🎨 SAFE CSS IMPROVEMENTS - NO CONFLICTS
-   ============================================ */
+/* 5. Product card hover (kept) */
+.product-card-hover { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.product-card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
 
-/* 1. Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
+/* 6. Image zoom */
+.image-zoom-hover { overflow: hidden; }
+.image-zoom-hover img { transition: transform 0.5s ease; }
+.image-zoom-hover:hover img { transform: scale(1.05); }
 
-/* 2. Hide scrollbar for sliders */
-.hide-scrollbar,
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.hide-scrollbar::-webkit-scrollbar,
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* 3. Product card hover - CHỈ KHI CÓ CLASS */
-.product-card-hover {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.product-card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-}
-
-/* 4. Image zoom - CHỈ KHI CÓ CLASS */
-.image-zoom-hover {
-  overflow: hidden;
-}
-
-.image-zoom-hover img {
-  transition: transform 0.5s ease;
-}
-
-.image-zoom-hover:hover img {
-  transform: scale(1.05);
-}
-
-/* 5. Button ripple - AN TOÀN */
-.btn-ripple {
-  position: relative;
-  overflow: hidden;
-}
-
+/* 7. Button ripple */
+.btn-ripple { position: relative; overflow: hidden; }
 .btn-ripple::after {
   content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.5);
-  transform: translate(-50%, -50%);
+  top: 50%; left: 50%;
+  width: 0; height: 0; border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+  transform: translate(-50%,-50%);
   transition: width 0.6s, height 0.6s;
 }
+.btn-ripple:active::after { width: 300px; height: 300px; transition: width 0s, height 0s; }
 
-.btn-ripple:active::after {
-  width: 300px;
-  height: 300px;
-  transition: width 0s, height 0s;
-}
-
-/* 6. Shimmer loading skeleton */
+/* 8. Skeleton shimmer */
 .skeleton-shimmer {
-  background: linear-gradient(
-    90deg,
-    #f0f0f0 25%,
-    #e0e0e0 50%,
-    #f0f0f0 75%
-  );
+  background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
+/* 9. Badge pulse */
+.badge-pulse { animation: badge-pulse 2s ease-in-out infinite; }
+@keyframes badge-pulse { 0%,100% { transform: scale(1);} 50% { transform: scale(1.05);} }
 
-/* 7. Discount badge pulse */
-.badge-pulse {
-  animation: badge-pulse 2s ease-in-out infinite;
-}
+/* 10. Floating animation */
+.animate-float-slow { animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-10px);} }
 
-@keyframes badge-pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-/* 8. Floating animation */
-.animate-float-slow {
-  animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-/* 9. Text gradient */
+/* 11. Text gradient */
 .text-gradient-custom {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* 10. Glass effect */
+/* 12. Glass effect */
 .glass-effect {
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255,255,255,0.8);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* 11. Custom scrollbar cho specific elements */
-.custom-scroll::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+/* 13. Custom scrollbar for specific elements */
+.custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+.custom-scroll::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+.custom-scroll::-webkit-scrollbar-thumb:hover { background: #555; }
 
-.custom-scroll::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
+/* 14. Focus visible */
+*:focus-visible { outline: 2px solid #667eea; outline-offset: 2px; }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 10px;
-}
-
-.custom-scroll::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* 12. Focus styles */
-*:focus-visible {
-  outline: 2px solid #667eea;
-  outline-offset: 2px;
-}
+/* End of file */

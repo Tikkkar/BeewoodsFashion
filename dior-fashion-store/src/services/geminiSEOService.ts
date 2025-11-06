@@ -16,8 +16,9 @@ export interface SEOContentRequest {
   productPrice?: string;
   productCategory?: string;
   brandName?: string;
-  images?: string[]; // URLs or data URLs (will use up to maxImages)
-  image?: string; // alias single image
+  productImages?: string[]; // Real image URLs from database - RENAMED for clarity
+  images?: string[]; // Alias
+  image?: string; // Alias single image
   targetKeywords?: string[];
   tone?: "professional" | "casual" | "friendly";
   preferShortTitle?: boolean;
@@ -143,31 +144,16 @@ async function prepareImagePart(imageStr: string): Promise<ImagePart | null> {
 }
 
 /**
- * Helper: basename (filename) extractor for URLs or paths.
- * Examples:
- *  - https://.../products/1762333900013_76.png => 1762333900013_76.png
- *  - 1762333900013_76.png => 1762333900013_76.png
+ * Check if a string is a placeholder URL
  */
-function basenameOf(u: any): string {
-  try {
-    if (!u) return "";
-    const s = String(u).trim();
-    if (!s) return "";
-    if (/^https?:\/\//i.test(s)) {
-      try {
-        const pathname = new URL(s).pathname;
-        const parts = pathname.split("/");
-        return parts[parts.length - 1] || "";
-      } catch {
-        const parts = s.split(/[\\/]/);
-        return parts[parts.length - 1] || "";
-      }
-    }
-    const parts = s.split(/[\\/]/);
-    return parts[parts.length - 1] || "";
-  } catch {
-    return "";
-  }
+function isPlaceholderUrl(url: any): boolean {
+  if (!url || typeof url !== "string") return true;
+  const u = url.trim().toLowerCase();
+  if (u === "" || u === "null" || u === "undefined") return true;
+  // Check for common placeholders
+  if (/^(url_to_image|placeholder|example|image_\d+|dummy)\.(jpg|jpeg|png|gif|webp)$/i.test(u)) return true;
+  if (/^https?:\/\/(example\.com|placeholder\.com)/i.test(u)) return true;
+  return false;
 }
 
 /* ---------------- Prompt builder ---------------- */
@@ -181,7 +167,6 @@ function buildSEOPromptWithImages(request: SEOContentRequest, imageCount: number
     targetKeywords = [],
     tone = "professional",
     preferShortTitle = false,
-    preferHtml = false,
     brandName,
   } = request;
 
@@ -189,48 +174,109 @@ function buildSEOPromptWithImages(request: SEOContentRequest, imageCount: number
   const titleHint = preferShortTitle ? "ngắn gọn (30-50 ký tự)" : "30-60 ký tự";
 
   const imageReq = imageCount > 0
-    ? `\nIMPORTANT: You were provided ${imageCount} image(s). For each image, include an item in "image_analysis" array with fields: index (0..), description, suggested_alt_text, suggested_caption, keywords (array). Use the image to inform color/material/style descriptions and to supply alt/caption for image blocks. If you mention the image in content_blocks, prefer using the full image URL; if you must echo filename, make sure it matches the filename of the supplied images.`
+    ? `\n🖼️ QUAN TRỌNG VỀ HÌNH ẢNH (BẮT BUỘC):
+- Bạn đã được cung cấp ${imageCount} hình ảnh sản phẩm thực tế.
+- BẮT BUỘC phải phân tích mỗi ảnh và đưa vào "image_analysis" với: index (0, 1, 2...), description, suggested_alt_text, suggested_caption, keywords (array).
+- BẮT BUỘC phải tạo ít nhất ${imageCount} content_blocks loại "image" trong content_blocks array:
+  * TUYỆT ĐỐI KHÔNG sử dụng placeholder như "url_to_image_1.jpg", "example.jpg", "placeholder.jpg"
+  * CHỈ ĐỂ TRƯỜNG "url" LÀ CHUỖI RỖNG ""
+  * Hệ thống sẽ TỰ ĐỘNG điền URL thực vào
+  * VÍ DỤ: { "type": "image", "url": "", "alt": "Set Vest Hồng Phấn - Nét dịu dàng khó cưỡng", "caption": "Set vest màu hồng phấn tôn lên vẻ nữ tính, thanh lịch" }
+- Sắp xếp: văn bản → ảnh → văn bản → ảnh (xen kẽ để nội dung sinh động)
+- Sử dụng thông tin từ ảnh (màu sắc, chất liệu, kiểu dáng) trong văn bản.`
     : "";
 
   return `Bạn là chuyên gia SEO & content marketing cho cửa hàng thời trang trực tuyến.
-${brandName ? `Thông tin: Thương hiệu: "${brandName}".` : ""}
-
+${brandName ? `🏷️ THƯƠNG HIỆU: "${brandName}" - BẮT BUỘC tích hợp thương hiệu này vào SEO!\n` : ""}
 THÔNG TIN SẢN PHẨM:
 - Tên sản phẩm: ${productName}
+${brandName ? `- Thương hiệu: ${brandName}` : ""}
 ${productDescription ? `- Mô tả: ${productDescription}` : ""}
 ${productPrice ? `- Giá: ${productPrice}` : ""}
 ${productCategory ? `- Danh mục: ${productCategory}` : ""}
 ${targetKeywords && targetKeywords.length ? `- Từ khóa mục tiêu: ${targetKeywords.join(", ")}` : ""}
 
-YÊU CẦU:
-1) Sinh SEO Title (${titleHint}) - ưu tiên chứa từ khóa chính và brand nếu có.
-2) Sinh SEO Description (120-160 ký tự).
-3) Sinh 5-10 SEO Keywords (phân tách bằng dấu phẩy).
-4) Sinh 3-5 content blocks (type: text|image) với title + content và (nếu image block) url/alt/caption.
-5) Tone: ${toneText}
-6) Viết bằng tiếng Việt. Tránh spam.
+YÊU CẦU SEO:
+1) SEO Title (${titleHint}):
+   ${brandName ? `- BẮT BUỘC phải có tên thương hiệu "${brandName}" (đặt ở đầu hoặc cuối title)` : "- Tối ưu với từ khóa chính"}
+   - Format tốt: "${brandName ? `${brandName} | ` : ''}[Tên sản phẩm] - [Điểm nổi bật]"
+   - Hoặc: "[Tên sản phẩm] ${brandName ? `- ${brandName}` : ''} [USP]"
+   
+2) SEO Description (120-160 ký tự):
+   ${brandName ? `- Đề cập thương hiệu ${brandName} một cách tự nhiên` : "- Mô tả hấp dẫn"}
+   - Có CTA rõ ràng (Mua ngay, Khám phá, Đặt hàng...)
+   - Nêu lợi ích/giá trị cốt lõi
+   
+3) SEO Keywords (5-10 từ khóa):
+   ${brandName ? `- BẮT BUỘC bao gồm: "${brandName}", "${productName}", "${brandName} ${productCategory || 'thời trang'}"` : "- Tập trung vào từ khóa chính"}
+   - Kết hợp: tên sản phẩm + thương hiệu + category + đặc điểm
+   - VD: "${brandName || 'tên brand'} áo blazer, áo blazer ${brandName || 'brand'}, ${brandName || 'brand'} thời trang công sở"
+   
+4) Content Blocks (xen kẽ text và image):
+   - Text blocks: 
+     * ${brandName ? `Nhắc đến thương hiệu ${brandName} ít nhất 2-3 lần trong nội dung` : 'Nội dung giàu thông tin'}
+     * Sử dụng HTML: <strong>, <em>, <br>, <ul>, <li>
+     * ${brandName ? `Highlight giá trị/uy tín của ${brandName}` : 'Tập trung vào lợi ích'}
+   - Image blocks: 
+     * Alt text BẮT BUỘC có format: "${brandName ? `${brandName} - ` : ''}[Mô tả sản phẩm ngắn gọn]"
+     * VD: "${brandName || 'Brand'} - Set Vest Hồng Phấn Cao Cấp"
+   ${imageCount > 0 ? `- QUAN TRỌNG: Phải có ít nhất ${imageCount} image blocks!` : ""}
+   
+5) Tone: ${toneText}${brandName ? ` - Thể hiện đẳng cấp và uy tín của thương hiệu ${brandName}` : ''}
+
+6) Ngôn ngữ: Tiếng Việt tự nhiên, chuyên nghiệp${brandName ? `, thể hiện bản sắc thương hiệu ${brandName}` : ''}
 
 ${imageReq}
 
-TRẢ VỀ CHỈ JSON theo định dạng:
+TRẢ VỀ JSON (không có markdown backticks):
 {
-  "seo_title": "...",
-  "seo_description": "...",
-  "seo_keywords": "...",
-  "content_blocks": [ ... ],
-  "image_analysis": [ /* optional, length = number of images passed */ ]
-}
-`;
+  "seo_title": "${brandName ? `${brandName} | ` : ''}[Tên SP] - [USP]",
+  "seo_description": "Mô tả hấp dẫn${brandName ? ` từ ${brandName}` : ''} với CTA...",
+  "seo_keywords": "${brandName ? `${brandName}, ${productName}, ${brandName} thời trang, ...` : 'keyword1, keyword2, ...'}",
+  "content_blocks": [
+    { 
+      "type": "text", 
+      "title": "Giới thiệu", 
+      "content": "<p>${brandName ? `Từ thương hiệu ${brandName}, chúng tôi` : 'Chúng tôi'} giới thiệu...</p>" 
+    },
+    { 
+      "type": "image", 
+      "url": "", 
+      "alt": "${brandName ? `${brandName} - ` : ''}[Mô tả sản phẩm]", 
+      "caption": "Sản phẩm${brandName ? ` từ ${brandName}` : ''} - [điểm nổi bật]" 
+    },
+    { 
+      "type": "text", 
+      "title": "Đặc điểm nổi bật", 
+      "content": "<ul><li>Chất liệu cao cấp${brandName ? ` của ${brandName}` : ''}</li><li>Thiết kế tinh tế...</li></ul>" 
+    },
+    { 
+      "type": "image", 
+      "url": "", 
+      "alt": "${brandName ? `${brandName} - ` : ''}Chi tiết sản phẩm", 
+      "caption": "Đẳng cấp${brandName ? ` ${brandName}` : ''} trong từng chi tiết" 
+    }
+  ],
+  "image_analysis": [
+    { 
+      "index": 0, 
+      "description": "Mô tả chi tiết ảnh", 
+      "suggested_alt_text": "${brandName ? `${brandName} - ` : ''}Mô tả SEO-friendly",
+      "suggested_caption": "Caption hấp dẫn${brandName ? ` highlight ${brandName}` : ''}", 
+      "keywords": ["${brandName || 'brand'}", "${productName || 'product'}", "keyword3"] 
+    }
+  ]
+}`;
 }
 
 /* ---------------- Main: generateSEOContent ---------------- */
 
 /**
  * generateSEOContent:
- * - Accepts request including images[] or image
- * - Attaches up to MAX_IMAGES images as inline parts for Gemini to reference
- * - Parses AI JSON, normalizes content_blocks, image_analysis
- * - Matches AI-returned filenames to supplied public URLs using basename mapping
+ * - Accepts request including productImages[] (real URLs from database)
+ * - Attaches up to MAX_IMAGES images as inline parts for Gemini to analyze
+ * - Parses AI JSON, automatically maps supplied URLs to image blocks by index
+ * - Filters out any blocks with placeholder URLs
  */
 export async function generateSEOContent(request: SEOContentRequest): Promise<SEOContentResponse> {
   try {
@@ -239,26 +285,64 @@ export async function generateSEOContent(request: SEOContentRequest): Promise<SE
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
     });
 
+    // Collect real product images
     const MAX_IMAGES = 3;
-    const chosen: string[] = [];
-    if (request.image) chosen.push(request.image);
-    if (Array.isArray(request.images) && request.images.length) {
-      for (const u of request.images) {
-        if (chosen.length >= MAX_IMAGES) break;
-        if (!chosen.includes(u) && u) chosen.push(u);
-      }
+    const realImageUrls: string[] = [];
+    
+    // Debug: Log what we received
+    console.log('[geminiSEO] 📥 Request received:', {
+      hasProductImages: !!request.productImages,
+      productImagesLength: Array.isArray(request.productImages) ? request.productImages.length : 0,
+      hasImages: !!request.images,
+      imagesLength: Array.isArray(request.images) ? request.images.length : 0,
+      hasImage: !!request.image,
+      productName: request.productName,
+    });
+    
+    // Priority order: productImages > images > image
+    if (Array.isArray(request.productImages) && request.productImages.length > 0) {
+      console.log('[geminiSEO] ✅ Using productImages array');
+      realImageUrls.push(...request.productImages.slice(0, MAX_IMAGES));
+    } else if (Array.isArray(request.images) && request.images.length > 0) {
+      console.log('[geminiSEO] ✅ Using images array (fallback)');
+      realImageUrls.push(...request.images.slice(0, MAX_IMAGES));
+    } else if (request.image) {
+      console.log('[geminiSEO] ✅ Using single image (fallback)');
+      realImageUrls.push(request.image);
+    } else {
+      console.warn('[geminiSEO] ⚠️ NO IMAGES PROVIDED in request!');
     }
 
-    // prepare image parts (keeping association to original url)
-    const imagePartsPromises = chosen.map((u) => prepareImagePart(u));
-    const imageParts = await Promise.all(imagePartsPromises); // may contain nulls
-    const validParts = imageParts.map((p, i) => ({ part: p, url: chosen[i] })).filter((x) => x.part !== null);
+    // Filter out any invalid/empty URLs and limit to MAX_IMAGES
+    const validImageUrls = realImageUrls
+      .filter(url => {
+        const isValid = url && typeof url === 'string' && url.trim() !== '';
+        if (!isValid) {
+          console.warn('[geminiSEO] ⚠️ Filtering out invalid URL:', url);
+        }
+        return isValid;
+      })
+      .slice(0, MAX_IMAGES);
 
+    console.log(`[geminiSEO] 📊 Processing ${validImageUrls.length} product images:`, validImageUrls);
+    
+    if (validImageUrls.length === 0) {
+      console.error('[geminiSEO] ❌ NO VALID IMAGE URLS! Cannot proceed with image generation.');
+    }
+
+    // Prepare image parts for AI vision analysis
+    const imagePartsPromises = validImageUrls.map((url) => prepareImagePart(url));
+    const imageParts = await Promise.all(imagePartsPromises);
+    const validParts = imageParts.filter(part => part !== null) as ImagePart[];
+
+    console.log(`[geminiSEO] Successfully prepared ${validParts.length} image parts for AI`);
+
+    // Build prompt and call Gemini
     const prompt = buildSEOPromptWithImages(request, validParts.length);
 
     let result: any;
     if (validParts.length > 0) {
-      const partsArray = [prompt, ...validParts.map((p) => p.part)];
+      const partsArray = [prompt, ...validParts];
       result = await model.generateContent(partsArray as any);
     } else {
       result = await model.generateContent(prompt as any);
@@ -279,230 +363,193 @@ export async function generateSEOContent(request: SEOContentRequest): Promise<SE
     if (!Array.isArray(contentBlocks)) contentBlocks = [];
 
     // Normalize image analysis
-    const rawImageAnalysis = Array.isArray(parsed.image_analysis) ? parsed.image_analysis : parsed.imageAnalysis || [];
-    const imageAnalysis: ImageAnalysisItem[] = Array.isArray(rawImageAnalysis)
-      ? rawImageAnalysis.map((it: any, idx: number) => ({
-          index: typeof it.index === "number" ? it.index : idx,
-          url: it.url || undefined,
-          description: it.description || it.desc || "",
-          suggested_alt_text: it.suggested_alt_text || it.alt || "",
-          suggested_caption: it.suggested_caption || it.caption || "",
-          keywords: Array.isArray(it.keywords) ? it.keywords : (it.keywords ? String(it.keywords).split(",").map((s: string) => s.trim()) : []),
-        }))
-      : [];
+    const rawImageAnalysis = Array.isArray(parsed.image_analysis) 
+      ? parsed.image_analysis 
+      : parsed.imageAnalysis || [];
+    
+    const imageAnalysis: ImageAnalysisItem[] = rawImageAnalysis.map((it: any, idx: number) => ({
+      index: typeof it.index === "number" ? it.index : idx,
+      url: it.url || undefined,
+      description: it.description || it.desc || "",
+      suggested_alt_text: it.suggested_alt_text || it.alt || "",
+      suggested_caption: it.suggested_caption || it.caption || "",
+      keywords: Array.isArray(it.keywords) 
+        ? it.keywords 
+        : (it.keywords ? String(it.keywords).split(",").map((s: string) => s.trim()) : []),
+    }));
 
-    // Supplied urls (public) from validParts, in order
-    const suppliedUrls = validParts.map((p) => p.url).filter(Boolean) as string[];
+    console.log(`[geminiSEO] AI returned ${contentBlocks.length} content blocks, ${imageAnalysis.length} image analyses`);
 
-    // Build lookups: by url, by index, by basename
-    const analysisByUrl = new Map<string, ImageAnalysisItem>();
-    const analysisByIndex = new Map<number, ImageAnalysisItem>();
-    const analysisByBasename = new Map<string, ImageAnalysisItem>();
-    imageAnalysis.forEach((ia) => {
-      if (ia.url) analysisByUrl.set(String(ia.url), ia);
-      analysisByIndex.set(ia.index, ia);
-      const bn = basenameOf(ia.url || ia.suggested_caption || ia.description || "");
-      if (bn) analysisByBasename.set(bn, ia);
-    });
-
-    const suppliedUrlByBasename = new Map<string, string>();
-    suppliedUrls.forEach((u) => {
-      const bn = basenameOf(u);
-      if (bn) suppliedUrlByBasename.set(bn, u);
-    });
-
-    // Merge imageAnalysis into contentBlocks
-    let imageSlot = 0;
-    contentBlocks = contentBlocks.map((b: any) => {
-      if (b?.type === "image") {
-        const candidateRaw = String(b.url || b.image || b.src || "").trim();
-        let chosenAnalysis: ImageAnalysisItem | undefined;
-
-        // 1) exact url match
-        if (candidateRaw && analysisByUrl.has(candidateRaw)) {
-          chosenAnalysis = analysisByUrl.get(candidateRaw);
-        }
-
-        // 2) basename match
-        if (!chosenAnalysis && candidateRaw) {
-          const candBn = basenameOf(candidateRaw);
-          if (candBn && analysisByBasename.has(candBn)) {
-            chosenAnalysis = analysisByBasename.get(candBn);
-          }
-        }
-
-        // 3) index match
-        if (!chosenAnalysis && analysisByIndex.has(imageSlot)) {
-          chosenAnalysis = analysisByIndex.get(imageSlot);
-        }
-
-        // 4) resolve URL
-        let resolvedUrl: string | undefined;
-        if (candidateRaw) {
-          if (/^https?:\/\//i.test(candidateRaw)) {
-            resolvedUrl = candidateRaw;
-          } else {
-            const candBn = basenameOf(candidateRaw);
-            if (candBn && suppliedUrlByBasename.has(candBn)) {
-              resolvedUrl = suppliedUrlByBasename.get(candBn);
-              console.debug(`[gemini] resolved basename "${candBn}" -> ${resolvedUrl}`);
-            }
-          }
-        }
-        if (!resolvedUrl) {
-          if (chosenAnalysis && chosenAnalysis.url) resolvedUrl = chosenAnalysis.url;
-          else if (suppliedUrls[imageSlot]) resolvedUrl = suppliedUrls[imageSlot];
-        }
-
-        const newAlt = (b.alt && String(b.alt).trim()) || (chosenAnalysis && chosenAnalysis.suggested_alt_text) || "";
-        const newCaption = (b.caption && String(b.caption).trim()) || (chosenAnalysis && chosenAnalysis.suggested_caption) || "";
-
-        imageSlot += 1;
-        return {
-          ...b,
-          url: resolvedUrl || b.url,
-          alt: newAlt || b.alt || "",
-          caption: newCaption || b.caption || "",
-        };
-      }
-      return b;
-    });
-
-    // If no image blocks but we have imageAnalysis, insert image blocks
-    const hasImageBlock = contentBlocks.some((b: any) => b?.type === "image");
-    if (!hasImageBlock && imageAnalysis.length > 0) {
-      const inserted = imageAnalysis.map((ia) => {
-        const bn = basenameOf(ia.url || "");
-        const urlFromSupply = suppliedUrlByBasename.get(bn) || suppliedUrls[ia.index] || ia.url;
+    // Check if AI returned any image blocks
+    const hasImageBlocks = contentBlocks.some((b: any) => b?.type === "image");
+    
+    // Auto-insert image blocks if AI didn't create them but we have real images
+    if (!hasImageBlocks && validImageUrls.length > 0) {
+      console.log(`[geminiSEO] ⚠️ AI didn't return image blocks, auto-inserting ${validImageUrls.length} images`);
+      
+      // Auto-insert image blocks from real URLs (with or without imageAnalysis)
+      const autoImageBlocks = validImageUrls.map((url, idx) => {
+        const analysis = imageAnalysis.find(ia => ia.index === idx) || imageAnalysis[idx];
         return {
           type: "image",
-          title: ia.index === 0 ? "Hình ảnh sản phẩm" : undefined,
-          url: urlFromSupply || undefined,
-          alt: ia.suggested_alt_text || "",
-          caption: ia.suggested_caption || "",
+          url: url,
+          alt: analysis?.suggested_alt_text || `${request.productName} - Ảnh ${idx + 1}`,
+          caption: analysis?.suggested_caption || `Hình ảnh ${request.productName}`,
         };
       });
-
+      
+      // Insert after first text block if exists, otherwise at the beginning
       const firstTextIdx = contentBlocks.findIndex((b: any) => b?.type === "text");
-      const insertAt = firstTextIdx >= 0 ? firstTextIdx + 1 : 0;
-      contentBlocks = [...contentBlocks.slice(0, insertAt), ...inserted, ...contentBlocks.slice(insertAt)];
+      if (firstTextIdx >= 0) {
+        console.log(`[geminiSEO] Inserting ${autoImageBlocks.length} images after first text block`);
+        contentBlocks.splice(firstTextIdx + 1, 0, ...autoImageBlocks);
+      } else {
+        console.log(`[geminiSEO] No text blocks found, inserting ${autoImageBlocks.length} images at beginning`);
+        contentBlocks = [...autoImageBlocks, ...contentBlocks];
+      }
+    } else if (hasImageBlocks) {
+      console.log(`[geminiSEO] ✅ AI returned ${contentBlocks.filter((b: any) => b?.type === 'image').length} image blocks`);
+    } else if (validImageUrls.length === 0) {
+      console.warn(`[geminiSEO] ⚠️ No product images available to insert`);
     }
 
-    // Final sanitize: remove image blocks without usable url
-    const isPlaceholder = (u: any) => !u || typeof u !== "string" || u.trim() === "" || /^(exam|placeholder|null|undefined)$/i.test(u.trim());
-    contentBlocks = contentBlocks.filter((b: any) => {
-      if (b?.type === "image") {
-        const u = String(b.url || "").trim();
-        if (!u || isPlaceholder(u)) return false;
+    // Map real URLs to image blocks by index
+    let imageBlockIndex = 0;
+    contentBlocks = contentBlocks.map((block: any) => {
+      if (block?.type === "image") {
+        const blockUrl = String(block.url || "").trim();
+        
+        // Check if we should use real URL (placeholder or empty)
+        const shouldUseRealUrl = isPlaceholderUrl(blockUrl);
+        const realUrl = validImageUrls[imageBlockIndex] || "";
+        
+        // ALWAYS use real URL if available, prefer real URL over AI's placeholder
+        const finalUrl = shouldUseRealUrl ? realUrl : (blockUrl || realUrl);
+        
+        if (shouldUseRealUrl && realUrl) {
+          console.log(`[geminiSEO] Replacing placeholder "${blockUrl}" with real URL at index ${imageBlockIndex}: ${realUrl}`);
+        } else if (!shouldUseRealUrl && blockUrl) {
+          console.log(`[geminiSEO] Keeping AI-provided URL at index ${imageBlockIndex}: ${blockUrl}`);
+        }
+
+        // Get analysis for this image index
+        const analysis = imageAnalysis.find(ia => ia.index === imageBlockIndex);
+
+        const finalBlock = {
+          ...block,
+          type: "image",
+          url: finalUrl, // Use the determined final URL
+          alt: block.alt || analysis?.suggested_alt_text || `${request.productName} - Hình ảnh`,
+          caption: block.caption || analysis?.suggested_caption || "",
+        };
+
+        imageBlockIndex++;
+        return finalBlock;
       }
-      return true;
+      return block;
     });
 
+    // Filter out image blocks with STILL invalid URLs after replacement
+    const beforeFilterCount = contentBlocks.filter((b: any) => b?.type === 'image').length;
+    contentBlocks = contentBlocks.filter((block: any) => {
+      if (block?.type === "image") {
+        const url = String(block.url || "").trim();
+        // Now check if the FINAL url is valid (after replacement)
+        const isValid = url && url !== "" && /^https?:\/\//i.test(url);
+        if (!isValid) {
+          console.warn(`[geminiSEO] ⚠️ Filtering out image block with invalid URL after replacement: "${url}"`);
+        }
+        return isValid;
+      }
+      return true; // Keep all text blocks
+    });
+    const afterFilterCount = contentBlocks.filter((b: any) => b?.type === 'image').length;
+    
+    if (beforeFilterCount > afterFilterCount) {
+      console.warn(`[geminiSEO] ⚠️ Filtered out ${beforeFilterCount - afterFilterCount} image blocks with invalid URLs`);
+    }
+
+    console.log(`[geminiSEO] Final output: ${contentBlocks.length} blocks (${contentBlocks.filter((b: any) => b.type === 'image').length} images)`);
+
     return {
-      seoTitle: String(seoTitle || "").trim(),
-      seoDescription: String(seoDescription || "").trim(),
-      seoKeywords: String(seoKeywords || "").trim(),
-      contentBlocks: Array.isArray(contentBlocks) ? contentBlocks : [],
-      imageAnalysis: imageAnalysis.length ? imageAnalysis : undefined,
+      seoTitle,
+      seoDescription,
+      seoKeywords,
+      contentBlocks,
+      imageAnalysis,
     };
-  } catch (error) {
-    console.error("❌ Error generating SEO content (with images):", error);
-    throw new Error("Không thể tạo nội dung SEO. Vui lòng thử lại!");
+  } catch (err: any) {
+    console.error("[geminiSEO] Error:", err);
+    throw new Error(err?.message || "Lỗi khi tạo nội dung SEO. Vui lòng thử lại!");
   }
 }
 
-/* ---------------- analyzeProductImage ---------------- */
+/* ---------------- Other functions (unchanged) ---------------- */
 
-export async function analyzeProductImage(imageData: string, productContext?: string) {
+export function checkGeminiConfig(): { configured: boolean; message: string } {
+  const key = process.env.REACT_APP_GEMINI_API_KEY;
+  if (!key) {
+    return {
+      configured: false,
+      message: "Vui lòng thiết lập REACT_APP_GEMINI_API_KEY trong file .env",
+    };
+  }
+  return { configured: true, message: "Gemini API đã được cấu hình" };
+}
+
+export interface ContentBlockRequest {
+  blockType: "introduction" | "features" | "styling" | "care" | "custom";
+  productName: string;
+  productDescription?: string;
+  brandName?: string;
+  customPrompt?: string;
+}
+
+export async function generateContentBlock(
+  blockType: string,
+  context: { productName: string; productDescription?: string; brandName?: string }
+): Promise<{ title: string; content: string }> {
   try {
     const model: any = genAI.getGenerativeModel({
       model: "gemini-2.0-flash-exp",
       generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
     });
 
-    const imagePart = await prepareImagePart(imageData);
-    if (!imagePart) throw new Error("Không thể chuẩn bị ảnh (fetch/conversion lỗi).");
-
-    const prompt = `Phân tích hình ảnh sản phẩm${productContext ? ` (${productContext})` : ""}.
-YÊU CẦU:
-1) Mô tả chi tiết (màu sắc, kiểu, chất liệu)
-2) Alt text ngắn (5-15 từ)
-3) Caption 1-2 câu
-4) 3-5 từ khóa SEO
-
-TRẢ VỀ CHỈ JSON:
-{
-  "description": "Mô tả chi tiết",
-  "suggested_alt_text": "Alt text ngắn",
-  "suggested_caption": "Caption hấp dẫn",
-  "keywords": ["từ khóa 1", "từ khóa 2"]
-}`;
-
-    const result = await model.generateContent([prompt, imagePart] as any);
-    const text = result?.response?.text?.() ?? String(result?.text ?? "");
-    const parsed = parseGeminiJSON(text);
-
-    return {
-      description: parsed.description || parsed.desc || "",
-      suggestedAltText: parsed.suggested_alt_text || parsed.alt || "",
-      suggestedCaption: parsed.suggested_caption || parsed.caption || "",
-      keywords: Array.isArray(parsed.keywords) ? parsed.keywords : (parsed.keywords ? String(parsed.keywords).split(",").map((s: string) => s.trim()) : []),
-    };
-  } catch (err) {
-    console.error("❌ analyzeProductImage error:", err);
-    throw new Error("Không thể phân tích ảnh. Vui lòng thử lại!");
-  }
-}
-
-/* ---------------- generateContentBlock (convenience) ---------------- */
-
-/**
- * Exported helper to generate a single content block via Gemini.
- * Keeps compatibility with earlier frontend calls.
- */
-export async function generateContentBlock(
-  blockType: "introduction" | "features" | "styling" | "care" | "custom",
-  productInfo: SEOContentRequest,
-  customPrompt?: string
-): Promise<{ title: string; content: string }> {
-  try {
-    const model: any = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
-      generationConfig: { temperature: 0.75, maxOutputTokens: 1024 },
-    });
-
     let prompt = "";
     switch (blockType) {
       case "introduction":
-        prompt = `Viết phần giới thiệu 1-2 đoạn cho sản phẩm "${productInfo.productName}".`;
+        prompt = `Viết phần giới thiệu ngắn gọn (2-3 câu) cho sản phẩm "${context.productName}"${
+          context.brandName ? ` của thương hiệu ${context.brandName}` : ""
+        }. ${context.productDescription || ""}
+        
+Trả về JSON: { "title": "...", "content": "..." }`;
         break;
+
       case "features":
-        prompt = `Liệt kê 3-5 đặc điểm nổi bật cho "${productInfo.productName}", mỗi điểm 1-2 câu.`;
+        prompt = `Liệt kê 3-5 đặc điểm nổi bật của sản phẩm "${context.productName}"${
+          context.brandName ? ` (${context.brandName})` : ""
+        }. ${context.productDescription || ""}
+        
+Trả về JSON: { "title": "Đặc điểm nổi bật", "content": "<ul><li>...</li></ul>" }`;
         break;
+
       case "styling":
-        prompt = `Gợi ý 2-3 cách phối đồ cho "${productInfo.productName}".`;
+        prompt = `Gợi ý 2-3 cách phối đồ với sản phẩm "${context.productName}". Viết ngắn gọn, dễ hiểu.
+        
+Trả về JSON: { "title": "Gợi ý phối đồ", "content": "..." }`;
         break;
+
       case "care":
-        prompt = `Hướng dẫn bảo quản ngắn gọn cho "${productInfo.productName}".`;
+        prompt = `Hướng dẫn bảo quản sản phẩm thời trang "${context.productName}". Liệt kê 3-4 lưu ý quan trọng.
+        
+Trả về JSON: { "title": "Hướng dẫn bảo quản", "content": "<ul><li>...</li></ul>" }`;
         break;
-      case "custom":
-        prompt = customPrompt || `Viết nội dung cho "${productInfo.productName}".`;
-        break;
+
+      default:
+        throw new Error("Block type không hợp lệ");
     }
 
-    prompt += `
-
-SẢN PHẨM: ${productInfo.productName}
-${productInfo.productDescription ? `MÔ TẢ: ${productInfo.productDescription}` : ""}
-${productInfo.brandName ? `BRAND: ${productInfo.brandName}` : ""}
-
-TRẢ VỀ JSON:
-{
-  "title": "Tiêu đề khối",
-  "content": "Nội dung chi tiết (có thể dùng <strong>, <em>, <br>)"
-}`;
-
-    const result = await model.generateContent(prompt as any);
+    const result = await model.generateContent(prompt);
     const text = result?.response?.text?.() ?? String(result?.text ?? "");
     const parsed = parseGeminiJSON(text);
 
@@ -510,18 +557,54 @@ TRẢ VỀ JSON:
       title: parsed.title || "",
       content: parsed.content || "",
     };
-  } catch (error) {
-    console.error("❌ Error generating content block:", error);
-    throw new Error("Không thể tạo nội dung. Vui lòng thử lại!");
+  } catch (err: any) {
+    console.error("Error generating content block:", err);
+    throw new Error(err?.message || "Lỗi khi tạo khối nội dung");
   }
 }
 
-/* ---------------- Health check ---------------- */
+export async function analyzeProductImage(
+  imageUrl: string,
+  productName: string
+): Promise<{
+  description: string;
+  suggestedAltText: string;
+  suggestedCaption: string;
+  keywords: string[];
+}> {
+  try {
+    const model: any = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash-exp",
+      generationConfig: { temperature: 0.5, maxOutputTokens: 512 },
+    });
 
-export function checkGeminiConfig(): { configured: boolean; message: string } {
-  const apiKey = process.env.REACT_APP_GEMINI_API_KEY;
-  if (!apiKey) {
-    return { configured: false, message: "REACT_APP_GEMINI_API_KEY chưa được cấu hình trong .env" };
+    const imagePart = await prepareImagePart(imageUrl);
+    if (!imagePart) {
+      throw new Error("Không thể tải ảnh");
+    }
+
+    const prompt = `Phân tích ảnh sản phẩm thời trang "${productName}".
+
+Trả về JSON:
+{
+  "description": "Mô tả chi tiết ảnh (màu sắc, chất liệu, kiểu dáng)",
+  "suggested_alt_text": "Alt text ngắn gọn cho SEO",
+  "suggested_caption": "Caption hấp dẫn để hiển thị",
+  "keywords": ["keyword1", "keyword2", ...]
+}`;
+
+    const result = await model.generateContent([prompt, imagePart]);
+    const text = result?.response?.text?.() ?? String(result?.text ?? "");
+    const parsed = parseGeminiJSON(text);
+
+    return {
+      description: parsed.description || "",
+      suggestedAltText: parsed.suggested_alt_text || parsed.alt || "",
+      suggestedCaption: parsed.suggested_caption || parsed.caption || "",
+      keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],
+    };
+  } catch (err: any) {
+    console.error("Error analyzing image:", err);
+    throw new Error(err?.message || "Lỗi khi phân tích ảnh");
   }
-  return { configured: true, message: "Gemini API đã sẵn sàng" };
 }

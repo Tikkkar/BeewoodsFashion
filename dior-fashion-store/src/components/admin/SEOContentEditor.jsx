@@ -55,6 +55,7 @@ const SEOContentEditor = ({ initialProductId = null }) => {
   });
 
   const [contentBlocks, setContentBlocks] = useState([]);
+  const [productImages, setProductImages] = useState([]); // Store product images
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [aiConfig, setAiConfig] = useState({ configured: false, message: "" });
 
@@ -63,8 +64,6 @@ const SEOContentEditor = ({ initialProductId = null }) => {
     description: { isValid: true, message: "" },
     keywords: { isValid: true, message: "" },
   });
-
-  const [includeBrand, setIncludeBrand] = useState(true);
 
   const SEO_LIMITS = {
     title: { min: 30, max: 60, optimal: 55 },
@@ -114,13 +113,49 @@ const SEOContentEditor = ({ initialProductId = null }) => {
       setLoading(true);
       const { data, error } = await supabase
         .from("products")
-        .select("*")
+        .select(`
+          *,
+          product_images (
+            id,
+            image_url,
+            is_primary,
+            display_order
+          )
+        `)
         .eq("id", productId)
         .single();
 
       if (error) throw error;
 
       const brandFromDb = data.brand_name || data.brandName || "";
+
+      // Extract product images from product_images table
+      const images = [];
+      console.log('[Editor] 📥 Fetching product data:', {
+        productId,
+        productName: data.name,
+        hasProductImages: !!data.product_images,
+        productImagesCount: Array.isArray(data.product_images) ? data.product_images.length : 0,
+        productImages: data.product_images,
+      });
+
+      if (Array.isArray(data.product_images) && data.product_images.length > 0) {
+        // Sort by display_order and extract URLs
+        const sortedImages = data.product_images
+          .sort((a, b) => (a.display_order || 99) - (b.display_order || 99));
+        
+        sortedImages.forEach(img => {
+          if (img.image_url) {
+            images.push(img.image_url);
+            console.log('[Editor] ✅ Added image:', img.image_url, `(primary: ${img.is_primary}, order: ${img.display_order})`);
+          }
+        });
+      } else {
+        console.warn('[Editor] ⚠️ No product_images found for this product');
+      }
+      
+      console.log(`[Editor] 🎯 Total images extracted: ${images.length}`, images);
+      setProductImages(images);
 
       setSeoData({
         seo_title: data.seo_title || "",
@@ -240,14 +275,29 @@ const SEOContentEditor = ({ initialProductId = null }) => {
     try {
       setGeneratingContent(true);
 
+      // Debug: Check product images state
+      console.log('[Editor] 🖼️ Product images state:', productImages);
+      console.log('[Editor] 📊 Product images count:', productImages.length);
+
+      // Prepare payload with real product images and brand
       const payload = {
         productName: seoData.product_name,
         productDescription: seoData.description,
         productPrice: seoData.price ? String(seoData.price) : undefined,
         productCategory: seoData.category,
+        brandName: seoData.brandName || undefined, // Always include brand if available
         tone: "friendly",
+        // Pass product images to AI service
+        productImages: productImages.length > 0 ? productImages : undefined,
       };
-      if (includeBrand && seoData.brandName) payload.brandName = seoData.brandName;
+
+      console.log('[Editor] 📤 Sending payload to AI:', {
+        productName: payload.productName,
+        brandName: payload.brandName,
+        hasProductImages: !!payload.productImages,
+        productImagesCount: payload.productImages?.length || 0,
+        productImages: payload.productImages,
+      });
 
       const result = await generateSEOContent(payload);
 
@@ -275,20 +325,34 @@ const SEOContentEditor = ({ initialProductId = null }) => {
         ? result.content_blocks
         : [];
 
-      // give ids and basic normalization
-      const normalized = (blocks || []).map((b, i) => ({
-        id: b.id || Date.now() + i,
-        type: b.type || "text",
-        title: b.title || b.label || "",
-        content: b.content || b.text || "",
-        url: b.url || b.image || b.src || "",
-        alt: b.alt || b.alt_text || "",
-        caption: b.caption || b.caption_text || "",
-      }));
+      // Give ids and basic normalization, replacing placeholder URLs with real product images
+      const normalized = (blocks || []).map((b, i) => {
+        const blockUrl = b.url || b.image || b.src || "";
+        
+        // Check if URL is placeholder or invalid
+        const isPlaceholder = !blockUrl || 
+          blockUrl.trim() === "" || 
+          /^(example|placeholder|null|undefined|https?:\/\/example\.com)/i.test(blockUrl);
+        
+        // Use real product image if placeholder, or keep original if valid
+        const finalUrl = isPlaceholder && productImages.length > 0 
+          ? productImages[i % productImages.length]  // Cycle through available images
+          : blockUrl;
+
+        return {
+          id: b.id || Date.now() + i,
+          type: b.type || "text",
+          title: b.title || b.label || "",
+          content: b.content || b.text || "",
+          url: finalUrl,
+          alt: b.alt || b.alt_text || "",
+          caption: b.caption || b.caption_text || "",
+        };
+      });
 
       setContentBlocks(normalized);
 
-      // try to auto-analyze images in returned blocks (fill missing alt/caption)
+      // Try to auto-analyze images in returned blocks (fill missing alt/caption)
       if (aiConfig.configured) {
         const imageBlocks = normalized.filter((b) => b.type === "image" && b.url && (!b.alt || !b.caption));
         if (imageBlocks.length > 0) {
@@ -334,7 +398,7 @@ const SEOContentEditor = ({ initialProductId = null }) => {
       const result = await generateContentBlock(blockType, {
         productName: seoData.product_name,
         productDescription: seoData.description,
-        brandName: includeBrand ? seoData.brandName : undefined,
+        brandName: seoData.brandName || undefined, // Always include brand if available
       });
 
       const newBlock = {
@@ -510,22 +574,22 @@ const SEOContentEditor = ({ initialProductId = null }) => {
             {aiConfig.configured && (
               <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border-2 border-purple-200">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Sparkles className="w-5 h-5 text-purple-600" />
                     <h3 className="text-lg font-bold text-gray-900">Trợ lý AI</h3>
+                    {productImages.length > 0 && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                        📸 {productImages.length} ảnh
+                      </span>
+                    )}
+                    {seoData.brandName && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                        🏷️ {seoData.brandName}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={includeBrand}
-                        onChange={(e) => setIncludeBrand(e.target.checked)}
-                        className="w-4 h-4"
-                      />
-                      Bao gồm thương hiệu
-                    </label>
-
-                    <button onClick={() => setShowAIPanel(!showAIPanel)} className="text-sm text-purple-600 hover:text-purple-700">
+                    <button onClick={() => setShowAIPanel(!showAIPanel)} className="text-sm text-purple-600 hover:text-purple-700 font-medium">
                       {showAIPanel ? "Ẩn" : "Hiện"}
                     </button>
                   </div>
@@ -533,6 +597,21 @@ const SEOContentEditor = ({ initialProductId = null }) => {
 
                 {showAIPanel && (
                   <div className="space-y-3">
+                    {/* Brand Info Notice */}
+                    {seoData.brandName && (
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="text-blue-600 font-bold">🏷️</span>
+                          <div>
+                            <p className="font-semibold text-blue-900">Tích hợp thương hiệu: {seoData.brandName}</p>
+                            <p className="text-blue-700 text-xs mt-1">
+                              AI sẽ tự động thêm "{seoData.brandName}" vào SEO title, description, keywords và content để tăng nhận diện thương hiệu
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
                     <button
                       onClick={handleGenerateFullSEO}
                       disabled={generatingContent}
@@ -586,10 +665,24 @@ const SEOContentEditor = ({ initialProductId = null }) => {
                       </button>
                     </div>
 
-                    <p className="text-xs text-purple-700 text-center mt-2">
-                      💡 AI sẽ phân tích sản phẩm và tạo nội dung SEO tối ưu
-                      {includeBrand && seoData.brandName ? ` — bao gồm thương hiệu: ${seoData.brandName}` : ""}
-                    </p>
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-800">
+                      <div className="space-y-1">
+                        <p className="font-semibold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          AI sẽ tự động:
+                        </p>
+                        <ul className="list-disc list-inside space-y-0.5 ml-4">
+                          {seoData.brandName && (
+                            <li>Tích hợp thương hiệu <strong>{seoData.brandName}</strong> vào title, description & keywords</li>
+                          )}
+                          {productImages.length > 0 && (
+                            <li>Phân tích và mô tả <strong>{productImages.length} ảnh</strong> sản phẩm</li>
+                          )}
+                          <li>Tạo nội dung SEO tối ưu với từ khóa phù hợp</li>
+                          <li>Đề xuất alt text & caption cho từng ảnh</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
