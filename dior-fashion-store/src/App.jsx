@@ -53,6 +53,8 @@ import FacebookSettingsPage from "./pages/admin/chatbot/FacebookSettingsPage";
 import ConversationsPage from "./pages/admin/chatbot/ConversationsPage";
 import ScenariosTab from "./pages/admin/chatbot/ScenariosTab";
 import AdminFeedbackManagement from './components/admin/AdminFeedbackManagement';
+import FacebookAutoPostSettings from './pages/admin/FacebookAutoPostSettings';
+import FacebookPostsHistory from './pages/admin/FacebookPostsHistory';
 // User Pages
 import ProfileLayout from "./pages/user/ProfileLayout";
 import ProfilePage from "./pages/user/ProfilePage";
@@ -229,6 +231,8 @@ function AppContent({
               <Route path="analytics" element={<AdminAnalytics />} />
               <Route path="ad-targeting" element={<AdTargeting />} />
               <Route path="/admin/feedbacks" element={<AdminFeedbackManagement />} />
+              <Route path="/admin/facebook-settings" element={<FacebookAutoPostSettings />} />
+              < Route path="/admin/facebook-posts" element={<FacebookPostsHistory />} />
               {/* Products */}
               <Route path="products" element={<AdminProducts />} />
               <Route path="products/new" element={<AdminProductForm />} />
