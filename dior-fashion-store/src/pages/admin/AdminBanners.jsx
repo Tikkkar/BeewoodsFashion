@@ -31,7 +31,10 @@ const BannerModal = ({ banner, onClose, onSave }) => {
     button_link: "/products",
     image_url: "",
     is_active: true,
-    show_content: true, // Mặc định hiển thị content
+    show_content: true, // Mặc định hiển thị nội dung (tiêu đề, phụ đề, nút)
+    show_title: true, // Hiển thị tiêu đề
+    show_subtitle: true, // Hiển thị tiêu đề phụ
+    show_button: true, // Hiển thị nút
     display_order: 0,
     text_color: "#FFFFFF",
     title_size: "text-5xl",
@@ -145,6 +148,10 @@ const BannerModal = ({ banner, onClose, onSave }) => {
       
       // Show content toggle
       bannerData.show_content = data.show_content !== false; // Default true
+
+      // Title / Subtitle / Button toggles
+      // Không gửi lên backend vì bảng banners hiện tại chưa có các cột này.
+      // Các flag này chỉ dùng client-side (HeroSlider) khi đã mở rộng schema phù hợp.
 
       console.log("Saving banner data:", bannerData);
       await onSave(bannerData);
@@ -436,7 +443,7 @@ const BannerModal = ({ banner, onClose, onSave }) => {
                 </div>
 
                 {/* Show Content Toggle */}
-                <div>
+                <div className="space-y-2">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -446,13 +453,55 @@ const BannerModal = ({ banner, onClose, onSave }) => {
                       className="w-5 h-5 rounded border-gray-300"
                     />
                     <span className="text-sm font-medium">
-                      Hiển thị nội dung (tiêu đề, nút)
+                      Hiển thị nội dung (tiêu đề, phụ đề, nút)
                     </span>
                   </label>
-                  <p className="text-xs text-gray-500 mt-1 ml-8">
+                  <p className="text-xs text-gray-500 ml-8">
                     Tắt để chỉ hiển thị ảnh banner, không có text hay button
                   </p>
                 </div>
+
+                {/* Show Title / Subtitle / Button Toggles */}
+                {data.show_content !== false && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="show_title"
+                        checked={data.show_title !== false} // Default true
+                        onChange={handleChange}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-xs font-medium">
+                        Hiển thị tiêu đề
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="show_subtitle"
+                        checked={data.show_subtitle !== false} // Default true
+                        onChange={handleChange}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-xs font-medium">
+                        Hiển thị tiêu đề phụ
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="show_button"
+                        checked={data.show_button !== false} // Default true
+                        onChange={handleChange}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-xs font-medium">
+                        Hiển thị nút
+                      </span>
+                    </label>
+                  </div>
+                )}
               </>
             )}
 

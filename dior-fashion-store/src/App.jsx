@@ -55,6 +55,7 @@ import ScenariosTab from "./pages/admin/chatbot/ScenariosTab";
 import AdminFeedbackManagement from './components/admin/AdminFeedbackManagement';
 import FacebookAutoPostSettings from './pages/admin/FacebookAutoPostSettings';
 import FacebookPostsHistory from './pages/admin/FacebookPostsHistory';
+import InventoryManagement from "./pages/admin/InventoryManagement";
 // User Pages
 import ProfileLayout from "./pages/user/ProfileLayout";
 import ProfilePage from "./pages/user/ProfilePage";
@@ -238,6 +239,7 @@ function AppContent({
               <Route path="products/new" element={<AdminProductForm />} />
               <Route path="products/:id" element={<AdminProductForm />} />
               <Route path="/admin/seo-manager" element={<SEOManagerPage />} />
+              <Route path="/admin/inventory" element={<InventoryManagement />} />
               {/* Categories */}
               <Route path="categories" element={<AdminCategories />} />
 

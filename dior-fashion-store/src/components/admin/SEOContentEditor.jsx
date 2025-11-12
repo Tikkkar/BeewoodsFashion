@@ -33,7 +33,7 @@ import {
  * Props:
  *  - initialProductId (optional)
  */
-const SEOContentEditor = ({ initialProductId = null }) => {
+const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
   const [products, setProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState(initialProductId);
   const [loading, setLoading] = useState(true);
@@ -511,7 +511,7 @@ const SEOContentEditor = ({ initialProductId = null }) => {
   };
 
   // ============== Save ==============
-  const handleSave = async () => {
+ const handleSave = async () => {
     try {
       setSaving(true);
       const attributes = { content_blocks: contentBlocks };
@@ -527,7 +527,13 @@ const SEOContentEditor = ({ initialProductId = null }) => {
         .eq("id", selectedProductId);
 
       if (error) throw error;
+      
       alert("✅ Lưu thành công!");
+      
+      // Callback để refresh danh sách
+      if (onSaveSuccess) {
+        onSaveSuccess();
+      }
     } catch (err) {
       console.error("Error saving:", err);
       alert("❌ Lỗi khi lưu: " + (err.message || err));

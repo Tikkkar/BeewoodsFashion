@@ -214,29 +214,45 @@ const HeroSlider = ({ banners }) => {
               )}
 
               {/* Content - Only render if show_content is true */}
-              {banner.show_content !== false && (banner.title || banner.subtitle || banner.button_text) && (
-                <div className="absolute inset-0">
-                  <div className={`max-w-7xl mx-auto px-3 sm:px-4 h-full flex flex-col justify-center ${getTextPositionClass(banner.text_position)}`}>
-                    <div className="max-w-2xl">
-                      {/* Subtitle */}
-                      {banner.subtitle && (
-                        <p 
-                          className={`${banner.subtitle_size || 'text-xl'} font-light tracking-wider md:tracking-widest uppercase mb-1.5 sm:mb-2 md:mb-3 opacity-90`}
-                          style={{ color: banner.text_color || '#FFFFFF' }}
-                        >
-                          {banner.subtitle}
-                        </p>
-                      )}
-                      
-                      {/* Title with Custom Size - ⭐ FIX: Apply color directly */}
-                      {banner.title && (
-                        <h2 
-                          className={`${banner.title_size || 'text-5xl'} font-bold tracking-wide uppercase mb-3 sm:mb-4 md:mb-6 leading-tight`}
-                          style={{ color: banner.text_color || '#FFFFFF' }}
-                        >
-                          {banner.title}
-                        </h2>
-                      )}
+              {banner.show_content !== false &&
+                (banner.show_title !== false ||
+                  banner.show_subtitle !== false ||
+                  banner.show_button !== false) && (
+                  <div className="absolute inset-0">
+                    <div
+                      className={`max-w-7xl mx-auto px-3 sm:px-4 h-full flex flex-col justify-center ${getTextPositionClass(
+                        banner.text_position
+                      )}`}
+                    >
+                      <div className="max-w-2xl">
+                        {/* Subtitle */}
+                        {banner.show_subtitle !== false &&
+                          banner.subtitle && (
+                            <p
+                              className={`${
+                                banner.subtitle_size || "text-xl"
+                              } font-light tracking-wider md:tracking-widest uppercase mb-1.5 sm:mb-2 md:mb-3 opacity-90`}
+                              style={{
+                                color: banner.text_color || "#FFFFFF",
+                              }}
+                            >
+                              {banner.subtitle}
+                            </p>
+                          )}
+
+                        {/* Title with Custom Size */}
+                        {banner.show_title !== false && banner.title && (
+                          <h2
+                            className={`${
+                              banner.title_size || "text-5xl"
+                            } font-bold tracking-wide uppercase mb-3 sm:mb-4 md:mb-6 leading-tight`}
+                            style={{
+                              color: banner.text_color || "#FFFFFF",
+                            }}
+                          >
+                            {banner.title}
+                          </h2>
+                        )}
 
                       {/* Description (if exists) */}
                       {banner.description && (
@@ -249,14 +265,21 @@ const HeroSlider = ({ banners }) => {
                       )}
 
                       {/* CTA Button with Custom Style */}
-                      {banner.button_text && (
-                        <Link
-                          to={banner.button_link || banner.link_url || '/products'}
-                          className={`inline-block px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-xs sm:text-sm md:text-base font-medium tracking-wide uppercase transition-all duration-300 shadow-lg rounded-sm ${getButtonStyleClass(banner.button_style)}`}
-                        >
-                          {banner.button_text}
-                        </Link>
-                      )}
+                      {banner.show_button !== false &&
+                        banner.button_text && (
+                          <Link
+                            to={
+                              banner.button_link ||
+                              banner.link_url ||
+                              "/products"
+                            }
+                            className={`inline-block px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-xs sm:text-sm md:text-base font-medium tracking-wide uppercase transition-all duration-300 shadow-lg rounded-sm ${getButtonStyleClass(
+                              banner.button_style
+                            )}`}
+                          >
+                            {banner.button_text}
+                          </Link>
+                        )}
                     </div>
                   </div>
                 </div>

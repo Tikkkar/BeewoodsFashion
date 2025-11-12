@@ -24,21 +24,40 @@ export const uploadImage = async (file, bucket = "products") => {
 
 /**
  * -----------------------------------------------------------------------------
- * Products Management (CRUD) - ĐÃ CẬP NHẬT CHO NHIỀU DANH MỤC
+ * Products Management (CRUD)
  * -----------------------------------------------------------------------------
  */
 export const getAdminProducts = async () => {
-  // ✨ SỬA LỖI: Chỉ định rõ quan hệ thông qua bảng trung gian
   const { data, error } = await supabase
     .from("products")
-    .select("*, categories!product_categories(name)")
+    .select(`
+      *,
+      categories!product_categories(id, name),
+      product_sizes(*),
+      product_images(id, image_url, is_primary, display_order)
+    `)
     .order("created_at", { ascending: false });
-  if (error) toast.error("Failed to fetch products.");
+  
+  if (error) {
+    console.error("❌ Error fetching products:", error);
+    toast.error("Failed to fetch products.");
+  }
+  
+  // Debug log
+  if (data && data.length > 0) {
+    console.log("✅ Total products loaded:", data.length);
+    console.log("🔍 First product sample:", {
+      name: data[0].name,
+      has_images: !!data[0].product_images,
+      images_count: data[0].product_images?.length || 0,
+      first_image: data[0].product_images?.[0]
+    });
+  }
+  
   return { data, error };
 };
 
 export const getAdminProductById = async (id) => {
-  // ✨ SỬA LỖI: Chỉ định rõ quan hệ và lấy đầy đủ thông tin categories
   const { data, error } = await supabase
     .from("products")
     .select(
@@ -56,7 +75,6 @@ export const createProduct = async (
   sizes,
   categoryIds
 ) => {
-  // ✨ THAY ĐỔI: Nhận thêm categoryIds
   const { data: newProduct, error } = await supabase
     .from("products")
     .insert(productData)
@@ -64,7 +82,6 @@ export const createProduct = async (
     .single();
   if (error) throw error;
 
-  // Xử lý ảnh và size (như cũ)
   if (images.length > 0) {
     const imagePayload = images.map((url, i) => ({
       product_id: newProduct.id,
@@ -79,7 +96,6 @@ export const createProduct = async (
     await supabase.from("product_sizes").insert(sizePayload);
   }
 
-  // ✨ MỚI: Liên kết sản phẩm với các danh mục trong bảng trung gian
   if (categoryIds && categoryIds.length > 0) {
     const productCategoriesPayload = categoryIds.map((catId) => ({
       product_id: newProduct.id,
@@ -101,14 +117,12 @@ export const updateProduct = async (
   newSizes,
   categoryIds
 ) => {
-  // ✨ THAY ĐỔI: Nhận thêm categoryIds
   const { error } = await supabase
     .from("products")
     .update(productData)
     .eq("id", id);
   if (error) throw error;
 
-  // Xử lý ảnh và size (như cũ)
   await supabase.from("product_images").delete().eq("product_id", id);
   if (newImages.length > 0) {
     const imagePayload = newImages.map((url, i) => ({
@@ -126,8 +140,6 @@ export const updateProduct = async (
     await supabase.from("product_sizes").insert(sizePayload);
   }
 
-  // ✨ MỚI: Cập nhật lại liên kết danh mục
-  // Cách đơn giản nhất: Xóa hết liên kết cũ và tạo lại liên kết mới
   await supabase.from("product_categories").delete().eq("product_id", id);
   if (categoryIds && categoryIds.length > 0) {
     const productCategoriesPayload = categoryIds.map((catId) => ({
@@ -142,7 +154,6 @@ export const updateProduct = async (
 };
 
 export const deleteProduct = async (id) => {
-  // Hàm này không thay đổi vì ON DELETE CASCADE đã được cài đặt trong CSDL
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) {
     toast.error(`Failed to delete product: ${error.message}`);
@@ -151,7 +162,6 @@ export const deleteProduct = async (id) => {
   toast.success("Product deleted successfully.");
 };
 
-// ... (Các hàm còn lại từ Categories, Banners, Orders, Dashboard không thay đổi)
 /**
  * -----------------------------------------------------------------------------
  * Categories Management (CRUD)
@@ -213,10 +223,8 @@ export const saveBanner = async (banner) => {
   let error;
 
   if (id) {
-    // Update existing banner
     ({ error } = await supabase.from("banners").update(data).eq("id", id));
   } else {
-    // Create new banner
     ({ error } = await supabase.from("banners").insert(data));
   }
 
@@ -281,32 +289,164 @@ export const updateOrderStatus = async (id, status) => {
 
 /**
  * -----------------------------------------------------------------------------
+ * Manual Orders Management (TẠO ĐƠN HÀNG THỦ CÔNG)
+ * -----------------------------------------------------------------------------
+ */
+
+// Hàm tạo order number
+const generateOrderNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear().toString().slice(-2);
+  const month = (now.getMonth() + 1).toString().padStart(2, "0");
+  const day = now.getDate().toString().padStart(2, "0");
+  const random = Math.floor(Math.random() * 10000)
+    .toString()
+    .padStart(4, "0");
+  return `BEWO-${year}${month}${day}${random}`;
+};
+
+export const createManualOrder = async (orderData) => {
+  // Tự động generate order_number nếu chưa có
+  if (!orderData.order_number) {
+    orderData.order_number = generateOrderNumber();
+  }
+
+  console.log("📦 Creating manual order:", orderData);
+
+  const { data, error } = await supabase
+    .from('orders')
+    .insert([orderData])
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("❌ Error creating manual order:", error);
+    throw error;
+  }
+  
+  console.log("✅ Manual order created:", data.order_number);
+  return { data };
+};
+
+export const createOrderItems = async (orderId, items) => {
+  const orderItems = items.map(item => ({
+    order_id: orderId,
+    product_id: item.product_id,
+    product_name: item.product_name,
+    product_image: item.product_image || null,
+    size: item.size || null,
+    quantity: item.quantity,
+    price: item.price,
+    subtotal: item.subtotal
+  }));
+
+  console.log("📝 Creating order items:", orderItems);
+
+  const { data, error } = await supabase
+    .from('order_items')
+    .insert(orderItems)
+    .select();
+  
+  if (error) {
+    console.error("❌ Error creating order items:", error);
+    throw error;
+  }
+  
+  console.log("✅ Order items created:", data.length);
+  return { data };
+};
+
+export const updateProductStock = async (productId, quantity, size = null) => {
+  try {
+    console.log(`📉 Updating stock for product ${productId}, size: ${size || 'none'}, quantity: -${quantity}`);
+
+    // 1. Cập nhật stock cho size cụ thể (nếu có)
+    if (size) {
+      const { data: sizeData, error: sizeError } = await supabase
+        .from('product_sizes')
+        .select('stock')
+        .eq('product_id', productId)
+        .eq('size', size)
+        .single();
+
+      if (sizeError) {
+        console.error("❌ Error fetching size stock:", sizeError);
+        throw sizeError;
+      }
+
+      const newSizeStock = Math.max(0, sizeData.stock - quantity);
+      
+      const { error: updateSizeError } = await supabase
+        .from('product_sizes')
+        .update({ stock: newSizeStock })
+        .eq('product_id', productId)
+        .eq('size', size);
+
+      if (updateSizeError) {
+        console.error("❌ Error updating size stock:", updateSizeError);
+        throw updateSizeError;
+      }
+      
+      console.log(`✅ Size stock updated: ${size} - ${sizeData.stock} → ${newSizeStock}`);
+    }
+
+    // 2. Cập nhật tổng stock của sản phẩm
+    const { data: productData, error: productError } = await supabase
+      .from('products')
+      .select('stock')
+      .eq('id', productId)
+      .single();
+
+    if (productError) {
+      console.error("❌ Error fetching product stock:", productError);
+      throw productError;
+    }
+
+    const newProductStock = Math.max(0, productData.stock - quantity);
+    
+    const { error: updateProductError } = await supabase
+      .from('products')
+      .update({ stock: newProductStock })
+      .eq('id', productId);
+
+    if (updateProductError) {
+      console.error("❌ Error updating product stock:", updateProductError);
+      throw updateProductError;
+    }
+    
+    console.log(`✅ Product stock updated: ${productData.stock} → ${newProductStock}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("❌ updateProductStock failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * -----------------------------------------------------------------------------
  * Dashboard Statistics
  * -----------------------------------------------------------------------------
  */
 export const getDashboardStats = async () => {
   try {
-    // Get all orders with complete data
     const { data: orders, error: ordersError } = await supabase
       .from("orders")
       .select("id, total_amount, status, created_at");
 
     if (ordersError) throw ordersError;
 
-    // Calculate revenue (only completed orders)
     const totalRevenue =
       orders
         ?.filter((o) => o.status === "completed")
         .reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
 
-    // Count orders by status
     const totalOrders = orders?.length || 0;
     const pendingOrders =
       orders?.filter((o) => o.status === "pending").length || 0;
     const completedOrders =
       orders?.filter((o) => o.status === "completed").length || 0;
 
-    // Get products count
     const { count: totalProducts } = await supabase
       .from("products")
       .select("*", { count: "exact", head: true });
@@ -361,7 +501,6 @@ export const getBestSellingProducts = async (limit = 5) => {
     return [];
   }
 
-  // Aggregate quantities by product
   const productMap = {};
   data?.forEach((item) => {
     if (!item.products) return;

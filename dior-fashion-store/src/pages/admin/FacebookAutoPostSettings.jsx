@@ -1,10 +1,23 @@
+// src/pages/admin/FacebookAutoPostSettings.jsx
+
 import React, { useState, useEffect } from 'react';
-import { 
-  Settings, Save, TestTube, History, Sparkles, 
-  Clock, Hash, Image, Loader2, CheckCircle, XCircle,
-  AlertCircle, RefreshCw
-} from 'lucide-react';
-import { supabase,SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/supabase';
+import {
+  Settings,
+  Save,
+  TestTube,
+  History,
+  Sparkles,
+  Clock,
+  Hash,
+  Image,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/supabase';
 
 /**
  * FacebookAutoPostSettings
@@ -14,6 +27,7 @@ const FacebookAutoPostSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [settingsId, setSettingsId] = useState(null); // ✅ Store settings ID
   const [config, setConfig] = useState({
     auto_post_enabled: false,
     auto_post_on_seo_update: true,
@@ -41,31 +55,42 @@ const FacebookAutoPostSettings = () => {
     loadStats();
   }, []);
 
+  // ✅ FIXED: Handle multiple records
   const loadConfig = async () => {
     try {
       setLoading(true);
+      
+      // Get only connected settings, newest first
       const { data, error } = await supabase
         .from('chatbot_facebook_settings')
         .select('*')
-        .single();
+        .eq('is_connected', true)
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
 
-      if (data) {
+      // Get first record from array
+      if (data && data.length > 0) {
+        const settings = data[0];
+        setSettingsId(settings.id); // ✅ Store ID for updates
+        
         setConfig({
-          auto_post_enabled: data.auto_post_enabled ?? false,
-          auto_post_on_seo_update: data.auto_post_on_seo_update ?? true,
-          auto_post_on_new_product: data.auto_post_on_new_product ?? true,
-          auto_post_delay_minutes: data.auto_post_delay_minutes ?? 5,
-          post_tone: data.post_tone ?? 'friendly',
-          custom_hashtags: data.custom_hashtags ?? [],
-          include_category_hashtags: data.include_category_hashtags ?? true,
-          include_brand_hashtags: data.include_brand_hashtags ?? true,
-          max_images: data.max_images ?? 10,
-          preferred_post_times: data.preferred_post_times ?? ['09:00', '12:00', '18:00', '20:00'],
-          max_posts_per_day: data.max_posts_per_day ?? 10,
-          min_interval_minutes: data.min_interval_minutes ?? 60,
+          auto_post_enabled: settings.auto_post_enabled ?? false,
+          auto_post_on_seo_update: settings.auto_post_on_seo_update ?? true,
+          auto_post_on_new_product: settings.auto_post_on_new_product ?? true,
+          auto_post_delay_minutes: settings.auto_post_delay_minutes ?? 5,
+          post_tone: settings.post_tone ?? 'friendly',
+          custom_hashtags: settings.custom_hashtags ?? [],
+          include_category_hashtags: settings.include_category_hashtags ?? true,
+          include_brand_hashtags: settings.include_brand_hashtags ?? true,
+          max_images: settings.max_images ?? 10,
+          preferred_post_times: settings.preferred_post_times ?? ['09:00', '12:00', '18:00', '20:00'],
+          max_posts_per_day: settings.max_posts_per_day ?? 10,
+          min_interval_minutes: settings.min_interval_minutes ?? 60,
         });
+      } else {
+        console.warn('No connected Facebook settings found');
       }
     } catch (error) {
       console.error('Error loading config:', error);
@@ -97,10 +122,16 @@ const FacebookAutoPostSettings = () => {
     }
   };
 
+  // ✅ FIXED: Update specific record by ID
   const handleSave = async () => {
     try {
       setSaving(true);
 
+      if (!settingsId) {
+        throw new Error('Không tìm thấy Facebook settings. Vui lòng kết nối Facebook trước.');
+      }
+
+      // Update specific record by ID
       const { error } = await supabase
         .from('chatbot_facebook_settings')
         .update({
@@ -118,8 +149,7 @@ const FacebookAutoPostSettings = () => {
           min_interval_minutes: config.min_interval_minutes,
           updated_at: new Date().toISOString(),
         })
-        .eq('is_connected', true)
-        .single();
+        .eq('id', settingsId);
 
       if (error) throw error;
 
@@ -155,7 +185,7 @@ const FacebookAutoPostSettings = () => {
       const result = await response.json();
 
       if (result.success) {
-        alert(`✅ Đã xử lý ${result.processed} bài đăng!`);
+        alert(`✅ Đã xử lý ${result.processed || 0} bài đăng!`);
         loadStats();
       } else {
         alert('❌ Lỗi: ' + (result.error || 'Unknown error'));
@@ -172,6 +202,29 @@ const FacebookAutoPostSettings = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  // ✅ Show warning if no settings found
+  if (!settingsId) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 max-w-md text-center">
+          <AlertCircle className="w-16 h-16 text-yellow-600 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Chưa kết nối Facebook
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Vui lòng kết nối Facebook Page trước khi sử dụng tính năng auto-post.
+          </p>
+          <Link
+            to="/admin/chatbot/facebook"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Kết nối Facebook
+          </Link>
+        </div>
       </div>
     );
   }
@@ -551,13 +604,13 @@ const FacebookAutoPostSettings = () => {
             </h3>
 
             <div className="space-y-2">
-              <a
-                href="/admin/facebook-posts"
+              <Link
+                to="/admin/facebook-posts"
                 className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
               >
                 <History className="w-4 h-4" />
                 Xem lịch sử đăng bài
-              </a>
+              </Link>
 
               <button
                 onClick={loadStats}

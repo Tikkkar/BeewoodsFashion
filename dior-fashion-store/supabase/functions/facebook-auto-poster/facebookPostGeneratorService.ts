@@ -5,6 +5,7 @@
 // ==================================================
 
 import { GoogleGenerativeAI } from "npm:@google/generative-ai";
+import { callOpenRouterChat } from "./openRouterClient.ts";
 
 // @ts-ignore
 const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || "";
@@ -50,6 +51,7 @@ export interface PostGenerationRequest {
 
 export type PostType = 
   | 'new_product'       // Sản phẩm mới
+  | 'product_update'    // Cập nhật sản phẩm (SEO update)
   | 'product_showcase'  // Giới thiệu sản phẩm
   | 'sale'              // Khuyến mãi
   | 'flash_sale'        // Flash sale
@@ -99,10 +101,6 @@ export interface FacebookPostResponse {
 // TEMPLATES & BEST PRACTICES
 // ==================================================
 
-// supabase/functions/_shared/facebookPostGeneratorService.ts
-
-// Find this section (around line 90-140) and REPLACE with:
-
 const POST_TEMPLATES: Record<PostType, {
   structure: string;
   emojis: string[];
@@ -112,6 +110,11 @@ const POST_TEMPLATES: Record<PostType, {
     structure: '🎉 Announcement + Product highlight + Benefits + Price + CTA',
     emojis: ['🎉', '✨', '🆕', '💝', '🎁'],
     keywords: ['mới về', 'ra mắt', 'giới thiệu', 'khám phá'],
+  },
+  product_update: {
+    structure: '✨ Update announcement + What changed + Benefits + CTA',
+    emojis: ['✨', '🔄', '📢', '💫', '🎯'],
+    keywords: ['cập nhật', 'nâng cấp', 'mới nhất', 'hoàn thiện'],
   },
   product_showcase: {
     structure: 'Hook + Story + Features + Social proof + CTA',
@@ -157,25 +160,27 @@ const POST_TEMPLATES: Record<PostType, {
 
 const ENGAGEMENT_BEST_PRACTICES = {
   caption: {
-    optimal_length: [80, 150], // Characters
+    // Khuyến nghị caption dài hơn, có storytelling rõ ràng
+    optimal_length: [400, 800],
     max_length: 2200,
-    first_sentence_max: 60, // Show in preview
+    first_sentence_max: 80, // Hook vẫn gọn để hiện đủ trong preview
   },
   hashtags: {
-    recommended_count: [5, 10],
+    recommended_count: [8, 12], // Tăng lên để SEO tốt hơn
     max_count: 30,
-    mix: 'Use 2-3 broad + 3-5 niche + 2-3 branded',
+    mix: 'Use 3-4 broad + 4-6 niche + 2-3 branded',
   },
   emojis: {
-    recommended_count: [3, 8],
-    placement: 'Start of sections, not every line',
+    recommended_count: [4, 10], // Tăng lên cho bắt mắt hơn
+    placement: 'Start of sections, highlight key points',
   },
   call_to_action: [
-    'Nhắn tin ngay để được tư vấn!',
-    'Comment "MUA" để được hỗ trợ!',
-    'Inbox shop để đặt hàng nhé!',
-    'Đặt hàng ngay - Số lượng có hạn!',
-    'Click link để xem chi tiết!',
+    '💬 Nhắn tin ngay để được tư vấn!',
+    '📩 Comment "MUA" để được hỗ trợ!',
+    '📲 Inbox shop để đặt hàng nhé!',
+    '🛒 Đặt hàng ngay - Số lượng có hạn!',
+    '👉 Click link để xem chi tiết!',
+    '🎁 Inbox ngay để nhận ưu đãi đặc biệt!',
   ],
 };
 
@@ -186,31 +191,35 @@ const ENGAGEMENT_BEST_PRACTICES = {
 const GUARANTEED_HASHTAGS = {
   fashion: [
     '#thờitrang', '#fashion', '#style', '#ootd', '#fashionista',
-    '#streetstyle', '#fashionblogger', '#outfitoftheday',
+    '#streetstyle', '#fashionblogger', '#outfitoftheday', '#fashionvietnam',
   ],
   mensFashion: [
     '#thờitrangnam', '#mensfashion', '#menswear', '#menstyle',
-    '#fashionmen', '#manstyle',
+    '#fashionmen', '#manstyle', '#gentlemanstyle',
   ],
   womensFashion: [
     '#thờitrangnữ', '#womensfashion', '#womenswear', '#girlstyle',
-    '#fashionwoman', '#ladystyle',
+    '#fashionwoman', '#ladystyle', '#fashiongirl',
   ],
   sale: [
     '#sale', '#giảmgiá', '#khuyếnmãi', '#ưuđãi', '#giárẻ',
-    '#flashsale', '#hotsale', '#dealsale',
+    '#flashsale', '#hotsale', '#dealsale', '#khuyenmaikhung',
   ],
   shopping: [
     '#shopping', '#muasắm', '#shoponline', '#shopee',
-    '#onlineshopping', '#shoppingonline',
+    '#onlineshopping', '#shoppingonline', '#muahang',
   ],
   lifestyle: [
     '#lifestyle', '#cuộcsống', '#dailylook', '#instadaily',
-    '#instagood', '#photooftheday',
+    '#instagood', '#photooftheday', '#vietnam',
   ],
   quality: [
     '#chấtlượng', '#quality', '#authentic', '#chínhhãng',
-    '#hàngthật', '#guaranteedquality',
+    '#hàngthật', '#guaranteedquality', '#hanghieugiare',
+  ],
+  trending: [
+    '#trending', '#viral', '#hot', '#trendingnow',
+    '#xuhuong', '#trendingfashion', '#hotnhat',
   ],
 };
 
@@ -221,12 +230,14 @@ const GUARANTEED_HASHTAGS = {
 function parseGeminiJSON(text: string): any {
   let cleanText = text.trim();
   
+  // Remove markdown code blocks
   if (cleanText.startsWith("```json")) {
     cleanText = cleanText.replace(/^```json\n?/g, "").replace(/\n?```$/g, "");
   } else if (cleanText.startsWith("```")) {
     cleanText = cleanText.replace(/^```\n?/g, "").replace(/\n?```$/g, "");
   }
 
+  // Extract JSON object
   const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     cleanText = jsonMatch[0];
@@ -247,9 +258,10 @@ function generateHashtags(
 ): string[] {
   const hashtags = new Set<string>();
   
-  // Custom hashtags first
+  // Custom hashtags first (priority)
   customHashtags.forEach(tag => {
-    hashtags.add(tag.startsWith('#') ? tag : `#${tag}`);
+    const cleanTag = tag.startsWith('#') ? tag : `#${tag}`;
+    hashtags.add(cleanTag);
   });
   
   // Category-based hashtags
@@ -257,17 +269,17 @@ function generateHashtags(
     const categoryLower = product.category.toLowerCase();
     
     if (categoryLower.includes('nam') || categoryLower.includes('men')) {
-      GUARANTEED_HASHTAGS.mensFashion.slice(0, 3).forEach(tag => hashtags.add(tag));
+      GUARANTEED_HASHTAGS.mensFashion.slice(0, 4).forEach(tag => hashtags.add(tag));
     } else if (categoryLower.includes('nữ') || categoryLower.includes('women')) {
-      GUARANTEED_HASHTAGS.womensFashion.slice(0, 3).forEach(tag => hashtags.add(tag));
+      GUARANTEED_HASHTAGS.womensFashion.slice(0, 4).forEach(tag => hashtags.add(tag));
     } else {
-      GUARANTEED_HASHTAGS.fashion.slice(0, 3).forEach(tag => hashtags.add(tag));
+      GUARANTEED_HASHTAGS.fashion.slice(0, 4).forEach(tag => hashtags.add(tag));
     }
   } else {
-    GUARANTEED_HASHTAGS.fashion.slice(0, 3).forEach(tag => hashtags.add(tag));
+    GUARANTEED_HASHTAGS.fashion.slice(0, 4).forEach(tag => hashtags.add(tag));
   }
   
-  // Brand hashtag
+  // Brand hashtag (if available)
   if (product.brand_name) {
     const brandTag = product.brand_name
       .toLowerCase()
@@ -275,16 +287,23 @@ function generateHashtags(
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/đ/g, "d")
       .replace(/[^a-z0-9]/g, "");
-    hashtags.add(`#${brandTag}`);
+    if (brandTag.length > 2) {
+      hashtags.add(`#${brandTag}`);
+    }
   }
   
-  // Shopping hashtags
-  GUARANTEED_HASHTAGS.shopping.slice(0, 2).forEach(tag => hashtags.add(tag));
+  // Shopping & lifestyle hashtags
+  GUARANTEED_HASHTAGS.shopping.slice(0, 3).forEach(tag => hashtags.add(tag));
+  GUARANTEED_HASHTAGS.lifestyle.slice(0, 2).forEach(tag => hashtags.add(tag));
   
   // Quality hashtags
   GUARANTEED_HASHTAGS.quality.slice(0, 2).forEach(tag => hashtags.add(tag));
   
-  return Array.from(hashtags).slice(0, 15); // Max 15 hashtags
+  // Trending hashtags
+  GUARANTEED_HASHTAGS.trending.slice(0, 2).forEach(tag => hashtags.add(tag));
+  
+  // Limit to 20 hashtags max (Facebook best practice)
+  return Array.from(hashtags).slice(0, 20);
 }
 
 function estimateEngagement(caption: string, product: ProductData): {
@@ -294,46 +313,76 @@ function estimateEngagement(caption: string, product: ProductData): {
   const tips: string[] = [];
   let score = 0;
   
-  // Check caption length
+  // Check caption length (optimal 100-200 chars)
   const captionLength = caption.length;
-  if (captionLength >= 80 && captionLength <= 150) {
+  if (captionLength >= 100 && captionLength <= 200) {
+    score += 3;
+  } else if (captionLength < 80) {
+    tips.push('Caption hơi ngắn, nên dài hơn 100 ký tự để hấp dẫn hơn');
+    score += 1;
+  } else if (captionLength > 250) {
+    tips.push('Caption hơi dài, cân nhắc rút gọn để dễ đọc hơn');
     score += 2;
-  } else if (captionLength < 60) {
-    tips.push('Caption hơi ngắn, nên dài hơn 80 ký tự');
-  } else if (captionLength > 200) {
-    tips.push('Caption hơi dài, cân nhắc rút gọn');
+  } else {
+    score += 2;
   }
   
-  // Check emojis
+  // Check emojis (4-10 is ideal)
   const emojiCount = (caption.match(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]/gu) || []).length;
-  if (emojiCount >= 3 && emojiCount <= 8) {
-    score += 2;
+  if (emojiCount >= 4 && emojiCount <= 10) {
+    score += 3;
   } else if (emojiCount === 0) {
-    tips.push('Thêm emoji để tăng tương tác');
+    tips.push('Thêm emoji để bài viết bắt mắt và tăng tương tác');
+  } else if (emojiCount > 15) {
+    tips.push('Quá nhiều emoji, có thể làm giảm tính chuyên nghiệp');
+    score += 1;
+  } else {
+    score += 2;
   }
   
   // Check CTA
-  const hasCTA = /inbox|nhắn tin|comment|đặt hàng|mua ngay|xem ngay/i.test(caption);
+  const hasCTA = /inbox|nhắn tin|comment|đặt hàng|mua ngay|xem ngay|liên hệ|order|shop/i.test(caption);
   if (hasCTA) {
-    score += 2;
+    score += 3;
   } else {
-    tips.push('Thêm Call-to-Action rõ ràng');
+    tips.push('Thêm Call-to-Action rõ ràng để khách hàng biết làm gì tiếp theo');
   }
   
-  // Check pricing
-  if (product.price) {
+  // Check pricing mention
+  if (product.price && caption.includes(product.price.toLocaleString('vi-VN'))) {
+    score += 2;
+  } else if (product.price) {
+    tips.push('Nên đề cập giá sản phẩm trong caption để tăng tính minh bạch');
     score += 1;
   }
   
-  // Check discount
+  // Check discount mention
   if (product.original_price && product.original_price > product.price) {
+    const discountPercent = Math.round((1 - product.price / product.original_price) * 100);
+    if (caption.includes(`${discountPercent}%`) || caption.includes('giảm') || caption.includes('sale')) {
+      score += 3;
+    } else {
+      tips.push('Nhấn mạnh % giảm giá để tạo sức hút');
+      score += 1;
+    }
+  }
+  
+  // Check brand mention
+  if (product.brand_name && caption.toLowerCase().includes(product.brand_name.toLowerCase())) {
     score += 2;
   }
   
-  const likelihood = score >= 7 ? 'high' : score >= 4 ? 'medium' : 'low';
+  // Check urgency/FOMO
+  const hasUrgency = /hôm nay|ngay|nhanh|số lượng có hạn|sắp hết|chỉ còn|limited/i.test(caption);
+  if (hasUrgency) {
+    score += 2;
+  }
+  
+  // Determine likelihood based on total score
+  const likelihood = score >= 15 ? 'high' : score >= 10 ? 'medium' : 'low';
   
   if (tips.length === 0) {
-    tips.push('Bài viết đã được tối ưu tốt!');
+    tips.push('✅ Bài viết đã được tối ưu tốt!');
   }
   
   return { likelihood, tips };
@@ -344,151 +393,171 @@ function estimateEngagement(caption: string, product: ProductData): {
 // ==================================================
 
 function buildPostPrompt(request: PostGenerationRequest): string {
-  const { product, postType = 'product_showcase', tone = 'friendly', targetAudience, specialOffer } = request;
+  const { 
+    product, 
+    postType = 'product_showcase', 
+    tone = 'friendly', 
+    targetAudience, 
+    specialOffer 
+  } = request;
   
   const template = POST_TEMPLATES[postType] || POST_TEMPLATES['product_showcase'];
   
-  const jsonStructure = `
+  // Calculate discount if available
+  const discountPercent = product.original_price && product.original_price > product.price
+    ? Math.round((1 - product.price / product.original_price) * 100)
+    : 0;
+  
+  const discountAmount = product.original_price && product.original_price > product.price
+    ? product.original_price - product.price
+    : 0;
+
+  return `Bạn là Social Media Expert chuyên viết content cho Facebook với 10+ năm kinh nghiệm về thị trường Việt Nam.
+
+**🎯 THÔNG TIN SẢN PHẨM:**
+📦 Tên: ${product.name}
+${product.seo_title ? `📝 SEO Title: ${product.seo_title}` : ''}
+${product.seo_description ? `📄 SEO Description: ${product.seo_description}` : ''}
+${product.description ? `💬 Mô tả: ${product.description}` : ''}
+💰 Giá: **${product.price.toLocaleString('vi-VN')}đ**
+${product.original_price ? `~~${product.original_price.toLocaleString('vi-VN')}đ~~ 🔥 **GIẢM ${discountPercent}% - TIẾT KIỆM ${discountAmount.toLocaleString('vi-VN')}đ**` : ''}
+${product.brand_name ? `🏷️ Thương hiệu: **${product.brand_name}**` : ''}
+📁 Danh mục: ${product.category || 'Thời trang'}
+📸 Số ảnh: ${product.images.length}
+${product.stock !== undefined ? `📊 Tồn kho: ${product.stock}` : ''}
+
+**📱 YÊU CẦU BÀI ĐĂNG:**
+🎭 Loại bài: **${postType}** (${template.keywords.join(', ')})
+🎯 Tone: **${tone}**
+${targetAudience ? `👥 Đối tượng: ${targetAudience}` : ''}
+${specialOffer ? `🎁 Ưu đãi: ${specialOffer}` : ''}
+
+**📐 CẤU TRÚC BÀI ĐĂNG:**
+${template.structure}
+Emoji gợi ý: ${template.emojis.join(' ')}
+
+**⚡ QUY TẮC VÀNG (BẮT BUỘC):**
+
+1. **HOOK - Câu mở đầu (60-80 ký tự):**
+   - Phải hấp dẫn, tạo tò mò, khiến người đọc muốn xem tiếp
+   - Bắt đầu với emoji phù hợp
+   - Đặt câu hỏi HOẶC tạo FOMO HOẶC đưa ra lời hứa hấp dẫn
+   - VD: "✨ Chị em ơi! Set vest này đang gây sốt đây 😍"
+
+2. **BODY - Nội dung chính (100-150 ký tự):**
+   - 3-5 câu ngắn, súc tích
+   - Tập trung BENEFIT (lợi ích khách hàng), KHÔNG chỉ feature
+   - Kể câu chuyện/tạo cảm xúc, KHÔNG liệt kê khô khan
+   - Sử dụng emoji để ngắt đoạn, dễ đọc
+   ${discountPercent > 0 ? `- BẮT BUỘC nhắc đến GIẢM ${discountPercent}% và TIẾT KIỆM ${discountAmount.toLocaleString('vi-VN')}đ` : ''}
+   ${product.brand_name ? `- Nhắc đến thương hiệu "${product.brand_name}" 1-2 lần` : ''}
+
+3. **PRICING - Giá cả:**
+   - Format chuẩn: ${product.price.toLocaleString('vi-VN')}đ (có dấu chấm ngăn cách)
+   ${discountPercent > 0 ? `- Nhấn mạnh: "Giá sale chỉ ${product.price.toLocaleString('vi-VN')}đ (giảm ${discountPercent}%)"` : ''}
+   - Đặt giá ở cuối body, trước CTA
+
+4. **CTA - Lời kêu gọi hành động:**
+   - Chọn 1 trong các CTA sau (hoặc tạo tương tự):
+   ${ENGAGEMENT_BEST_PRACTICES.call_to_action.map(cta => `   ${cta}`).join('\n')}
+   - Đặt CTA ở cuối caption
+   - Phải có emoji liên quan
+
+5. **EMOJI (4-10 emoji):**
+   - Dùng emoji ${template.emojis.join(' ')} và emoji phù hợp khác
+   - Đặt ở đầu hook, đầu sections, highlight điểm quan trọng
+   - KHÔNG mỗi dòng 1 emoji
+
+6. **TONE & LANGUAGE:**
+   ${tone === 'professional' ? '- Chuyên nghiệp nhưng thân thiện, đáng tin cậy' : ''}
+   ${tone === 'friendly' ? '- Thân thiện như trò chuyện với bạn bè, dùng "chị em", "các bạn"' : ''}
+   ${tone === 'enthusiastic' ? '- Nhiệt tình, năng động, dùng nhiều dấu chấm than!' : ''}
+   ${tone === 'luxury' ? '- Sang trọng, tinh tế, dùng từ ngữ đẳng cấp' : ''}
+   ${tone === 'casual' ? '- Thoải mái, tự nhiên, có thể dùng teen code nhẹ' : ''}
+   ${tone === 'urgent' ? '- Khẩn cấp, tạo FOMO: "Nhanh tay", "Chỉ hôm nay", "Sắp hết"' : ''}
+   - Dùng tiếng Việt tự nhiên, KHÔNG dịch máy
+   - Tránh từ sáo: "chất lượng tốt", "giá rẻ", "đáng đồng tiền"
+   - Dùng từ cảm xúc: "yêu thích", "mê mẩn", "cực xinh", "sang chảnh"
+
+7. **SEO INTEGRATION:**
+   ${product.seo_title ? `- Tích hợp từ khóa: "${product.seo_title}"` : ''}
+   ${product.seo_description ? `- Tham khảo value: "${product.seo_description}"` : ''}
+   - Caption và SEO phải nhất quán, bổ trợ nhau
+
+8. **POST TYPE SPECIFIC:**
+${postType === 'product_update' ? `
+   - Nhấn mạnh "CẬP NHẬT MỚI", "HOÀN THIỆN HƠN", "BỔ SUNG"
+   - Giải thích điểm gì đã thay đổi/cải thiện
+   - Tạo cảm giác sản phẩm đang được chăm chút kỹ lưỡng
+` : ''}
+${postType === 'new_product' ? `
+   - Nhấn mạnh "MỚI VỀ ✨", "VỪA RA MẮT 🎉", "HOT HOT 🔥"
+   - Tạo độc quyền: "Chỉ có tại shop", "Limited edition"
+   - Khuyến khích đặt hàng sớm: "Về số lượng có hạn"
+` : ''}
+${postType === 'sale' || postType === 'flash_sale' ? `
+   - URGENCY tối đa: "CHỈ HÔM NAY ⚡", "24H CUỐI 🔥", "NHANH TAY ⏰"
+   - Nhấn mạnh discount: "GIẢM ${discountPercent}% 💥"
+   - FOMO: "Hết size là hết", "Không còn lần sau"
+   - Countdown mental: "Chỉ còn X giờ"
+` : ''}
+${postType === 'product_showcase' ? `
+   - Kể câu chuyện: "Phong cách của người tự tin"
+   - Lifestyle benefit: "Tự tin đi làm, gây ấn tượng"
+   - Social proof nếu có: "Đã có XXX khách hàng yêu thích"
+` : ''}
+
+9. **CHI TIẾT QUAN TRỌNG:**
+   - Caption PHẢI tự nhiên như người viết, KHÔNG giống AI
+   - Độ dài tổng: 400-800 ký tự, chia 2-4 đoạn ngắn, có xuống dòng rõ ràng để dễ đọc
+   - PHẢI có ít nhất 4 emoji phù hợp ngữ cảnh
+   - PHẢI có CTA rõ ràng
+   - PHẢI format giá đúng chuẩn VN
+   - Engagement score: 75-95 (thực tế, không phóng đại)
+
+10. **A/B TESTING VARIANTS:**
+   - Tạo 2 phiên bản khác nhau về:
+     * Hook: Tò mò vs Lợi ích vs Social proof
+     * Tone: Formal vs Casual
+     * CTA: Khác nhau
+   - Mỗi variant phải có engagement_score
+
+**📋 TRẢ VỀ JSON (KHÔNG CÓ TEXT KHÁC):**
+
 {
   "posts": [
     {
-      "caption": "Caption bài đăng hoàn chỉnh (80-150 ký tự cho preview tốt)",
-      "hook": "Câu mở đầu hấp dẫn (1-2 câu)",
-      "body": "Nội dung chính (3-5 câu)",
-      "call_to_action": "Lời kêu gọi hành động",
+      "caption": "Caption hoàn chỉnh 400-800 ký tự, có chia đoạn, storytelling cuốn hút",
+      "hook": "Câu mở đầu 60-80 ký tự",
+      "body": "Nội dung chính 100-150 ký tự",
+      "call_to_action": "CTA với emoji",
       "engagement_score": 85,
       "best_time_to_post": ["9:00-11:00", "19:00-21:00"]
     }
   ],
   "alternatives": [
     {
-      "caption": "Phiên bản thay thế cho A/B testing",
-      "hook": "Hook khác biệt",
-      "body": "Body khác biệt",
-      "call_to_action": "CTA khác biệt",
-      "engagement_score": 80,
-      "best_time_to_post": ["9:00-11:00", "19:00-21:00"]
+      "caption": "Phiên bản thay thế",
+      "hook": "Hook khác",
+      "body": "Body khác",
+      "call_to_action": "CTA khác",
+      "engagement_score": 82,
+      "best_time_to_post": ["12:00-13:00", "20:00-22:00"]
     }
   ],
   "suggested_images": [
-    "Mô tả ảnh 1 (ví dụ: ảnh chính sản phẩm trên nền trắng)",
-    "Mô tả ảnh 2 (ví dụ: ảnh chi tiết chất liệu)",
-    "Mô tả ảnh 3 (ví dụ: ảnh lifestyle/người mặc)"
+    "Ảnh 1: Sản phẩm chính trên nền đẹp",
+    "Ảnh 2: Chi tiết chất liệu/đường may",
+    "Ảnh 3: Người mặc/lifestyle"
   ]
 }
-`;
 
-  return `Bạn là Social Media Expert chuyên viết content cho Facebook với kinh nghiệm về thị trường Việt Nam và tâm lý khách hàng.
-
-**THÔNG TIN SẢN PHẨM:**
-🏷️ Tên: ${product.name}
-${product.seo_title ? `📝 SEO Title: ${product.seo_title}` : ''}
-${product.seo_description ? `📄 SEO Description: ${product.seo_description}` : ''}
-${product.description ? `💬 Mô tả: ${product.description}` : ''}
-💰 Giá: ${product.price.toLocaleString('vi-VN')}đ
-${product.original_price ? `🔥 Giá gốc: ${product.original_price.toLocaleString('vi-VN')}đ` : ''}
-${product.brand_name ? `🏷️ Thương hiệu: ${product.brand_name}` : ''}
-📦 Danh mục: ${product.category || 'N/A'}
-📸 Số ảnh: ${product.images.length}
-${product.stock !== undefined ? `📊 Tồn kho: ${product.stock}` : ''}
-
-**YÊU CẦU BÀI ĐĂNG:**
-📱 Loại bài: ${postType}
-🎭 Tone: ${tone}
-${targetAudience ? `🎯 Đối tượng: ${targetAudience}` : ''}
-${specialOffer ? `🎁 Ưu đãi đặc biệt: ${specialOffer}` : ''}
-
-**CẤU TRÚC BÀI ĐĂNG:**
-${template.structure}
-
-**QUY TẮC VÀNG - BẮT BUỘC TUÂN THỦ:**
-
-1. **CẤU TRÚC CAPTION:**
-   - Câu đầu tiên (hook): Ngắn gọn, hấp dẫn, tạo tò mò (max 60 ký tự)
-   - Nội dung chính: 3-5 câu, tập trung vào lợi ích khách hàng
-   - Call-to-Action: Rõ ràng, dễ thực hiện
-   - Tổng độ dài: 80-150 ký tự cho phần preview tốt nhất
-
-2. **SỬ DỤNG EMOJI (${template.emojis.join(' ')}):**
-   - Dùng 3-8 emoji phù hợp với ngữ cảnh
-   - Đặt ở đầu sections, KHÔNG mỗi dòng
-   - Tránh lạm dụng emoji giống nhau
-
-3. **NGÔN NGỮ & TONE:**
-   ${tone === 'professional' ? '- Chuyên nghiệp, lịch sự, đáng tin cậy' : ''}
-   ${tone === 'friendly' ? '- Thân thiện, gần gũi, dễ tiếp cận' : ''}
-   ${tone === 'enthusiastic' ? '- Nhiệt tình, năng động, tràn đầy năng lượng' : ''}
-   ${tone === 'luxury' ? '- Sang trọng, tinh tế, đẳng cấp' : ''}
-   ${tone === 'casual' ? '- Thoải mái, tự nhiên, như trò chuyện bạn bè' : ''}
-   ${tone === 'urgent' ? '- Khẩn cấp, tạo FOMO, kêu gọi hành động ngay' : ''}
-   - Dùng tiếng Việt tự nhiên, KHÔNG dịch thuật máy móc
-   - Tránh từ ngữ sáo rỗng: "chất lượng tốt", "giá rẻ"
-   - Tập trung vào BENEFIT, không chỉ FEATURE
-
-4. **PRICING & OFFERS:**
-   ${product.original_price && product.original_price > product.price ? `
-   - HIGHLIGHT discount: Giảm ${Math.round((1 - product.price / product.original_price) * 100)}%
-   - Nhấn mạnh "tiết kiệm được ${(product.original_price - product.price).toLocaleString('vi-VN')}đ"
-   ` : ''}
-   ${product.brand_name ? `- Nhắc đến thương hiệu "${product.brand_name}" để tăng độ tin cậy` : ''}
-   - Format giá: ${product.price.toLocaleString('vi-VN')}đ (có dấu chấm phân cách)
-
-5. **CALL-TO-ACTION (CHỌN 1):**
-   ${ENGAGEMENT_BEST_PRACTICES.call_to_action.map(cta => `- "${cta}"`).join('\n   ')}
-   - Đặt CTA ở cuối caption
-   - Có thể thêm link đến sản phẩm
-
-6. **SEO INTEGRATION:**
-   ${product.seo_title ? `- Tích hợp từ khóa từ SEO Title: "${product.seo_title}"` : ''}
-   ${product.seo_description ? `- Tham khảo SEO Description để hiểu value proposition: "${product.seo_description}"` : ''}
-   - Đảm bảo caption và SEO content nhất quán
-
-7. **A/B TESTING VARIANTS:**
-   - Tạo 2-3 phiên bản khác nhau về:
-     + Hook khác biệt (tò mò vs lợi ích vs social proof)
-     + Tone khác biệt (formal vs casual)
-     + CTA khác biệt
-   - Mỗi variant phải có engagement_score dự đoán (0-100)
-
-8. **IMAGE SUGGESTIONS:**
-   - Dựa vào số lượng ảnh có sẵn (${product.images.length} ảnh)
-   - Đề xuất thứ tự hiển thị tối ưu
-   - Gợi ý loại ảnh nào nên đặt ở vị trí nào
-
-9. **BEST PRACTICES:**
-   - KHÔNG copy paste từ product description
-   - KHÔNG dùng các từ như: "sản phẩm này", "chúng tôi"
-   - DÙng ngôn ngữ cảm xúc, kể câu chuyện
-   - Tạo kết nối với khách hàng
-   - Highlight unique selling points
-
-10. **POST TYPE SPECIFIC:**
-${postType === 'new_product' ? `
-    - Nhấn mạnh "MỚI VỀ", "VỪA RA MẮT"
-    - Tạo cảm giác độc quyền, khan hiếm
-    - Khuyến khích đặt hàng sớm
-` : ''}
-${postType === 'sale' || postType === 'flash_sale' ? `
-    - Tạo URGENCY: "Chỉ hôm nay", "Số lượng có hạn"
-    - Hiển thị rõ discount percentage
-    - Countdown timer mental image
-` : ''}
-${postType === 'product_showcase' ? `
-    - Kể câu chuyện sản phẩm
-    - Tập trung vào lifestyle benefit
-    - Social proof nếu có
-` : ''}
-
-**CRITICAL REMINDERS:**
-- Caption PHẢI tự nhiên như người viết, KHÔNG như AI
-- PHẢI có ít nhất 3 emoji phù hợp
-- PHẢI có CTA rõ ràng
-- PHẢI format giá đúng chuẩn Việt Nam
-- Engagement score PHẢI thực tế (70-95), KHÔNG phóng đại
-
-Trả về JSON DẠNG SAU, KHÔNG có văn bản khác:
-
-${jsonStructure}
+**🚀 LƯU Ý CUỐI:**
+- KHÔNG copy paste từ description
+- KHÔNG dùng "sản phẩm này", "chúng tôi"
+- DÙng ngôn ngữ cảm xúc, tạo kết nối
+- Highlight unique selling points
+- Caption phải VIRAL-READY, not boring!
 `;
 }
 
@@ -502,26 +571,53 @@ export async function generateFacebookPost(
   const startTime = Date.now();
   
   try {
-    console.log('🤖 Generating Facebook post with Gemini AI...');
-    
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
-      generationConfig: {
-        temperature: 0.7, // Creative but controlled
-        maxOutputTokens: 8000,
-        responseMimeType: "application/json",
-      },
-    });
+    console.log(`🤖 Generating ${request.postType || 'product_showcase'} post for: ${request.product.name}`);
 
     const prompt = buildPostPrompt(request);
-    
-    console.log('📝 Prompt preview (first 500 chars):', prompt.substring(0, 500));
-    
-    const result = await model.generateContent([prompt]);
-    const text = result.response.text();
-    const parsed: any = parseGeminiJSON(text);
 
-    console.log(`✅ Gemini generated ${parsed.posts?.length || 0} posts`);
+    // Use OpenRouter as primary
+    let parsed: any;
+    try {
+      const { content: aiContent } = await callOpenRouterChat({
+        model: "openai/gpt-4o-mini", // Reliable and fast
+        messages: [
+          {
+            role: "system",
+            content: "Bạn là chuyên gia Social Media cho thị trường Việt Nam. Luôn trả về DUY NHẤT JSON đúng schema, không text ngoài JSON. Viết caption tự nhiên, hấp dẫn như người thật.",
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        maxTokens: 3000,
+        temperature: 0.8, // Tăng creativity
+      });
+
+      parsed = parseGeminiJSON(aiContent || "");
+      console.log(`✅ OpenRouter generated ${parsed.posts?.length || 0} posts`);
+    } catch (err) {
+      console.error("⚠️ OpenRouter failed, trying Gemini fallback:", err);
+
+      if (!geminiApiKey) {
+        throw new Error("OpenRouter error và không có GEMINI_API_KEY để fallback");
+      }
+
+      // Gemini fallback
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-exp",
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 3000,
+        },
+      });
+
+      const result = await model.generateContent([prompt]);
+      const text = result.response.text();
+      parsed = parseGeminiJSON(text);
+
+      console.log(`✅ Gemini fallback generated ${parsed.posts?.length || 0} posts`);
+    }
 
     // Process main posts
     const generatedPosts: GeneratedPost[] = [];
@@ -554,12 +650,12 @@ export async function generateFacebookPost(
           emojiCount,
           readingTime: `${Math.ceil(post.caption.split(/\s+/).length / 200)} phút`,
           generatedAt: new Date().toISOString(),
-          aiModel: "gemini-2.0-flash-exp",
+          aiModel: "openrouter-gpt4o-mini-or-gemini",
         },
       });
     }
 
-    // Process alternatives for A/B testing
+    // Process alternatives
     const alternatives: GeneratedPost[] = [];
     
     for (const alt of parsed.alternatives || []) {
@@ -590,14 +686,14 @@ export async function generateFacebookPost(
           emojiCount,
           readingTime: `${Math.ceil(alt.caption.split(/\s+/).length / 200)} phút`,
           generatedAt: new Date().toISOString(),
-          aiModel: "gemini-2.0-flash-exp",
+          aiModel: "openrouter-gpt4o-mini-or-gemini",
         },
       });
     }
 
     const processingTime = Date.now() - startTime;
 
-    console.log(`✅ Complete! Generated ${generatedPosts.length} posts with ${alternatives.length} alternatives in ${processingTime}ms`);
+    console.log(`✅ Generated ${generatedPosts.length} posts + ${alternatives.length} alternatives in ${processingTime}ms`);
     
     return {
       success: true,
@@ -607,7 +703,7 @@ export async function generateFacebookPost(
     };
 
   } catch (error) {
-    console.error("❌ Fatal error:", error);
+    console.error("❌ Fatal error in generateFacebookPost:", error);
     return {
       success: false,
       posts: [],
@@ -618,17 +714,13 @@ export async function generateFacebookPost(
 }
 
 // ==================================================
-// HELPER: Generate Post Preview
+// HELPER FUNCTIONS
 // ==================================================
 
 export function generatePostPreview(post: GeneratedPost): string {
-  const preview = post.captionWithoutHashtags.substring(0, 60);
-  return preview + (post.captionWithoutHashtags.length > 60 ? '...' : '');
+  const preview = post.captionWithoutHashtags.substring(0, 80);
+  return preview + (post.captionWithoutHashtags.length > 80 ? '...' : '');
 }
-
-// ==================================================
-// HELPER: Get Best Posting Time
-// ==================================================
 
 export function getBestPostingTimes(): string[] {
   return [
@@ -640,34 +732,34 @@ export function getBestPostingTimes(): string[] {
 }
 
 // ==================================================
-// Export for testing
+// TEST FUNCTION
 // ==================================================
 
 export const testGeneratePost = async (productId: string) => {
-  // Mock product data for testing
   const mockProduct: ProductData = {
     id: productId,
-    name: 'Áo Sơ Mi Nam Công Sở',
-    slug: 'ao-so-mi-nam-cong-so',
-    description: 'Áo sơ mi nam cao cấp, chất liệu cotton thoáng mát',
-    price: 350000,
-    original_price: 450000,
+    name: 'Set Áo Vest Ghì-lê Đáng Peplum Tay Cộc & Quần Ống Rộng Xếp Ly Màu Xám Trơn',
+    slug: 'set-ao-vest-ghi-le-dang-peplum-tay-coc-quan-ong-rong-xep-ly-mau-xam-tro',
+    description: 'Set vest cao cấp, thiết kế peplum tôn dáng, quần xếp ly sang trọng',
+    price: 850000,
+    original_price: 1200000,
     brand_name: 'BEWO Fashion',
-    seo_title: 'Áo Sơ Mi Nam Công Sở Cao Cấp - BEWO Fashion',
-    seo_description: 'Áo sơ mi nam công sở chất liệu cotton cao cấp, thiết kế lịch sự, phù hợp đi làm và dự tiệc',
-    category: 'Thời trang nam',
+    seo_title: 'Set Vest Nữ Công Sở Cao Cấp - BEWO Fashion',
+    seo_description: 'Set vest nữ thiết kế peplum hiện đại, quần ống rộng xếp ly thanh lịch, phù hợp đi làm và dự tiệc',
+    category: 'Thời trang nữ',
     images: [
       'https://example.com/image1.jpg',
       'https://example.com/image2.jpg',
+      'https://example.com/image3.jpg',
     ],
-    stock: 50,
+    stock: 25,
   };
 
   return await generateFacebookPost({
     product: mockProduct,
-    postType: 'product_showcase',
-    tone: 'professional',
+    postType: 'product_update',
+    tone: 'friendly',
     includeHashtags: true,
-    customHashtags: ['BEWOFashion', 'thờitrangcôngở'],
+    customHashtags: ['BEWOFashion', 'veststyle'],
   });
 };

@@ -1,11 +1,11 @@
 // services/geminiSEOService.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
-
+import { callOpenRouterChat } from "./openRouterClient.ts";
 /**
  * Gemini client init
  * Ensure REACT_APP_GEMINI_API_KEY is set in env for client-side usage.
  */
-const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY || "");
+const genAI = new GoogleGenerativeAI(process.env.REACT_APP_GEMINI_API_KEY|| "");
 
 /* ---------------- Types ---------------- */
 
@@ -280,10 +280,13 @@ TRẢ VỀ JSON (không có markdown backticks):
  */
 export async function generateSEOContent(request: SEOContentRequest): Promise<SEOContentResponse> {
   try {
+    // Nếu muốn dùng Gemini: bỏ comment đoạn dưới và đảm bảo có GEMINI_API_KEY
+    /*
     const model: any = genAI.getGenerativeModel({
       model: "gemini-2.0-flash-exp",
       generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
     });
+    */
 
     // Collect real product images
     const MAX_IMAGES = 3;
@@ -340,15 +343,31 @@ export async function generateSEOContent(request: SEOContentRequest): Promise<SE
     // Build prompt and call Gemini
     const prompt = buildSEOPromptWithImages(request, validParts.length);
 
-    let result: any;
-    if (validParts.length > 0) {
-      const partsArray = [prompt, ...validParts];
-      result = await model.generateContent(partsArray as any);
-    } else {
-      result = await model.generateContent(prompt as any);
-    }
+    // Gọi OpenRouter (default) với prompt đã build
+    // Có thể đổi model theo ý muốn, ví dụ:
+    // - "anthropic/claude-3.5-sonnet"
+    // - "openai/gpt-4.1-mini"
+    // - "meta-llama/llama-3.1-70b-instruct"
+    const { content: aiContent } = await callOpenRouterChat({
+      // TRÁNH model free bị limit, dùng model ổn định hơn:
+      // Gợi ý: "anthropic/claude-3.5-sonnet", "openai/gpt-4.1-mini", "meta-llama/llama-3.1-70b-instruct"
+      model: "openrouter/polaris-alpha",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Bạn là chuyên gia SEO & content marketing cho cửa hàng thời trang cao cấp. Trả về DUY NHẤT JSON hợp lệ theo format yêu cầu, không kèm giải thích.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      maxTokens: 10000,
+      temperature: 0.7,
+    });
 
-    const text: string = result?.response?.text?.() ?? String(result?.text ?? "");
+    const text: string = aiContent ?? "";
     const parsed = parseGeminiJSON(text);
 
     // Normalize SEO fields

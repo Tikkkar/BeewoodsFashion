@@ -5,8 +5,9 @@
 // ==================================================
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { FacebookApiClient } from './facebook/facebookApiClient.ts';
-import { TargetingValidator } from './facebook/validatorService.ts';
+import { callOpenRouterChat } from "./openRouterClient.ts";
+import { FacebookApiClient } from "./facebook/facebookApiClient.ts";
+import { TargetingValidator } from "./facebook/validatorService.ts";
 import type {
   EnhancedTargetingOption,
   EnhancedFacebookAdTargetingResponse,
@@ -376,50 +377,64 @@ export async function generateEnhancedAdTargeting(
   const startTime = Date.now();
   const {
     validateWithFacebook = true,
-    locale = 'vi_VN',
+    locale = "vi_VN",
   } = request;
 
   try {
-    // Step 1: Generate targeting with Gemini
-    console.log('🤖 Step 1: Generating targeting with Gemini AI...');
-    
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
-      generationConfig: { 
-        temperature: 0.3, // LOWERED from 0.7 to 0.3 for better instruction following
-        maxOutputTokens: 50000,
-        responseMimeType: "application/json",
-      },
-    });
+    // Step 1: Generate targeting with OpenRouter (thay cho Gemini trực tiếp)
+    console.log("🤖 Step 1: Generating targeting with OpenRouter...");
 
-    // Process image
-    let imagePart: any;
-    if (request.imageData.startsWith("data:image")) {
-      const [header, data] = request.imageData.split(",");
-      const mimeType = header.match(/:(.*?);/)?.[1];
-      if (!data || !mimeType) {
-        throw new Error("Invalid Base64 image format");
+    // Process image -> base64 data URL (text) để nhúng vào prompt (vì hiện đang dùng text-only models)
+    let imageDataText = "";
+    if (request.imageData) {
+      try {
+        if (request.imageData.startsWith("data:image")) {
+          imageDataText =
+            "Dữ liệu ảnh (base64, rút gọn để mô tả): " +
+            request.imageData.substring(0, 200) +
+            "...";
+        } else {
+          imageDataText = "URL ảnh sản phẩm: " + request.imageData;
+        }
+      } catch {
+        imageDataText = "";
       }
-      imagePart = { inlineData: { data, mimeType } };
-    } else {
-      const response = await fetch(request.imageData);
-      if (!response.ok) {
-        throw new Error(`Cannot load image from URL: ${response.statusText}`);
-      }
-      const blob = await response.blob();
-      const base64String = await blobToBase64(blob);
-      const data = base64String.split(",")[1];
-      imagePart = { inlineData: { data, mimeType: blob.type } };
     }
 
-    const prompt = buildEnhancedPrompt(request);
+    const prompt = buildEnhancedPrompt(request) + `
     
-    // NEW: Log prompt preview for debugging
-    console.log('📝 Prompt preview (first 500 chars):', prompt.substring(0, 500));
-    
-    const result = await model.generateContent([prompt, imagePart]);
-    const text = result.response.text();
-    const parsed: any = parseGeminiJSON(text);
+THÔNG TIN ẢNH (CHO PHÂN TÍCH NGỮ CẢNH, KHÔNG CẦN TRẢ VỀ):
+${imageDataText}
+
+NHẮC LẠI: Trả về DUY NHẤT JSON đúng cấu trúc, không kèm giải thích.`;
+
+    console.log(
+      "📝 Prompt preview (first 500 chars):",
+      prompt.substring(0, 500)
+    );
+
+    const { content: aiContent } = await callOpenRouterChat({
+      // Gợi ý model ổn định:
+      // - "anthropic/claude-3.5-sonnet"
+      // - "openai/gpt-4.1-mini"
+      // - "meta-llama/llama-3.1-70b-instruct"
+      model: "openrouter/polaris-alpha",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Bạn là chuyên gia Facebook Ads & Marketing tại Việt Nam. Luôn trả về DUY NHẤT JSON hợp lệ đúng schema yêu cầu, không thêm text ngoài JSON.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      maxTokens: 4000,
+      temperature: 0.3,
+    });
+
+    const parsed: any = parseGeminiJSON(aiContent || "");
 
     console.log(`✅ Gemini generated ${parsed.targeting_options?.length || 0} targeting options`);
 
@@ -467,7 +482,7 @@ export async function generateEnhancedAdTargeting(
         },
         metadata: {
           generatedAt: new Date().toISOString(),
-          aiModel: "gemini-2.0-flash-exp",
+          aiModel: "openrouter-anthropic/claude-3.5-sonnet",
           fbApiVersion: "v21.0",
         },
       };

@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  History, Eye, Trash2, RefreshCw, ExternalLink, 
-  Clock, CheckCircle, XCircle, Loader2, AlertCircle
-} from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import {
+  History,
+  Eye,
+  Trash2,
+  RefreshCw,
+  ExternalLink,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from "../../lib/supabase";
 
 const FacebookPostsHistory = () => {
   const [posts, setPosts] = useState([]);
@@ -71,15 +79,15 @@ const FacebookPostsHistory = () => {
     try {
       // Call edge function to retry this post
       const response = await fetch(
-        `${import.meta.env.REACT_APP_SUPABASE_URL}/functions/v1/facebook-auto-poster`,
+        `${SUPABASE_URL}/functions/v1/facebook-auto-poster`,
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${import.meta.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({
-            action: 'RETRY_FAILED_POST',
+            action: "RETRY_FAILED_POST",
             payload: { post_id: postId },
           }),
         }

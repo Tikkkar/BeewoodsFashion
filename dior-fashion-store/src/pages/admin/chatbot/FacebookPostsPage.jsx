@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabase";
-import { Loader2, RotateCcw, XCircle, PlayCircle, RefreshCw, Edit3 } from "lucide-react";
+import { Loader2, RotateCcw, XCircle, PlayCircle, RefreshCw, Edit3, Send } from "lucide-react";
 import FacebookPostEditor from "./FacebookPostEditor";
 
 const STATUS_COLORS = {
@@ -14,8 +14,7 @@ const STATUS_COLORS = {
 };
 
 const statusBadge = (status) => {
-  const cls =
-    STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
+  const cls = STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
   return (
     <span
       className={
@@ -39,6 +38,7 @@ const FacebookPostsPage = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
+  const [postingNow, setPostingNow] = useState({}); // Track individual post posting status
   const [error, setError] = useState("");
   const [selectedPost, setSelectedPost] = useState(null);
 
@@ -61,21 +61,27 @@ const FacebookPostsPage = () => {
     }
   };
 
-  const callAutoPoster = async (action, payload = {}, showLoading = true) => {
+  const callAutoPoster = async (action, payload = {}, showLoading = true, postId = null) => {
     try {
-      if (showLoading) setRunning(true);
+      if (showLoading) {
+        if (postId) {
+          setPostingNow(prev => ({ ...prev, [postId]: true }));
+        } else {
+          setRunning(true);
+        }
+      }
       setError("");
 
-      const url =
+      const url = 
+        import.meta.env.REACT_APP_SUPABASE_URL||  
         import.meta.env.VITE_SUPABASE_FUNCTION_URL ||
         import.meta.env.VITE_FUNCTIONS_BASE_URL ||
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+        `${import.meta.env.REACT_APP_SUPABASE_URL}/functions/v1`;
 
       const res = await fetch(`${url}/facebook-auto-poster`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // Edge Function sẽ dùng JWT từ supabase client phía server nếu bạn muốn bảo vệ thêm.
         },
         body: JSON.stringify({ action, payload }),
       });
@@ -86,11 +92,27 @@ const FacebookPostsPage = () => {
       }
 
       await fetchPosts();
+      
+      // Show success message for post now action
+      if (action === "POST_NOW") {
+        // You can add a toast notification here if you have one
+        console.log("✅ Đã đăng bài thành công!");
+      }
     } catch (e) {
       console.error(`Error calling ${action}:`, e);
       setError(e.message || `Lỗi khi gọi ${action}`);
     } finally {
-      if (showLoading) setRunning(false);
+      if (showLoading) {
+        if (postId) {
+          setPostingNow(prev => {
+            const newState = { ...prev };
+            delete newState[postId];
+            return newState;
+          });
+        } else {
+          setRunning(false);
+        }
+      }
     }
   };
 
@@ -103,6 +125,12 @@ const FacebookPostsPage = () => {
   const handleCancel = (id) =>
     callAutoPoster("CANCEL_POST", { post_id: id }, false);
 
+  const handlePostNow = (id) => {
+    if (window.confirm("Đăng bài này lên Facebook ngay bây giờ?")) {
+      callAutoPoster("POST_NOW", { post_id: id }, true, id);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -112,11 +140,10 @@ const FacebookPostsPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">
-            Facebook Auto-Post Queue
-          </h1>
+          <h1 className="text-2xl font-bold">Facebook Auto-Post Queue</h1>
           <p className="text-gray-600 text-sm">
-            Theo dõi và điều khiển các bài viết Facebook được tạo tự động từ dữ liệu sản phẩm.
+            Theo dõi và điều khiển các bài viết Facebook được tạo tự động từ dữ
+            liệu sản phẩm.
           </p>
         </div>
 
@@ -195,80 +222,107 @@ const FacebookPostsPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {posts.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 font-mono text-[10px]">
-                      {String(p.id).slice(0, 8)}...
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-semibold">
-                        {p.post_type || "-"}
-                      </div>
-                      <div className="text-[10px] text-gray-500">
-                        {p.triggered_by || ""}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2">
-                      {statusBadge(p.status)}
-                      {p.retry_count > 0 && (
-                        <div className="text-[9px] text-gray-500 mt-0.5">
-                          retry: {p.retry_count}
+                {posts.map((p) => {
+                  const isPostingNow = postingNow[p.id];
+                  const canPostNow = ["pending", "scheduled", "failed", "draft"].includes(p.status);
+
+                  return (
+                    <tr key={p.id} className="hover:bg-gray-50">
+                      <td className="px-3 py-2 font-mono text-[10px]">
+                        {String(p.id).slice(0, 8)}...
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="font-semibold">{p.post_type || "-"}</div>
+                        <div className="text-[10px] text-gray-500">
+                          {p.triggered_by || ""}
                         </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="text-[11px] font-semibold">
-                        {p.product_name || "-"}
-                      </div>
-                      <div className="text-[9px] text-gray-500">
-                        {p.product_slug || ""}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-[10px] text-gray-600">
-                      {p.fb_page_id || "-"}
-                    </td>
-                    <td className="px-3 py-2 text-[10px] text-gray-600">
-                      {formatDateTime(p.scheduled_at)}
-                    </td>
-                    <td className="px-3 py-2 text-[10px] text-gray-600">
-                      {formatDateTime(p.posted_at)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setSelectedPost(p)}
-                          className="inline-flex items-center px-2 py-1 text-[9px] bg-gray-900 text-white rounded hover:bg-black"
-                        >
-                          <Edit3 className="w-3 h-3 mr-1" />
-                          Sửa
-                        </button>
-                        {p.status === "failed" && (
-                          <button
-                            onClick={() => handleRetry(p.id)}
-                            className="inline-flex items-center px-2 py-1 text-[9px] bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-                          >
-                            <RotateCcw className="w-3 h-3 mr-1" />
-                            Retry
-                          </button>
+                      </td>
+                      <td className="px-3 py-2">
+                        {statusBadge(p.status)}
+                        {p.retry_count > 0 && (
+                          <div className="text-[9px] text-gray-500 mt-0.5">
+                            retry: {p.retry_count}
+                          </div>
                         )}
-                        {["pending", "scheduled", "failed"].includes(p.status) && (
-                          <button
-                            onClick={() => handleCancel(p.id)}
-                            className="inline-flex items-center px-2 py-1 text-[9px] bg-red-50 text-red-700 rounded hover:bg-red-100"
-                          >
-                            <XCircle className="w-3 h-3 mr-1" />
-                            Hủy
-                          </button>
-                        )}
-                      </div>
-                      {p.error_message && (
-                        <div className="mt-1 text-[8px] text-red-500 max-w-[180px] truncate">
-                          {p.error_message}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="text-[11px] font-semibold">
+                          {p.product_name || "-"}
                         </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                        <div className="text-[9px] text-gray-500">
+                          {p.product_slug || ""}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-[10px] text-gray-600">
+                        {p.fb_page_id || "-"}
+                      </td>
+                      <td className="px-3 py-2 text-[10px] text-gray-600">
+                        {formatDateTime(p.scheduled_at)}
+                      </td>
+                      <td className="px-3 py-2 text-[10px] text-gray-600">
+                        {formatDateTime(p.posted_at)}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <button
+                            onClick={() => setSelectedPost(p)}
+                            className="inline-flex items-center px-2 py-1 text-[9px] bg-gray-900 text-white rounded hover:bg-black"
+                          >
+                            <Edit3 className="w-3 h-3 mr-1" />
+                            Sửa
+                          </button>
+
+                          {canPostNow && (
+                            <button
+                              onClick={() => handlePostNow(p.id)}
+                              disabled={isPostingNow}
+                              className="inline-flex items-center px-2 py-1 text-[9px] bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isPostingNow ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                                  Đang đăng...
+                                </>
+                              ) : (
+                                <>
+                                  <Send className="w-3 h-3 mr-1" />
+                                  Đăng ngay
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          {p.status === "failed" && (
+                            <button
+                              onClick={() => handleRetry(p.id)}
+                              className="inline-flex items-center px-2 py-1 text-[9px] bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                            >
+                              <RotateCcw className="w-3 h-3 mr-1" />
+                              Retry
+                            </button>
+                          )}
+
+                          {["pending", "scheduled", "failed"].includes(
+                            p.status
+                          ) && (
+                            <button
+                              onClick={() => handleCancel(p.id)}
+                              className="inline-flex items-center px-2 py-1 text-[9px] bg-red-50 text-red-700 rounded hover:bg-red-100"
+                            >
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Hủy
+                            </button>
+                          )}
+                        </div>
+                        {p.error_message && (
+                          <div className="mt-1 text-[8px] text-red-500 max-w-[180px] truncate">
+                            {p.error_message}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
