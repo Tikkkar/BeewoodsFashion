@@ -4,48 +4,74 @@ import { createClient } from "@supabase/supabase-js";
 let supabaseUrl;
 let supabaseAnonKey;
 
-// An toàn khi truy cập import.meta.env (một số môi trường test không có import.meta.env)
+// Detect environment
+const isVite = typeof import.meta !== 'undefined' && import.meta.env;
+const isVercel = process.env.VERCEL === '1';
+
 try {
-  supabaseUrl =
-    process.env.REACT_APP_SUPABASE_URL ||
-    // optional chaining an toàn nếu import.meta tồn tại
-    (typeof import.meta !== 'undefined' ? import.meta?.env?.VITE_SUPABASE_URL : undefined) ||
-    process.env.VITE_SUPABASE_URL ||
-    process.env.SUPABASE_URL;
-
-  supabaseAnonKey =
-    process.env.REACT_APP_SUPABASE_ANON_KEY ||
-    (typeof import.meta !== 'undefined' ? import.meta?.env?.VITE_SUPABASE_ANON_KEY : undefined) ||
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY;
+  if (isVite) {
+    // Vite environment (local dev with Vite)
+    supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  } else if (isVercel) {
+    // Vercel environment - prioritize VITE_ prefix
+    supabaseUrl = 
+      process.env.VITE_SUPABASE_URL || 
+      process.env.REACT_APP_SUPABASE_URL ||
+      process.env.SUPABASE_URL;
+    
+    supabaseAnonKey = 
+      process.env.VITE_SUPABASE_ANON_KEY || 
+      process.env.REACT_APP_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY;
+  } else {
+    // CRA or other environments
+    supabaseUrl = 
+      process.env.REACT_APP_SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      process.env.SUPABASE_URL;
+    
+    supabaseAnonKey = 
+      process.env.REACT_APP_SUPABASE_ANON_KEY ||
+      process.env.VITE_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY;
+  }
 } catch (err) {
-  // Nếu bất kỳ việc đọc import.meta.* gây lỗi (hiếm), fallback sang process.env
-  supabaseUrl =
-    process.env.REACT_APP_SUPABASE_URL ||
+  console.error('Error loading Supabase config:', err);
+  
+  // Fallback
+  supabaseUrl = 
     process.env.VITE_SUPABASE_URL ||
+    process.env.REACT_APP_SUPABASE_URL ||
     process.env.SUPABASE_URL;
-
-  supabaseAnonKey =
-    process.env.REACT_APP_SUPABASE_ANON_KEY ||
+  
+  supabaseAnonKey = 
     process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.REACT_APP_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY;
 }
 
-// Kiểm tra xem có thiếu config không
+// Validate
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Available env vars:', {
+  console.error('❌ Supabase Config Error:', {
     url: supabaseUrl ? '✓ Set' : '✗ Missing',
     key: supabaseAnonKey ? '✓ Set' : '✗ Missing',
-    // show any SUPABASE related keys in process.env for debugging tests/dev
-    allEnvKeys: Object.keys(process.env).filter(k => k.toUpperCase().includes('SUPABASE') || k.toUpperCase().includes('VITE_') || k.toUpperCase().includes('REACT_APP')),
+    isVite,
+    isVercel,
+    availableEnvKeys: Object.keys(process.env || {})
+      .filter(k => /SUPABASE|VITE|REACT_APP/.test(k))
   });
 
   throw new Error(
-    "❌ Missing Supabase credentials! Please check your environment variables."
+    "❌ Missing Supabase credentials! Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Vercel environment variables."
   );
 }
 
-// Tạo Supabase client
+console.log('✅ Supabase initialized:', {
+  url: supabaseUrl.substring(0, 30) + '...',
+  env: isVite ? 'Vite' : isVercel ? 'Vercel' : 'Other'
+});
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
