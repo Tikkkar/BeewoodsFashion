@@ -82,6 +82,16 @@ const AdminLayout = () => {
       path: "/admin/ad-targeting",
       icon: Target,
     },
+      {
+      title: "Facebook - Setting", // Dịch: Conversations
+      path: "/admin/facebook-settings",
+      icon: Target,
+    },
+    {
+      title: "Facebook - post", // Dịch: Conversations
+      path: "/admin/facebook-posts",
+      icon: Target,
+    },
     // {
     //   title: "Kịch bản", // Dịch: Scenarios
     //   path: "/admin/chatbot/scenarios",

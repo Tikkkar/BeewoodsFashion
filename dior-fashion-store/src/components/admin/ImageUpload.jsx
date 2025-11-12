@@ -7,7 +7,7 @@ const ImageUpload = ({ existingImages = [], onFilesChange, onRemoveExisting }) =
   const [previews, setPreviews] = useState(existingImages);
 
   const onDrop = useCallback(acceptedFiles => {
-    const validFiles = acceptedFiles.filter(file => file.size <= 5 * 1024 * 1024);
+    const validFiles = acceptedFiles.filter(file => file.size <= 50 * 1024 * 1024);
     if (validFiles.length < acceptedFiles.length) {
       toast.error('Some images were too large (max 5MB).');
     }
