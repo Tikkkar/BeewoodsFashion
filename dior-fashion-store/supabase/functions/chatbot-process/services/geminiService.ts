@@ -1,19 +1,41 @@
 // ============================================
-// services/geminiService.ts - Deno/Supabase Edge Functions Compatible
+// services/geminiService.ts
+// - OpenRouter-based LLM Client (ACTIVE)
+// - Legacy Gemini SDK config KEPT AS COMMENT for future reuse
+// Deno/Supabase Edge Functions Compatible
 // ============================================
 
-// @ts-ignore - Deno will resolve this at runtime
-import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.21.0";
 import { buildFullPrompt } from "../utils/prompts.ts";
 
-// @ts-ignore - Deno global
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+// ================================
+// LEGACY GEMINI SDK (COMMENTED OUT)
+// ================================
+// import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.21.0";
+// // @ts-ignore - Deno global
+// const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+// if (!GEMINI_API_KEY) {
+//   console.error("⚠️ GEMINI_API_KEY not found in environment variables");
+// }
+// const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
-if (!GEMINI_API_KEY) {
-  console.error("⚠️ GEMINI_API_KEY not found in environment variables");
+// ================================
+// OPENROUTER CONFIG (ACTIVE)
+// ================================
+
+// @ts-ignore Deno global in Supabase Edge Functions
+const OPENROUTER_API_KEY =
+  Deno.env.get("OPENROUTER_API_KEY") || Deno.env.get("OPENROUTER_KEY") || "";
+// @ts-ignore
+const OPENROUTER_BASE_URL =
+  Deno.env.get("OPENROUTER_BASE_URL") ||
+  "https://openrouter.ai/api/v1/chat/completions";
+// @ts-ignore
+const OPENROUTER_MODEL =
+  Deno.env.get("OPENROUTER_MODEL") || "openrouter/polaris-alpha";
+
+if (!OPENROUTER_API_KEY) {
+  console.error("⚠️ OPENROUTER_API_KEY not found in environment variables");
 }
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 interface FunctionCall {
   name: string;
@@ -32,13 +54,11 @@ interface GeminiResponse {
  * Validate address function call
  */
 function validateAddressFunctionCall(args: any): boolean {
-  // 1. Check address_line exists
   if (!args.address_line) {
     console.warn("⚠️ save_address: Missing address_line");
     return false;
   }
 
-  // 2. Check if address_line có số nhà và tên đường
   if (!/^\d+[A-Z]?\s+.+/.test(args.address_line)) {
     console.warn(
       "⚠️ save_address: Invalid address_line format:",
@@ -47,7 +67,6 @@ function validateAddressFunctionCall(args: any): boolean {
     return false;
   }
 
-  // 3. Check if address_line is only numbers
   if (/^[\d\s]+$/.test(args.address_line)) {
     console.warn(
       "⚠️ save_address: address_line is only numbers:",
@@ -56,17 +75,15 @@ function validateAddressFunctionCall(args: any): boolean {
     return false;
   }
 
-  // 4. Validate city
   if (!args.city) {
     console.warn("⚠️ save_address: Missing city");
     return false;
   }
 
-  // 5. Check if address_line looks like product description
   const productKeywords = ["cao cấp", "lớp", "set", "vest", "quần", "áo"];
   if (
     productKeywords.some((keyword) =>
-      args.address_line.toLowerCase().includes(keyword)
+      String(args.address_line).toLowerCase().includes(keyword)
     )
   ) {
     console.warn(
@@ -81,53 +98,164 @@ function validateAddressFunctionCall(args: any): boolean {
 }
 
 /**
- * Call Gemini with function calling support
+ * Call LLM via OpenRouter with function-calling-style JSON response
+ * - API compatible với callGemini hiện tại
+ * - Hỗ trợ override apiKey per-tenant (ưu tiên apiKey truyền vào)
  */
 export async function callGemini(
   context: any,
   userMessage: string,
-  apiKey?: string
+  apiKey?: string,
 ): Promise<GeminiResponse> {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-        responseMimeType: "application/json",
-      },
-    });
-
     const fullPrompt = await buildFullPrompt(context, userMessage);
 
-    console.log("🤖 Calling Gemini with function calling...");
-    console.log("📝 User message:", userMessage.substring(0, 100));
+    console.log("🤖 Calling OpenRouter (Gemini-compatible)...");
+    console.log("📝 User message:", userMessage.substring(0, 160));
 
-    const result = await model.generateContent(fullPrompt);
-    const response = result.response;
-    const rawText = response.text();
+    const effectiveApiKey = apiKey || OPENROUTER_API_KEY;
+    if (!effectiveApiKey) {
+      throw new Error("Missing OpenRouter API key");
+    }
 
-    console.log("📝 Raw Gemini response:", rawText.substring(0, 300));
+    const body = {
+      model: OPENROUTER_MODEL,
+      temperature: 0.7,
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            [
+              "Bạn là Phương - trợ lý chăm sóc khách hàng & tư vấn thời trang cho thương hiệu BeWo (cách xưng hô Em - Chị/Anh như trước đây).",
+              "Bạn giữ đúng phong cách thân thiện, tinh tế, tự nhiên như một nhân sự thật của BeWo, chỉ được làm thông minh hơn nhờ hiểu lịch sử hội thoại & dữ liệu sản phẩm.",
+              "",
+              "YÊU CẦU CHUNG:",
+              "- Giọng nói: thân thiện, tự tin, chuyên nghiệp, không vòng vo, không spam emoji.",
+              "- Trả lời ngắn gọn, rõ ý, ưu tiên giúp khách ra quyết định và chốt đơn.",
+              "- Luôn cá nhân hóa theo ngữ cảnh (sở thích, dáng người, sản phẩm đã nhắc).",
+              "",
+              "ĐỊNH DẠNG RESPONSE (BẮT BUỘC):",
+              "Trả về DUY NHẤT một JSON object:",
+              "{",
+              '  "response": string,                       // Câu trả lời gửi cho khách',
+              '  "type": "showcase" | "mention" | "none", // showcase: đẩy mạnh 1-3 sản phẩm, mention: nhắc nhẹ, none: chỉ tư vấn',
+              '  "product_ids": string[],                 // Danh sách id sản phẩm trong context.products nếu muốn gợi ý',
+              '  "function_calls": [                      // Tùy chọn: gọi các hàm nghiệp vụ',
+              "    {",
+              '      "name": "save_customer_info" | "save_address" | "add_to_cart" | "confirm_and_create_order",',
+              '      "args": { ... }',
+              "    }",
+              "  ]",
+              "}",
+              "KHÔNG ĐƯỢC trả text ngoài JSON.",
+              "",
+              "LUẬT GỢI Ý SẢN PHẨM:",
+              "- Nếu khách mô tả nhu cầu (đi làm, dáng gầy, thích ôm eo, màu cụ thể):",
+              "  + Chọn tối đa 1-3 sản phẩm phù hợp nhất từ context.products → đưa vào product_ids.",
+              "- type = \"showcase\" khi đang highlight combo/mẫu cụ thể.",
+              "- type = \"mention\" khi chỉ nhắc sản phẩm như gợi ý thêm.",
+              "",
+              "QUY TẮC FREESHIP / CHÍNH SÁCH (MẶC ĐỊNH, CÓ THỂ ĐƯỢC TRUYỀN QUA CONTEXT):",
+              "- Nếu context có policy riêng thì ưu tiên dùng policy đó.",
+              "- Nếu không có, dùng rule mặc định:",
+              "  + Đơn từ 799k: FREESHIP.",
+              "  + Đơn từ 300k: áp dụng mã FREESHIP giảm 30k.",
+              "- Luôn trả lời nhất quán, không tự mâu thuẫn.",
+              "",
+              "XỬ LÝ ĐỊA CHỈ (save_address):",
+              "- Hội thoại có thể gửi địa chỉ THÀNH NHIỀU TIN:",
+              "  + Ví dụ: \"Đường Hoàng Hoa Thám Phường Ba Đình Hà Nội nhé\",",
+              "            \"Số nhà 56 ngõ 173 nhé\".",
+              "- NHIỆM VỤ:",
+              "  1) Đọc toàn bộ lịch sử trong context.history.",
+              "  2) Ghép các message liên quan để tạo địa chỉ đầy đủ.",
+              "  3) Chỉ yêu cầu khách bổ sung PHẦN THIẾU (ví dụ thiếu số điện thoại hoặc thiếu quận/phường),",
+              "     không yêu cầu lặp lại toàn bộ nếu đã đủ.",
+              "- Khi đã đủ thông tin địa chỉ (số nhà, đường, phường/xã, quận/huyện, tỉnh/thành):",
+              "  + Tạo function_calls:",
+              "    {",
+              '      "name": "save_address",',
+              '      "args": {',
+              '        "full_name": (nếu có trong context hoặc bỏ trống),',
+              '        "phone": (nếu có),',
+              '        "address_line": "Số nhà + đường + ngõ/hẻm nếu có",',
+              '        "ward": "phường/xã",',
+              '        "district": "quận/huyện",',
+              '        "city": "tỉnh/thành phố"',
+              "      }",
+              "    }",
+              "- Chỉ gọi save_address khi địa chỉ đủ rõ để giao hàng.",
+              "",
+              "THÊM VỀ FUNCTION_CALLS:",
+              "- save_customer_info:",
+              "  + Dùng khi khách cung cấp hoặc xác nhận tên / sđt / email.",
+              "- add_to_cart:",
+              "  + Khi khách nói đồng ý lấy 1 sản phẩm cụ thể.",
+              "  + args: { product_id, size?, quantity? }",
+              "- confirm_and_create_order:",
+              "  + Khi đã có giỏ hàng + địa chỉ + khách xác nhận mua.",
+              "  + args: { confirmed: true }",
+              "",
+              "HÀNH VI THÔNG MINH HƠN:",
+              "- Không lặp câu hỏi một cách vô lý.",
+              "- Dùng thông tin đã có trong lịch sử thay vì hỏi lại.",
+              "- Khi khách đã đồng ý mua và đủ thông tin → chuyển sang chốt đơn rõ ràng.",
+              "",
+              "TUÂN THỦ:",
+              "- Luôn xuất ra đúng JSON như mô tả.",
+              "- Nếu không đủ thông tin để gọi function, chỉ trả \"response\" tư vấn rõ ràng.",
+            ].join("\n"),
+        },
+        {
+          role: "user",
+          content: fullPrompt,
+        },
+      ],
+    };
 
-    // Parse JSON response
+    const res = await fetch(OPENROUTER_BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${effectiveApiKey}`,
+        "HTTP-Referer": "https://bewo.ai",
+        "X-Title": "BEWO AI Chatbot",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error("❌ OpenRouter HTTP error:", res.status, errText);
+      throw new Error(`OpenRouter error: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const choice = data.choices?.[0];
+    const rawText: string = choice?.message?.content ?? "";
+
+    console.log("📝 Raw OpenRouter response:", rawText.substring(0, 400));
+
+    // Parse JSON response từ model
     let parsed: any;
     try {
       parsed = JSON.parse(rawText);
     } catch (e) {
       console.error("❌ JSON parse error:", e);
-      // Fallback: extract JSON từ text
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsed = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error("Cannot parse Gemini response as JSON");
+        throw new Error("Cannot parse LLM response as JSON");
       }
     }
 
     // Extract function calls
-    const functionCalls: FunctionCall[] = parsed.function_calls || [];
+    const functionCalls: FunctionCall[] =
+      parsed.function_calls || parsed.functionCalls || [];
 
-    // Log function calls for debugging
     if (functionCalls.length > 0) {
       console.log(`🔧 Function calls detected: ${functionCalls.length}`);
       functionCalls.forEach((fc, idx) => {
@@ -142,9 +270,7 @@ export async function callGemini(
         return validateAddressFunctionCall(fc.args);
       }
 
-      // Validate other functions if needed
       if (fc.name === "save_customer_info") {
-        // Basic validation
         if (!fc.args.full_name && !fc.args.preferred_name && !fc.args.phone) {
           console.warn("⚠️ save_customer_info: No useful data provided");
           return false;
@@ -168,19 +294,24 @@ export async function callGemini(
     console.log("📦 Product IDs from AI:", productIds);
     console.log("📦 Type from AI:", parsed.type);
 
-    const products = productIds
-      .map((id: string) => {
-        const product = context.products?.find((p: any) => p.id === id);
-        if (!product) {
-          console.warn(`⚠️ Product not found: ${id}`);
-        }
-        return product;
-      })
-      .filter(Boolean);
+    const products =
+      (productIds || [])
+        .map((id: string) => {
+          const product = context.products?.find((p: any) => p.id === id);
+          if (!product) {
+            console.warn(`⚠️ Product not found: ${id}`);
+          }
+          return product;
+        })
+        .filter(Boolean) || [];
 
     console.log("📦 Matched products:", products.length);
 
-    const tokens = response.usageMetadata?.totalTokenCount || 0;
+    const tokens =
+      data.usage?.total_tokens ||
+      data.usage?.output_tokens ||
+      data.usage?.completion_tokens ||
+      0;
 
     return {
       text: parsed.response || "Xin lỗi, em chưa hiểu ý chị ạ 😊",
@@ -190,10 +321,9 @@ export async function callGemini(
       functionCalls: validatedFunctionCalls,
     };
   } catch (error: any) {
-    console.error("❌ Gemini API error:", error);
+    console.error("❌ OpenRouter API error:", error);
     console.error("Error details:", error.message);
 
-    // Return fallback response
     return {
       text: "Xin lỗi chị, hệ thống đang gặp lỗi. Chị vui lòng thử lại sau ạ 🙏",
       tokens: 0,
@@ -205,7 +335,7 @@ export async function callGemini(
 }
 
 /**
- * Call Gemini after function execution để lấy response tiếp theo
+ * Call LLM (OpenRouter) after function execution để lấy response tiếp theo
  */
 export async function callGeminiWithFunctionResult(
   context: any,
@@ -214,16 +344,6 @@ export async function callGeminiWithFunctionResult(
   functionResult: any,
 ): Promise<{ text: string }> {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-exp",
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1024,
-        responseMimeType: "application/json",
-      },
-    });
-
-    // Build prompt with function result
     const fullPrompt = await buildFullPrompt(context, userMessage);
 
     const continuationPrompt = `${fullPrompt}
@@ -239,28 +359,66 @@ NHIỆM VỤ:
 1. Nếu thành công → Thông báo cho khách một cách tự nhiên, thân thiện
 2. Nếu thất bại → Xin lỗi và hướng dẫn khách cung cấp đúng thông tin
 
-VÍ DỤ RESPONSE THÀNH CÔNG (save_address):
-"Dạ em đã ghi nhận địa chỉ của chị rồi ạ! ✨
-Địa chỉ giao hàng: [ĐỊA CHỈ ĐẦY ĐỦ]
-Chị cần em hỗ trợ gì thêm không ạ? 💕"
-
-VÍ DỤ RESPONSE THẤT BẠI:
-"Dạ xin lỗi chị, địa chỉ chưa đầy đủ ạ 😊
-Chị vui lòng cung cấp đầy đủ: số nhà + tên đường + thành phố nhé!"
-
 CHỈ TRẢ JSON:
 {
   "response": "Câu trả lời phù hợp với kết quả function",
   "type": "none",
-  "product_ids": []
+  "product_ids": [],
+  "function_calls": []
 }`;
 
-    const result = await model.generateContent(continuationPrompt);
-    const rawText = result.response.text();
+    const res = await fetch(OPENROUTER_BASE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://bewo.ai",
+        "X-Title": "BEWO AI Chatbot",
+      },
+      body: JSON.stringify({
+        model: OPENROUTER_MODEL,
+        temperature: 0.7,
+        max_tokens: 1024,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content:
+              "Tiếp tục hội thoại sau khi đã thực thi function. " +
+              "Luôn trả về JSON với field 'response' và không thêm giải thích ngoài JSON.",
+          },
+          { role: "user", content: continuationPrompt },
+        ],
+      }),
+    });
 
-    console.log("📝 Continuation response:", rawText.substring(0, 200));
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error(
+        "❌ OpenRouter continuation HTTP error:",
+        res.status,
+        errText,
+      );
+      throw new Error(`OpenRouter continuation error: ${res.status}`);
+    }
 
-    const parsed = JSON.parse(rawText);
+    const data = await res.json();
+    const rawText = data.choices?.[0]?.message?.content ?? "";
+
+    console.log("📝 Continuation response:", rawText.substring(0, 300));
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (e) {
+      console.error("❌ JSON parse error (continuation):", e);
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("Cannot parse continuation response as JSON");
+      }
+    }
 
     return {
       text: parsed.response || "Đã xử lý xong ạ! 💕",
@@ -268,22 +426,18 @@ CHỈ TRẢ JSON:
   } catch (error: any) {
     console.error("❌ Continuation call error:", error);
 
-    // Fallback response based on function result
     if (functionResult.success) {
       if (functionResult.message) {
         return { text: functionResult.message };
       }
-      return {
-        text: "Đã lưu thông tin thành công ạ! ✨",
-      };
-    } else {
-      if (functionResult.message) {
-        return { text: functionResult.message };
-      }
-      return {
-        text: "Có lỗi xảy ra, chị vui lòng thử lại nhé 😊",
-      };
+      return { text: "Đã lưu thông tin thành công ạ! ✨" };
     }
+
+    if (functionResult.message) {
+      return { text: functionResult.message };
+    }
+
+    return { text: "Có lỗi xảy ra, chị vui lòng thử lại nhé 😊" };
   }
 }
 
@@ -291,15 +445,16 @@ CHỈ TRẢ JSON:
  * Health check function
  */
 export function checkGeminiConfig(): { configured: boolean; message: string } {
-  if (!GEMINI_API_KEY) {
+  if (!OPENROUTER_API_KEY) {
     return {
       configured: false,
-      message: "GEMINI_API_KEY is not set in environment variables",
+      message: "OPENROUTER_API_KEY is not set in environment variables",
     };
   }
 
   return {
     configured: true,
-    message: "Gemini API is properly configured",
+    message:
+      `OpenRouter is properly configured (model=${OPENROUTER_MODEL}, base=${OPENROUTER_BASE_URL})`,
   };
 }

@@ -32,6 +32,7 @@ export async function createMessageEmbedding(
     const { error } = await supabase
       .from("conversation_embeddings")
       .insert({
+        tenant_id: tenantId,
         conversation_id: conversationId,
         message_id: messageId,
         content: trimmedContent,
@@ -73,6 +74,7 @@ export async function createSummaryEmbedding(
     const { error: summaryError } = await supabase
       .from("conversation_embeddings")
       .insert({
+        tenant_id: tenantId,
         conversation_id: conversationId,
         message_id: null,
         content: summaryText,
@@ -90,6 +92,7 @@ export async function createSummaryEmbedding(
     // Insert embeddings for each key point
     if (keyPoints.length > 0) {
       const factEmbeddings = keyPoints.map((point: string) => ({
+        tenant_id: tenantId,
         conversation_id: conversationId,
         message_id: null,
         content: point,
@@ -196,6 +199,7 @@ export async function getRecentContext(
  * Used for migration or bulk operations
  */
 export async function batchCreateEmbeddings(
+  tenantId: string,
   conversationId: string,
   messages: Array<{ id: string; content: string; metadata?: any }>,
 ): Promise<{ success: number; failed: number }> {
@@ -205,6 +209,7 @@ export async function batchCreateEmbeddings(
   for (const msg of messages) {
     try {
       await createMessageEmbedding(
+        tenantId,
         conversationId,
         msg.id,
         msg.content,

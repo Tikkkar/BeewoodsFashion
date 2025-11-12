@@ -19,6 +19,7 @@ export async function buildContext(
   const { data: conv } = await supabase
     .from("chatbot_conversations")
     .select("*")
+    .eq("tenant_id", tenantId)
     .eq("id", conversationId)
     .maybeSingle();
 
@@ -60,14 +61,15 @@ export async function buildContext(
   }
 
   // ========================================
-  // 4. GET RECENT MESSAGES (10 tin cuối)
+  // 4. GET RECENT MESSAGES (100 tin gần nhất để tăng trí nhớ cho agent)
   // ========================================
   const { data: messages } = await supabase
     .from("chatbot_messages")
     .select("sender_type, content, created_at")
+    .eq("tenant_id", tenantId)
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
-    .limit(10);
+    .limit(100);
 
   context.history = messages || [];
 
@@ -80,6 +82,7 @@ export async function buildContext(
       id, name, price, stock, slug, description,
       images:product_images(image_url, is_primary, display_order)
     `)
+    .eq("tenant_id", tenantId)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(20);

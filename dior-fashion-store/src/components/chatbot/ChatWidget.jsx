@@ -98,11 +98,24 @@ export default function ChatWidget() {
     if (!input.trim() || loading) return;
 
     const userMessage = input.trim();
+    const tempId = Date.now();
+
+    // 1) Clear input + append user message ngay lập tức (UI phản hồi tức thời)
     setInput("");
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        sender_type: "customer",
+        message_type: "text",
+        content: { text: userMessage },
+        created_at: new Date().toISOString(),
+      },
+    ]);
     setLoading(true);
 
     try {
-      // Gọi Edge Function xử lý tin nhắn
+      // 2) Gọi Edge Function xử lý tin nhắn
       const { data, error } = await supabase.functions.invoke(
         "chatbot-process",
         {
@@ -115,26 +128,68 @@ export default function ChatWidget() {
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Send message error:", error);
+        // Không spam lỗi nếu server trả ra khác 2xx, chỉ update tin nhắn cuối cùng
+        setMessages((prev) => [
+          ...prev.slice(0, -1), // bỏ temp user nếu cần, hoặc giữ tuỳ ý
+          prev[prev.length - 1],
+          {
+            id: `err_${tempId}`,
+            sender_type: "bot",
+            message_type: "text",
+            content: {
+              text:
+                "Xin lỗi, hệ thống đang bận. Vui lòng thử lại sau ít phút nhé! 💕",
+            },
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        return;
+      }
 
-      // Lấy conversation ID từ response hoặc load lại
-      if (!conversationId) {
-        await loadConversationHistory(sessionId);
-      } else {
+      // 3) Nếu thành công: đồng bộ lại từ DB để lấy cả bot message
+      // Ưu tiên: nếu response trả conversation_id thì dùng luôn
+      if (data?.conversation_id && !conversationId) {
+        setConversationId(data.conversation_id);
+        await loadMessages(data.conversation_id);
+      } else if (conversationId) {
         await loadMessages(conversationId);
+      } else {
+        // fallback: tìm lại lịch sử từ session
+        await loadConversationHistory(sessionId);
       }
     } catch (err) {
       console.error("Send message error:", err);
-      // Hiển thị lỗi cho user
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
+      // Với lỗi kết nối, cũng ghi đè bubble cuối thành lỗi mềm để tránh để lại state sai
+      setMessages((prev) => {
+        if (prev.length === 0) {
+          return [
+            {
+              id: `err_${tempId}`,
+              sender_type: "bot",
+              message_type: "text",
+              content: {
+                text:
+                  "Xin lỗi, có lỗi kết nối tạm thời. Vui lòng thử lại giúp em nhé! 💕",
+              },
+              created_at: new Date().toISOString(),
+            },
+          ];
+        }
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          id: `err_${tempId}`,
           sender_type: "bot",
-          content: { text: "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại!" },
+          message_type: "text",
+          content: {
+            text:
+              "Xin lỗi, có lỗi kết nối tạm thời. Vui lòng thử lại giúp em nhé! 💕",
+          },
           created_at: new Date().toISOString(),
-        },
-      ]);
+        };
+        return updated;
+      });
     } finally {
       setLoading(false);
     }

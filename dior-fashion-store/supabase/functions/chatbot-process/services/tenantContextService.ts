@@ -230,7 +230,6 @@ export async function trackUsage(
       tenant_id: tenantId,
       usage_type: usageType,
       quantity,
-      metadata,
       billing_period: new Date().toISOString().split('T')[0], // YYYY-MM-DD
       created_at: new Date().toISOString()
     });

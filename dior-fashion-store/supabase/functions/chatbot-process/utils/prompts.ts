@@ -709,9 +709,11 @@ export async function buildFullPrompt(
     fullContext += `\nSĐT: ${
       context.saved_address.phone || context.profile?.phone || "chưa có"
     }\n`;
-    fullContext += "\n⚠️ KHI CHỐT ĐƠN: Dùng địa chỉ THẬT này để xác nhận!\n";
+    fullContext +=
+      "\n⚠️ KHI CHỐT ĐƠN: Nếu đã có địa chỉ + SĐT rõ ràng trong context thì KHÔNG hỏi lại, chỉ nhắc lại để xác nhận 1 lần.\n";
   } else {
-    fullContext += "\n📍 ĐỊA CHỈ: Chưa có → Cần hỏi KHI KHÁCH MUỐN ĐẶT HÀNG\n";
+    fullContext +=
+      "\n📍 ĐỊA CHỈ: Chưa có → CHỈ hỏi KHI KHÁCH NÓI MUỐN ĐẶT HÀNG (gửi về/ship về/chốt đơn...), và KHI ĐÃ GHÉP ĐỦ từ các tin nhắn trước đó THÌ KHÔNG HỎI LẠI.\n";
   }
 
   // ========================================
