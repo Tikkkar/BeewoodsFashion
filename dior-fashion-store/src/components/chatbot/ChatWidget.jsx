@@ -7,6 +7,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { MessageCircle, X, Send, Minimize2, Loader2 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { supabase } from "../../lib/supabase";
+import {
+  sendChatMessage,
+  setAgentStatus,
+  getAgentStatus,
+} from "../../lib/api/chatbot";
 
 export default function ChatWidget() {
   const { user } = useAuth();
@@ -17,6 +22,7 @@ export default function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState(null);
   const [sessionId, setSessionId] = useState(null);
+  const [agentEnabled, setAgentEnabled] = useState(true);
   const messagesEndRef = useRef(null);
 
   // Khởi tạo session ID cho guest
@@ -71,6 +77,19 @@ export default function ChatWidget() {
       if (conv) {
         setConversationId(conv.id);
         await loadMessages(conv.id);
+
+        // Lấy trạng thái agent cho conversation hiện tại
+        try {
+          const res = await getAgentStatus(conv.id);
+          const enabled =
+            (res?.data && res.data.agent_enabled) ??
+            res?.agent_enabled ??
+            true;
+          setAgentEnabled(enabled);
+        } catch (e) {
+          console.warn("Get agent status error:", e);
+          setAgentEnabled(true);
+        }
       }
     } catch (err) {
       console.error("Load history error:", err);
@@ -116,17 +135,23 @@ export default function ChatWidget() {
 
     try {
       // 2) Gọi Edge Function xử lý tin nhắn
-      const { data, error } = await supabase.functions.invoke(
-        "chatbot-process",
-        {
-          body: {
-            platform: "website",
-            user_id: user?.id || null,
-            session_id: user?.id ? null : sessionId,
-            message_text: userMessage,
-          },
-        }
-      );
+      const apiResponse = await sendChatMessage({
+        platform: "website",
+        user_id: user?.id || null,
+        session_id: user?.id ? null : sessionId,
+        message_text: userMessage,
+      });
+
+      // apiResponse có thể là:
+      // - { success: true, response: "...", meta: { conversation_id } } từ handleMessage
+      // - { success: true, data: {...} } cho các action khác
+      const data =
+        apiResponse?.data && apiResponse.data.conversationId
+          ? apiResponse.data
+          : apiResponse;
+      const error = apiResponse?.error && !apiResponse.success
+        ? apiResponse.error
+        : null;
 
       if (error) {
         console.error("Send message error:", error);
@@ -148,13 +173,33 @@ export default function ChatWidget() {
         return;
       }
 
-      // 3) Nếu thành công: đồng bộ lại từ DB để lấy cả bot message
-      // Ưu tiên: nếu response trả conversation_id thì dùng luôn
-      if (data?.conversation_id && !conversationId) {
-        setConversationId(data.conversation_id);
-        await loadMessages(data.conversation_id);
-      } else if (conversationId) {
-        await loadMessages(conversationId);
+      // 3) Nếu thành công:
+      // Trường hợp agent bị tắt: không chờ bot, chỉ giữ tin khách
+      if (data?.mode === "agent_disabled") {
+        const cid =
+          data?.meta?.conversation_id || data?.conversation_id || conversationId;
+        if (cid && !conversationId) {
+          setConversationId(cid);
+        }
+        // Load lại messages để đồng bộ nếu cần (nhưng sẽ không có bot auto)
+        if (cid) {
+          await loadMessages(cid);
+        }
+        setAgentEnabled(false);
+        return;
+      }
+
+      // Trường hợp bình thường có conversation_id từ meta hoặc root
+      const resolvedConvId =
+        data?.meta?.conversation_id ||
+        data?.conversation_id ||
+        conversationId;
+
+      if (resolvedConvId && !conversationId) {
+        setConversationId(resolvedConvId);
+        await loadMessages(resolvedConvId);
+      } else if (resolvedConvId) {
+        await loadMessages(resolvedConvId);
       } else {
         // fallback: tìm lại lịch sử từ session
         await loadConversationHistory(sessionId);
@@ -301,8 +346,8 @@ export default function ChatWidget() {
           style={{ maxHeight: "calc(100vh - 100px)" }}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-black to-gray-800 text-white p-4 rounded-t-2xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
+              <div className="bg-gradient-to-r from-black to-gray-800 text-white p-4 rounded-t-2xl flex items-center justify-between">
+                <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                 <MessageCircle className="w-5 h-5" />
               </div>
@@ -311,22 +356,43 @@ export default function ChatWidget() {
                 <p className="text-xs text-white/70">Trực tuyến</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="p-2 hover:bg-white/10 rounded-lg transition"
-                aria-label="Minimize"
-              >
-                <Minimize2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="p-2 hover:bg-white/10 rounded-lg transition"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+              <div className="flex items-center gap-3">
+                {/* Toggle Agent per conversation */}
+                <label className="flex items-center gap-1 text-[10px] bg-white/10 px-2 py-1 rounded-full cursor-pointer">
+                  <span>Agent</span>
+                  <input
+                    type="checkbox"
+                    className="accent-white"
+                    checked={agentEnabled}
+                    onChange={async (e) => {
+                      const enabled = e.target.checked;
+                      setAgentEnabled(enabled);
+                      if (conversationId) {
+                        try {
+                          await setAgentStatus(conversationId, enabled);
+                        } catch (err) {
+                          console.error("Set agent status error:", err);
+                        }
+                      }
+                    }}
+                  />
+                </label>
+
+                <button
+                  onClick={() => setIsMinimized(!isMinimized)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition"
+                  aria-label="Minimize"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
           </div>
 
           {/* Messages */}

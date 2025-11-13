@@ -61,17 +61,64 @@ export async function buildContext(
   }
 
   // ========================================
-  // 4. GET RECENT MESSAGES (100 tin gần nhất để tăng trí nhớ cho agent)
+  // 4. GET RECENT MESSAGES (100 tin gần nhất)
   // ========================================
   const { data: messages } = await supabase
     .from("chatbot_messages")
-    .select("sender_type, content, created_at")
+    .select("id, sender_type, content, created_at")
     .eq("tenant_id", tenantId)
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true })
     .limit(100);
 
   context.history = messages || [];
+
+  // ========================================
+  // 4.1 GET CONVERSATION SUMMARY (nếu có)
+  // ========================================
+  try {
+    const { data: summaryRow } = await supabase
+      .from("conversation_summaries")
+      .select("summary_text, key_points, outcome, summary_created_at")
+      .eq("conversation_id", conversationId)
+      .order("summary_created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (summaryRow) {
+      context.summary = {
+        text: summaryRow.summary_text,
+        key_points: summaryRow.key_points,
+        outcome: summaryRow.outcome,
+      };
+    }
+  } catch (err) {
+    console.warn("⚠️ Cannot load conversation summary:", err);
+  }
+
+  // ========================================
+  // 4.2 SEMANTIC CONTEXT (từ embeddings - optional, không chặn flow)
+  // ========================================
+  try {
+    if (message && message.length > 10) {
+      const { data: semanticMessages } = await supabase
+        .from("conversation_embeddings")
+        .select("content, content_type, metadata")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      if (semanticMessages && semanticMessages.length > 0) {
+        context.semantic_snippets = semanticMessages.map((m: any) => ({
+          content: m.content,
+          type: m.content_type,
+          metadata: m.metadata,
+        }));
+      }
+    }
+  } catch (err) {
+    console.warn("⚠️ Semantic context lookup failed:", err);
+  }
 
   // ========================================
   // 5. GET PRODUCTS

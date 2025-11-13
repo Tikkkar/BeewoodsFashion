@@ -1,377 +1,225 @@
-// ============================================
-// CHATBOT API - Functions để gọi từ frontend
-// File: src/lib/api/chatbot.js
-// ============================================
+// src/lib/api/chatbot.js
+// API client for Supabase Edge Function: chatbot-process
+// Gồm các hàm dùng chung cho widget + trang admin chatbot
 
-import { supabase } from '../supabase';
+import { supabase } from "../supabase";
 
-// ============================================
-// FACEBOOK SETTINGS
-// ============================================
+const CHATBOT_FUNCTION_URL =
+  process.env.REACT_APP_SUPABASE_CHATBOT_URL ||
+  // Khi chạy trên Supabase Hosting hoặc qua reverse proxy Netlify/Vercel,
+  // đường dẫn /functions/v1/chatbot-process sẽ được map đúng.
+  "/functions/v1/chatbot-process";
 
-/**
- * Lấy cấu hình Facebook
- */
-export async function getFacebookSettings() {
-  const { data, error } = await supabase
-    .from('chatbot_facebook_settings')
-    .select('*')
-    .limit(1)
-    .maybeSingle(); // Thay .single() bằng .maybeSingle()
+async function callChatbotFunction(body) {
+  // Ưu tiên dùng supabase.functions.invoke (dùng supabase.js bạn đã cấu hình),
+  // để luôn gọi qua Supabase server đúng cách cả dev lẫn production.
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      "chatbot-process",
+      { body }
+    );
 
-  if (error) {
-    throw error;
-  }
-  
-  return data; // Trả về null nếu không có data
-}
-
-/**
- * Cập nhật hoặc tạo mới Facebook settings
- */
-export async function saveFacebookSettings(settings) {
-  // Check if exists
-  const existing = await getFacebookSettings();
-
-  if (existing) {
-    // Update
-    const { data, error } = await supabase
-      .from('chatbot_facebook_settings')
-      .update({
-        page_id: settings.page_id,
-        page_name: settings.page_name,
-        access_token: settings.access_token,
-        app_id: settings.app_id,
-        app_secret: settings.app_secret,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', existing.id)
-      .select()
-      .single();
-
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
     return data;
-  } else {
-    // Insert
-    const { data, error } = await supabase
-      .from('chatbot_facebook_settings')
-      .insert({
-        page_id: settings.page_id,
-        page_name: settings.page_name,
-        access_token: settings.access_token,
-        app_id: settings.app_id,
-        app_secret: settings.app_secret
-      })
-      .select()
-      .single();
+  } catch (e) {
+    // Fallback: nếu supabase.functions không dùng được trong môi trường hiện tại,
+    // thử gọi trực tiếp HTTP tới CHATBOT_FUNCTION_URL (Netlify/Vercel/Supabase hosting).
+    const res = await fetch(CHATBOT_FUNCTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-    if (error) throw error;
-    return data;
+    if (!res.ok) {
+      throw new Error(`Chatbot API error: ${res.status}`);
+    }
+
+    return res.json();
   }
 }
 
 /**
- * Test kết nối Facebook
+ * Gửi message tới chatbot (frontend widget hoặc admin)
  */
-export async function testFacebookConnection() {
-  const settings = await getFacebookSettings();
-  
-  if (!settings?.access_token || !settings?.page_id) {
-    throw new Error('Please configure access token and page ID first');
-  }
-
-  // Test bằng cách lấy thông tin page
-  const response = await fetch(
-    `https://graph.facebook.com/v18.0/${settings.page_id}?fields=name,id&access_token=${settings.access_token}`
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || 'Connection test failed');
-  }
-
-  const data = await response.json();
-  
-  // Update page_name và is_connected
-  await supabase
-    .from('chatbot_facebook_settings')
-    .update({
-      page_name: data.name,
-      is_connected: true,
-      last_sync_at: new Date().toISOString()
-    })
-    .eq('id', settings.id);
-
-  return data;
+export async function sendChatMessage(payload) {
+  return callChatbotFunction(payload);
 }
 
 /**
- * Ngắt kết nối Facebook
+ * Bật / tắt Agent cho 1 conversation
+ * @param {string} conversationId
+ * @param {boolean} enabled
  */
-export async function disconnectFacebook() {
-  const settings = await getFacebookSettings();
-  
-  if (!settings) return;
-
-  const { error } = await supabase
-    .from('chatbot_facebook_settings')
-    .update({
-      is_connected: false,
-      access_token: null
-    })
-    .eq('id', settings.id);
-
-  if (error) throw error;
+export async function setAgentStatus(conversationId, enabled) {
+  return callChatbotFunction({
+    action: "SET_AGENT_STATUS",
+    payload: { conversationId, enabled },
+  });
 }
 
-// ============================================
-// CONVERSATIONS
-// ============================================
+/**
+ * Lấy trạng thái Agent cho 1 conversation
+ * @param {string} conversationId
+ */
+export async function getAgentStatus(conversationId) {
+  return callChatbotFunction({
+    action: "GET_AGENT_STATUS",
+    payload: { conversationId },
+  });
+}
 
 /**
- * Lấy danh sách conversations
+ * ===== Admin helpers giữ lại để không lỗi import =====
+ * Các hàm này có thể map sang action cụ thể trong Edge Function
+ * hoặc Supabase RPC/REST tuỳ bạn triển khai tiếp.
  */
-export async function getConversations(filters = {}) {
+
+export async function invokeChatbotProcess(body) {
+  return callChatbotFunction(body);
+}
+
+/**
+ * Lấy danh sách hội thoại từ bảng public.chatbot_conversations
+ * Hỗ trợ lọc theo status & platform.
+ */
+export async function getConversations(params = {}) {
+  const { status, platform } = params;
+
   let query = supabase
-    .from('chatbot_conversations')
-    .select('*')
-    .order('last_message_at', { ascending: false });
+    .from("chatbot_conversations")
+    .select("*")
+    .order("last_message_at", { ascending: false });
 
-  if (filters.status) {
-    query = query.eq('status', filters.status);
+  if (status) {
+    query = query.eq("status", status);
   }
-
-  if (filters.platform) {
-    query = query.eq('platform', filters.platform);
+  if (platform) {
+    query = query.eq("platform", platform);
   }
 
   const { data, error } = await query;
 
-  if (error) throw error;
-  return data;
+  if (error) {
+    console.error("getConversations error:", error);
+    throw error;
+  }
+
+  return data || [];
 }
 
 /**
- * Lấy conversation theo ID
- */
-export async function getConversationById(id) {
-  const { data, error } = await supabase
-    .from('chatbot_conversations')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Cập nhật conversation (status, assigned, etc)
- */
-export async function updateConversation(id, updates) {
-  const { data, error } = await supabase
-    .from('chatbot_conversations')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-// ============================================
-// MESSAGES
-// ============================================
-
-/**
- * Lấy tin nhắn trong conversation
+ * Lấy messages cho 1 conversation từ bảng public.chatbot_messages
  */
 export async function getMessages(conversationId) {
   const { data, error } = await supabase
-    .from('chatbot_messages')
-    .select('*')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true });
+    .from("chatbot_messages")
+    .select("*")
+    .eq("conversation_id", conversationId)
+    .order("created_at", { ascending: true });
 
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Gửi tin nhắn từ admin
- */
-export async function sendAdminMessage(conversationId, messageText) {
-  // Lưu tin nhắn vào DB
-  const { data: message, error: msgError } = await supabase
-    .from('chatbot_messages')
-    .insert({
-      conversation_id: conversationId,
-      sender_type: 'admin',
-      message_type: 'text',
-      content: { text: messageText }
-    })
-    .select()
-    .single();
-
-  if (msgError) throw msgError;
-
-  // Lấy conversation info để gửi qua platform
-  const conversation = await getConversationById(conversationId);
-  const fbSettings = await getFacebookSettings();
-
-  // Gửi qua Facebook nếu là Facebook conversation
-  if (conversation.platform === 'facebook' && conversation.customer_fb_id) {
-    if (!fbSettings?.access_token) {
-      throw new Error('Facebook not connected');
-    }
-
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/me/messages?access_token=${fbSettings.access_token}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient: { id: conversation.customer_fb_id },
-          message: { text: messageText }
-        })
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Failed to send message');
-    }
+  if (error) {
+    console.error("getMessages error:", error);
+    throw error;
   }
 
-  return message;
-}
-
-// ============================================
-// SCENARIOS
-// ============================================
-
-/**
- * Lấy danh sách scenarios
- */
-export async function getScenarios() {
-  const { data, error } = await supabase
-    .from('chatbot_scenarios')
-    .select('*')
-    .order('priority', { ascending: false });
-
-  if (error) throw error;
-  return data;
+  return data || [];
 }
 
 /**
- * Cập nhật scenario
+ * Gửi tin nhắn admin vào 1 conversation
+ * - sender_type = 'admin'
+ * - content: lưu dạng { text: "..." }
  */
-export async function updateScenario(id, updates) {
-  const { data, error } = await supabase
-    .from('chatbot_scenarios')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-export async function insertScenario(newScenario) {
-  const { data, error } = await supabase
-    .from('chatbot_scenarios')
-    .insert(newScenario)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
-}
-export async function deleteScenario(id) {
-  const { error } = await supabase
-    .from('chatbot_scenarios')
-    .delete()
-    .eq('id', id);
-  if (error) throw error;
-  return true;
-}
-export async function invokeChatbotProcess(input) {
-  const { data, error } = await supabase.functions.invoke('chatbot-process', { body: input });
-  return { data, error };
-}
-// ============================================
-// USAGE & STATS
-// ============================================
-
-/**
- * Lấy tổng tokens đã dùng
- */
-export async function getTotalTokensUsed() {
-  const { data, error } = await supabase.rpc('get_total_tokens_used');
-
-  if (error) throw error;
-  return data || 0;
-}
-
-/**
- * Lấy tổng chi phí
- */
-export async function getTotalCost() {
-  const { data, error } = await supabase.rpc('get_total_cost');
-
-  if (error) throw error;
-  return data || 0;
-}
-
-/**
- * Lấy usage logs
- */
-export async function getUsageLogs(limit = 50) {
-  const { data, error } = await supabase
-    .from('chatbot_usage_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) throw error;
-  return data;
-}
-
-/**
- * Lấy stats tổng hợp
- */
-export async function getChatbotStats() {
-  // Total conversations
-  const { count: totalConversations } = await supabase
-    .from('chatbot_conversations')
-    .select('*', { count: 'exact', head: true });
-
-  // Active conversations
-  const { count: activeConversations } = await supabase
-    .from('chatbot_conversations')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'active');
-
-  // Total messages
-  const { count: totalMessages } = await supabase
-    .from('chatbot_messages')
-    .select('*', { count: 'exact', head: true });
-
-  // Bot messages
-  const { count: botMessages } = await supabase
-    .from('chatbot_messages')
-    .select('*', { count: 'exact', head: true })
-    .eq('sender_type', 'bot');
-
-  const tokensUsed = await getTotalTokensUsed();
-  const totalCost = await getTotalCost();
-
-  return {
-    totalConversations: totalConversations || 0,
-    activeConversations: activeConversations || 0,
-    totalMessages: totalMessages || 0,
-    botMessages: botMessages || 0,
-    tokensUsed,
-    totalCost
+export async function sendAdminMessage(conversationId, text) {
+  const payload = {
+    conversation_id: conversationId,
+    sender_type: "admin",
+    message_type: "text",
+    content: { text },
   };
+
+  const { data, error } = await supabase
+    .from("chatbot_messages")
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("sendAdminMessage error:", error);
+    throw error;
+  }
+
+  // cập nhật last_message_at cho conversation
+  await supabase
+    .from("chatbot_conversations")
+    .update({ last_message_at: data.created_at })
+    .eq("id", conversationId);
+
+  return data;
+}
+
+/**
+ * Cập nhật 1 conversation (ví dụ đổi status -> resolved)
+ */
+export async function updateConversation(conversationId, updates) {
+  const { data, error } = await supabase
+    .from("chatbot_conversations")
+    .update({
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", conversationId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("updateConversation error:", error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function getFacebookSettings() {
+  console.warn("getFacebookSettings() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function saveFacebookSettings(settings) {
+  console.warn("saveFacebookSettings() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function testFacebookConnection() {
+  console.warn("testFacebookConnection() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function disconnectFacebook() {
+  console.warn("disconnectFacebook() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function getScenarios() {
+  console.warn("getScenarios() placeholder - implement with your backend.");
+  return { success: false, data: [], message: "Not implemented" };
+}
+
+export async function updateScenario(id, updates) {
+  console.warn("updateScenario() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function deleteScenario(id) {
+  console.warn("deleteScenario() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
+}
+
+export async function insertScenario(data) {
+  console.warn("insertScenario() placeholder - implement with your backend.");
+  return { success: false, message: "Not implemented" };
 }

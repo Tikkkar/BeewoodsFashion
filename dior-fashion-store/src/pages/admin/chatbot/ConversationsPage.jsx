@@ -80,8 +80,13 @@ export default function ConversationsPage() {
   async function loadConversations() {
     try {
       setLoading(true);
-      const data = await getConversations(filters);
-      setConversations(data);
+      const res = await getConversations(filters);
+      const list = Array.isArray(res)
+        ? res
+        : Array.isArray(res?.data)
+        ? res.data
+        : [];
+      setConversations(list);
     } catch (err) {
       console.error('Load conversations error:', err);
       showError('Failed to load conversations');
@@ -126,6 +131,13 @@ export default function ConversationsPage() {
     } catch (err) {
       showError('Failed to resolve conversation');
     }
+  }
+
+  // Toggle trạng thái Agent cho cuộc hội thoại đang chọn (hiện tạm lưu ở client)
+  const [agentEnabled, setAgentEnabled] = useState(false);
+
+  function handleToggleAgent() {
+    setAgentEnabled((prev) => !prev);
   }
 
   function formatTime(timestamp) {
@@ -269,16 +281,36 @@ export default function ConversationsPage() {
                   </div>
                   <div>
                     <p className="font-medium">{selectedConv.customer_name || 'Guest'}</p>
-                    <p className="text-xs text-gray-500">{selectedConv.platform} • {selectedConv.status}</p>
+                    <p className="text-xs text-gray-500">
+                      {selectedConv.platform} • {selectedConv.status}
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      Agent:{" "}
+                      <span className={agentEnabled ? "text-green-600" : "text-red-600"}>
+                        {agentEnabled ? "Enabled" : "Disabled"}
+                      </span>
+                    </p>
                   </div>
                 </div>
-                {selectedConv.status === 'active' && (
-                  <button
-                    onClick={() => handleResolve(selectedConv.id)}
-                    className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">
-                    Mark as Resolved
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {/* Toggle Agent for this conversation */}
+                  <label className="flex items-center gap-1 text-[10px] px-2 py-1 border rounded-full cursor-pointer bg-gray-50">
+                    <span>Agent</span>
+                    <input
+                      type="checkbox"
+                      checked={agentEnabled}
+                      onChange={handleToggleAgent}
+                    />
+                  </label>
+                  {selectedConv.status === 'active' && (
+                    <button
+                      onClick={() => handleResolve(selectedConv.id)}
+                      className="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50"
+                    >
+                      Mark as Resolved
+                    </button>
+                  )}
+                </div>
               </div>
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-4 space-y-4">

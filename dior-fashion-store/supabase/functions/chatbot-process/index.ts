@@ -5,6 +5,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { corsHeaders } from "./utils/cors.ts";
 import { handleMessage } from "./handlers/messageHandler.ts";
+import { createSupabaseClient } from "./utils/supabaseClient.ts";
 
 // === CART SERVICES ===
 import {
@@ -225,17 +226,13 @@ serve(async (req: Request) => {
         case "SEND_ZNS": {
           const accessToken = await getValidZaloAccessToken();
           if (!accessToken) {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                error:
-                  "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
-              }),
-              {
-                status: 500,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
+            // Trả về result lỗi chuẩn, không tạo Response lồng trong router
+            result = {
+              success: false,
+              error:
+                "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
+            };
+            break;
           }
           result = await handleSendZNS(payload, accessToken);
           break;
@@ -267,17 +264,12 @@ serve(async (req: Request) => {
         case "SEND_ORDER_ZNS": {
           const accessToken = await getValidZaloAccessToken();
           if (!accessToken) {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                error:
-                  "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
-              }),
-              {
-                status: 500,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
+            result = {
+              success: false,
+              error:
+                "Cannot refresh Zalo access token. Check ZALO_SECRET_KEY and ZALO_REFRESH_TOKEN.",
+            };
+            break;
           }
           result = await handleSendOrderZNS(payload);
           break;
@@ -304,6 +296,63 @@ serve(async (req: Request) => {
             token: newToken ? newToken.substring(0, 20) + "..." : null,
             expiresAt: new Date(tokenExpiryTime).toISOString(),
           };
+          break;
+        }
+
+        // ==========================================
+        // AGENT TOGGLE ACTIONS (PER CONVERSATION)
+        // ==========================================
+        case "SET_AGENT_STATUS": {
+          const { conversationId, enabled } = payload || {};
+          if (!conversationId || typeof enabled !== "boolean") {
+            throw new Error(
+              "Missing conversationId or enabled (boolean) in payload"
+            );
+          }
+
+          const supabase = createSupabaseClient();
+          const { error } = await supabase
+            .from("chatbot_conversations")
+            .update({
+              context: {
+                agent_enabled: enabled,
+              },
+            })
+            .eq("id", conversationId);
+
+          if (error) {
+            console.error("❌ Failed to update agent status:", error);
+            throw new Error("Failed to update agent status");
+          }
+
+          result = { success: true, conversationId, agent_enabled: enabled };
+          break;
+        }
+
+        case "GET_AGENT_STATUS": {
+          const { conversationId } = payload || {};
+          if (!conversationId) {
+            throw new Error("Missing conversationId in payload");
+          }
+
+          const supabase = createSupabaseClient();
+          const { data, error } = await supabase
+            .from("chatbot_conversations")
+            .select("context")
+            .eq("id", conversationId)
+            .maybeSingle();
+
+          if (error) {
+            console.error("❌ Failed to fetch agent status:", error);
+            throw new Error("Failed to fetch agent status");
+          }
+
+          const enabled =
+            data?.context && typeof data.context.agent_enabled === "boolean"
+              ? data.context.agent_enabled
+              : true;
+
+          result = { success: true, conversationId, agent_enabled: enabled };
           break;
         }
 

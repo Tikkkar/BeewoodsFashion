@@ -237,6 +237,15 @@ export async function handleMessage(body: any, request?: Request) {
     },
   ).catch((err) => console.error("❌ Customer embedding error:", err));
 
+  // Tự động trích xuất & lưu memory facts (không chặn flow)
+  extractAndSaveMemory(
+    tenantId,
+    conversationId,
+    message_text,
+  ).catch((err: any) => {
+    console.error("⚠️ extractAndSaveMemory error:", err);
+  });
+
   // ============================
   // 5. Build context (tenant-aware)
   // ============================
@@ -252,6 +261,57 @@ export async function handleMessage(body: any, request?: Request) {
     historyCount: context.history?.length || 0,
     productCount: context.products?.length || 0,
   });
+
+  // ============================
+  // 5.1 Check per-conversation agent toggle
+  // ============================
+  let agentEnabled = true;
+  try {
+    const { data: convRow, error: convErr } = await supabase
+      .from("chatbot_conversations")
+      .select("context")
+      .eq("id", conversationId)
+      .maybeSingle();
+
+    if (convErr) {
+      console.warn("⚠️ Cannot fetch agent_enabled from conversation:", convErr);
+    } else if (
+      convRow?.context &&
+      typeof convRow.context.agent_enabled === "boolean"
+    ) {
+      agentEnabled = convRow.context.agent_enabled;
+    }
+  } catch (err) {
+    console.warn("⚠️ Error while checking agent_enabled flag:", err);
+  }
+
+  console.log("Agent status for conversation:", {
+    conversationId,
+    agentEnabled,
+  });
+
+  // Nếu agent bị tắt:
+  // - Vẫn lưu toàn bộ lịch sử (đã làm ở bước 4)
+  // - Không gọi LLM, không chạy function-calls
+  // - Trả meta để frontend biết và cho phép admin trả lời thủ công
+  if (!agentEnabled) {
+    return {
+      success: true,
+      mode: "agent_disabled",
+      response: null,
+      products: [],
+      recommendation_type: "none",
+      message_type: "none",
+      meta: {
+        conversation_id: conversationId,
+        agent_enabled: false,
+      },
+      tenant: {
+        id: tenantId,
+        name: tenantContext.tenantInfo?.business_name || "",
+      },
+    };
+  }
 
   // ============================
   // 6. Call LLM (OpenRouter via geminiService)
