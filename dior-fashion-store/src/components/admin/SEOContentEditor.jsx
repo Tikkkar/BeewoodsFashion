@@ -14,12 +14,21 @@ import {
   FileText,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
-import {
-  generateSEOContent,
-  analyzeProductImage,
-  generateContentBlock,
-  checkGeminiConfig,
-} from "../../services/geminiSEOService.ts";
+
+const AI_FUNCTION_NAME = "seo-content-generator";
+
+const callSeoFunction = async (payload) => {
+  const { data, error } = await supabase.functions.invoke(AI_FUNCTION_NAME, {
+    body: payload,
+  });
+
+  if (error) {
+    console.error("Supabase function error:", error);
+    throw new Error(error.message || "Lỗi Supabase function");
+  }
+
+  return data;
+};
 
 /**
  * SEOContentEditor
@@ -50,7 +59,7 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
   const [contentBlocks, setContentBlocks] = useState([]);
   const [productImages, setProductImages] = useState([]); // Store product images
   const [showAIPanel, setShowAIPanel] = useState(false);
-  const [aiConfig, setAiConfig] = useState({ configured: false, message: "" });
+  const [aiConfig] = useState({ configured: true }); // Supabase function-based AI always "configured"
 
   const [validation, setValidation] = useState({
     title: { isValid: true, message: "" },
@@ -66,8 +75,6 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
 
   useEffect(() => {
     fetchProducts();
-    const config = checkGeminiConfig();
-    setAiConfig(config);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -259,10 +266,6 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
 
   // ============== AI integration ==============
   const handleGenerateFullSEO = async () => {
-    if (!aiConfig.configured) {
-      alert("⚠️ Gemini API chưa được cấu hình!\n" + aiConfig.message);
-      return;
-    }
     if (!window.confirm("🤖 Tạo nội dung SEO tự động?\n\nNội dung hiện tại sẽ được thay thế.")) return;
 
     try {
@@ -292,18 +295,25 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
         productImages: payload.productImages,
       });
 
-      const result = await generateSEOContent(payload);
+      const result = await callSeoFunction(payload);
 
       // map/normalize
       const seoTitle = result.seoTitle || result.seo_title || "";
       const seoDescription = result.seoDescription || result.seo_description || "";
-      const seoKeywords =
+      const seoKeywordsValue =
         result.seoKeywords ||
         result.seo_keywords ||
-        (result.seo_keywords_list ? result.seo_keywords_list.join(", ") : "") ||
-        (Array.isArray(result.keywords) ? result.keywords.join(", ") : "") ||
-        result.keywords ||
+        (Array.isArray(result.seo_keywords_list)
+          ? result.seo_keywords_list.join(", ")
+          : result.seo_keywords_list) ||
+        (Array.isArray(result.keywords)
+          ? result.keywords.join(", ")
+          : result.keywords) ||
         "";
+
+      const seoKeywords = typeof seoKeywordsValue === "string"
+        ? seoKeywordsValue
+        : String(seoKeywordsValue || "");
 
       setSeoData((prev) => ({
         ...prev,
@@ -345,26 +355,7 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
 
       setContentBlocks(normalized);
 
-      // Try to auto-analyze images in returned blocks (fill missing alt/caption)
-      if (aiConfig.configured) {
-        const imageBlocks = normalized.filter((b) => b.type === "image" && b.url && (!b.alt || !b.caption));
-        if (imageBlocks.length > 0) {
-          setAnalyzingImage(true);
-          for (const b of imageBlocks) {
-            try {
-              const analysis = await analyzeProductImage(b.url, seoData.product_name);
-              updateBlock(b.id, {
-                alt: b.alt || analysis.suggestedAltText,
-                caption: b.caption || analysis.suggestedCaption,
-              });
-            } catch (err) {
-              // ignore per-block errors
-              console.warn("Image analysis error for", b.url, err);
-            }
-          }
-          setAnalyzingImage(false);
-        }
-      }
+      // Bỏ auto-analyze phía client; có thể xử lý bằng Supabase function nếu cần trong tương lai
 
       // Validate fields
       validateField("seo_title", seoTitle);
@@ -381,40 +372,10 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
   };
 
   const handleGenerateBlock = async (blockType) => {
-    if (!aiConfig.configured) {
-      alert("⚠️ Gemini API chưa được cấu hình!");
-      return;
-    }
-
-    try {
-      setGeneratingContent(true);
-      const result = await generateContentBlock(blockType, {
-        productName: seoData.product_name,
-        productDescription: seoData.description,
-        brandName: seoData.brandName || undefined, // Always include brand if available
-      });
-
-      const newBlock = {
-        id: Date.now(),
-        type: "text",
-        title: result.title || "",
-        content: result.content || "",
-      };
-      setContentBlocks((p) => [...p, newBlock]);
-      alert("✅ Đã tạo khối nội dung!");
-    } catch (err) {
-      console.error("Error generating block:", err);
-      alert("❌ " + (err.message || err));
-    } finally {
-      setGeneratingContent(false);
-    }
+    alert("⚠️ Chức năng tạo từng khối nội dung riêng lẻ hiện chưa được kết nối Supabase Function. Vui lòng dùng nút 'Tạo toàn bộ SEO tự động'.");
   };
 
   const handleAnalyzeImage = async (blockId) => {
-    if (!aiConfig.configured) {
-      alert("⚠️ Gemini API chưa được cấu hình!");
-      return;
-    }
     const block = contentBlocks.find((b) => b.id === blockId);
     if (!block || !block.url) {
       alert("⚠️ Vui lòng tải ảnh lên trước!");
@@ -423,12 +384,7 @@ const SEOContentEditor = ({ initialProductId = null,onSaveSuccess }) => {
 
     try {
       setAnalyzingImage(true);
-      const result = await analyzeProductImage(block.url, seoData.product_name);
-      updateBlock(blockId, {
-        alt: result.suggestedAltText,
-        caption: result.suggestedCaption,
-      });
-      alert(`✅ Đã phân tích ảnh!\n\n📝 Mô tả: ${result.description}\n\n🏷️ Từ khóa: ${result.keywords?.join(", ") || ""}`);
+      alert("⚠️ Phân tích ảnh bằng AI hiện chưa được kết nối Supabase Function.");
     } catch (err) {
       console.error("Error analyzing image:", err);
       alert("❌ " + (err.message || err));
