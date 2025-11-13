@@ -1,32 +1,18 @@
 {
-  "headers": [
+  "version": 2,
+  "builds": [
     {
-      "source": "/manifest.json",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        }
-      ]
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/manifest.json",
-      "destination": "/manifest.json"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
