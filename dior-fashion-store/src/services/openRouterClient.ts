@@ -1,42 +1,28 @@
 // src/services/openRouterClient.ts
 
-const OPENROUTER_API_KEY =
-  import.meta.env?.VITE_OPENROUTER_API_KEY ||
-  process.env.VITE_OPENROUTER_API_KEY ||  // ✅ ADD THIS LINE
-  process.env.REACT_APP_OPENROUTER_API_KEY ||
-  "";
+// ✅ React Scripts đọc từ process.env
+const OPENROUTER_API_KEY = 
+  process.env.REACT_APP_OPENROUTER_API_KEY || "";
 
-const OPENROUTER_BASE_URL =
-  import.meta.env?.VITE_OPENROUTER_BASE_URL ||
-  process.env.VITE_OPENROUTER_BASE_URL ||  // ✅ ADD THIS LINE
-  process.env.REACT_APP_OPENROUTER_BASE_URL ||
+const OPENROUTER_BASE_URL = 
+  process.env.REACT_APP_OPENROUTER_BASE_URL || 
   "https://openrouter.ai/api/v1";
 
-const OPENROUTER_SITE_URL =
-  import.meta.env?.VITE_OPENROUTER_SITE_URL ||
-  process.env.VITE_OPENROUTER_SITE_URL ||  // ✅ ADD THIS LINE
-  process.env.REACT_APP_OPENROUTER_SITE_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'https://yourdomain.com');
+const OPENROUTER_SITE_URL = 
+  process.env.REACT_APP_OPENROUTER_SITE_URL || 
+  (typeof window !== 'undefined' ? window.location.origin : '');
 
-const OPENROUTER_APP_NAME =
-  import.meta.env?.VITE_OPENROUTER_APP_NAME ||
-  process.env.VITE_OPENROUTER_APP_NAME ||  // ✅ ADD THIS LINE
-  process.env.REACT_APP_OPENROUTER_APP_NAME ||
+const OPENROUTER_APP_NAME = 
+  process.env.REACT_APP_OPENROUTER_APP_NAME || 
   "BeewoodsFashion-DiorStore";
 
-// ✅ ADD DEBUG LOG
+// ✅ Debug log
 console.log('🔑 OpenRouter Config:', {
   hasKey: !!OPENROUTER_API_KEY,
-  keyPreview: OPENROUTER_API_KEY ? OPENROUTER_API_KEY.substring(0, 15) + '...' : 'MISSING',
-  baseUrl: OPENROUTER_BASE_URL,
-  siteUrl: OPENROUTER_SITE_URL,
-  appName: OPENROUTER_APP_NAME
+  keyPreview: OPENROUTER_API_KEY ? OPENROUTER_API_KEY.substring(0, 15) + '...' : '❌ MISSING',
+  allReactAppKeys: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_')),
 });
 
-/**
- * Gọi OpenRouter completion/chat completion.
- * WARNING: Nếu dùng trên frontend, chỉ dùng key đã giới hạn quyền. Tốt nhất proxy qua backend.
- */
 export async function callOpenRouterChat(options: {
   model: string;
   messages: { role: "system" | "user" | "assistant"; content: string }[];
@@ -44,13 +30,12 @@ export async function callOpenRouterChat(options: {
   temperature?: number;
 }) {
   if (!OPENROUTER_API_KEY) {
-    console.error('❌ OpenRouter API Key Missing!', {
-      importMetaEnv: import.meta.env ? Object.keys(import.meta.env) : 'N/A',
-      processEnv: process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER')) : 'N/A'
+    console.error('❌ Missing REACT_APP_OPENROUTER_API_KEY!', {
+      availableKeys: Object.keys(process.env).filter(k => k.startsWith('REACT_APP_')),
     });
     
     throw new Error(
-      "OPENROUTER_API_KEY chưa được cấu hình. Vui lòng thêm vào Vercel Environment Variables: VITE_OPENROUTER_API_KEY"
+      "Missing REACT_APP_OPENROUTER_API_KEY in environment variables."
     );
   }
 
@@ -76,22 +61,20 @@ export async function callOpenRouterChat(options: {
 
     if (res.status === 429) {
       let message =
-        "OpenRouter đang bị giới hạn tạm thời (429). Vui lòng thử lại sau vài giây hoặc cấu hình model/Key khác.";
+        "OpenRouter đang bị giới hạn tạm thời (429). Vui lòng thử lại sau.";
 
       try {
         const json = JSON.parse(text || "{}");
         const providerMsg = json?.error?.metadata?.raw || json?.error?.message;
         if (providerMsg) {
-          message =
-            providerMsg +
-            " (TIPS: Chọn model khác không bị giới hạn, hoặc dùng API key riêng trong OpenRouter Integrations).";
+          message = providerMsg;
         }
       } catch {}
 
       throw new Error(message);
     }
 
-    throw new Error(`OpenRouter request failed: ${res.status} - ${text || "Unknown error"}`);
+    throw new Error(`OpenRouter request failed: ${res.status} - ${text}`);
   }
 
   const data = await res.json();
