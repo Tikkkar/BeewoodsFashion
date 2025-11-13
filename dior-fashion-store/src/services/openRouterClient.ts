@@ -1,36 +1,56 @@
+// src/services/openRouterClient.ts
+
 const OPENROUTER_API_KEY =
   import.meta.env?.VITE_OPENROUTER_API_KEY ||
+  process.env.VITE_OPENROUTER_API_KEY ||  // ✅ ADD THIS LINE
   process.env.REACT_APP_OPENROUTER_API_KEY ||
   "";
 
 const OPENROUTER_BASE_URL =
   import.meta.env?.VITE_OPENROUTER_BASE_URL ||
+  process.env.VITE_OPENROUTER_BASE_URL ||  // ✅ ADD THIS LINE
   process.env.REACT_APP_OPENROUTER_BASE_URL ||
   "https://openrouter.ai/api/v1";
 
 const OPENROUTER_SITE_URL =
   import.meta.env?.VITE_OPENROUTER_SITE_URL ||
+  process.env.VITE_OPENROUTER_SITE_URL ||  // ✅ ADD THIS LINE
   process.env.REACT_APP_OPENROUTER_SITE_URL ||
-  window.location.origin;
+  (typeof window !== 'undefined' ? window.location.origin : 'https://yourdomain.com');
 
 const OPENROUTER_APP_NAME =
   import.meta.env?.VITE_OPENROUTER_APP_NAME ||
+  process.env.VITE_OPENROUTER_APP_NAME ||  // ✅ ADD THIS LINE
   process.env.REACT_APP_OPENROUTER_APP_NAME ||
   "BeewoodsFashion-DiorStore";
+
+// ✅ ADD DEBUG LOG
+console.log('🔑 OpenRouter Config:', {
+  hasKey: !!OPENROUTER_API_KEY,
+  keyPreview: OPENROUTER_API_KEY ? OPENROUTER_API_KEY.substring(0, 15) + '...' : 'MISSING',
+  baseUrl: OPENROUTER_BASE_URL,
+  siteUrl: OPENROUTER_SITE_URL,
+  appName: OPENROUTER_APP_NAME
+});
 
 /**
  * Gọi OpenRouter completion/chat completion.
  * WARNING: Nếu dùng trên frontend, chỉ dùng key đã giới hạn quyền. Tốt nhất proxy qua backend.
  */
 export async function callOpenRouterChat(options: {
-  model: string; // vd: "anthropic/claude-3.5-sonnet", "openai/gpt-4.1-mini", ...
+  model: string;
   messages: { role: "system" | "user" | "assistant"; content: string }[];
   maxTokens?: number;
   temperature?: number;
 }) {
   if (!OPENROUTER_API_KEY) {
+    console.error('❌ OpenRouter API Key Missing!', {
+      importMetaEnv: import.meta.env ? Object.keys(import.meta.env) : 'N/A',
+      processEnv: process.env ? Object.keys(process.env).filter(k => k.includes('OPENROUTER')) : 'N/A'
+    });
+    
     throw new Error(
-      "OPENROUTER_API_KEY chưa được cấu hình. Vui lòng thêm vào .env (VITE_OPENROUTER_API_KEY hoặc REACT_APP_OPENROUTER_API_KEY)."
+      "OPENROUTER_API_KEY chưa được cấu hình. Vui lòng thêm vào Vercel Environment Variables: VITE_OPENROUTER_API_KEY"
     );
   }
 
@@ -54,7 +74,6 @@ export async function callOpenRouterChat(options: {
     const text = await res.text().catch(() => "");
     console.error("OpenRouter API error:", res.status, text);
 
-    // Xử lý riêng lỗi 429 từ provider (thường do dùng free model, rate limit)
     if (res.status === 429) {
       let message =
         "OpenRouter đang bị giới hạn tạm thời (429). Vui lòng thử lại sau vài giây hoặc cấu hình model/Key khác.";
