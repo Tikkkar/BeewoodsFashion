@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  AlertCircle,
-  Search,
   Eye,
-  Check,
-  X,
-  Plus,
   Image,
   Trash2,
   MoveUp,
@@ -13,12 +8,10 @@ import {
   Type,
   Save,
   Loader2,
-  ChevronDown,
   Upload,
   Sparkles,
   Wand2,
   FileText,
-  ImageIcon,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
 import {

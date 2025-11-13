@@ -24,6 +24,7 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
     if (isOpen && product) {
       loadHistory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, product, filter]);
 
   const loadHistory = async () => {

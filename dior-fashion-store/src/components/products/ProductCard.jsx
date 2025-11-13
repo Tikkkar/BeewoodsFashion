@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Heart, ShoppingCart, Eye } from "lucide-react";
+import { ShoppingCart, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const ProductCard = ({ product, onAddToCart, onQuickView }) => {

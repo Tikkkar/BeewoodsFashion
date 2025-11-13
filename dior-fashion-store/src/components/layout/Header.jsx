@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, ShoppingCart, Heart, User, Menu, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
+import { Search, ShoppingCart, User, Menu, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
