@@ -49,7 +49,7 @@ try {
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.REACT_APP_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY;
-} 
+}
 
 // Validate
 if (!supabaseUrl || !supabaseAnonKey) {
