@@ -465,5 +465,58 @@ export const AI_TOOLS_SCHEMA = {
         "required": ["product_id"],
       },
     },
+    {
+      "name": "search_products",
+      "description":
+        "Tìm sản phẩm phù hợp trong toàn bộ database theo từ khóa và tiêu chí. Dùng khi cần nhiều lựa chọn hơn ngoài context.products hiện tại.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description":
+              "Từ khóa tìm kiếm: tên sản phẩm, loại, phong cách, chất liệu, màu sắc (VD: 'váy dự tiệc đỏ', 'vest công sở', 'đầm linen').",
+          },
+          "category": {
+            "type": "string",
+            "description":
+              "Danh mục gợi ý (optional). VD: 'Áo vest', 'Váy liền thân', 'Quần suông'.",
+          },
+          "price_min": {
+            "type": "number",
+            "description": "Giá tối thiểu (optional).",
+          },
+          "price_max": {
+            "type": "number",
+            "description": "Giá tối đa (optional).",
+          },
+          "limit": {
+            "type": "integer",
+            "description":
+              "Số lượng sản phẩm muốn lấy (default 20, tối đa 50). Không nên vượt quá để tránh quá tải.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 20,
+          },
+        },
+        "required": ["query"],
+      },
+    },
+    {
+      "name": "get_product_detail",
+      "description":
+        "Lấy chi tiết 1 sản phẩm từ database (giá, stock, hình ảnh, thuộc tính) dựa trên product_id. Dùng để giải thích kỹ hơn hoặc xác nhận lại trước khi chốt.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "description": "UUID sản phẩm cần xem chi tiết",
+            "format": "uuid",
+          },
+        },
+        "required": ["product_id"],
+      },
+    },
   ],
 };

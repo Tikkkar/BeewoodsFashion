@@ -32,6 +32,16 @@ const generateUniqueSlug = (name) => {
   return `${baseSlug}-${timestamp}`;
 };
 
+const API_BASE_URL =
+  process.env.REACT_APP_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  "";
+
+const SUPABASE_ANON_KEY =
+  process.env.REACT_APP_SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  "";
+
 const AdminProductForm = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -59,6 +69,11 @@ const AdminProductForm = () => {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(isEditing);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // AI assist state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiInfo, setAiInfo] = useState("");
 
   useEffect(() => {
     const loadData = async () => {
@@ -141,6 +156,103 @@ const AdminProductForm = () => {
       existing: p.existing.filter((i) => i !== url),
       toRemove: [...p.toRemove, url],
     }));
+
+  // Lấy URL ảnh đại diện (ưu tiên ảnh đã tồn tại, nếu không dùng ảnh mới đã upload xong)
+  const getMainImageUrl = () => {
+    if (images.existing && images.existing.length > 0) {
+      return images.existing[0];
+    }
+    // Với ảnh mới, URL chỉ có sau khi upload xong nên dùng finalImageUrls trong submit.
+    // Để dùng AI trước khi lưu sản phẩm, bạn có thể upload ảnh tạm lên storage, rồi truyền URL vào đây.
+    return null;
+  };
+
+  // Gọi Supabase Edge Function product-from-image để gợi ý dữ liệu từ ảnh
+  const handleGenerateFromImage = async () => {
+    setAiError("");
+    setAiInfo("");
+
+    if (!API_BASE_URL || !SUPABASE_ANON_KEY) {
+      setAiError(
+        "Thiếu cấu hình Supabase URL/ANON_KEY. Vui lòng thiết lập biến môi trường."
+      );
+      return;
+    }
+
+    let mainImageUrl = getMainImageUrl();
+
+    try {
+      setAiLoading(true);
+
+      // Nếu chưa có ảnh existing nhưng có ảnh mới, upload tạm ảnh đầu tiên để lấy URL cho AI
+      if (!mainImageUrl && images.toUpload.length > 0) {
+        try {
+          const tempUrl = await compressAndUploadImage(images.toUpload[0]);
+          mainImageUrl = tempUrl;
+        } catch (uploadErr) {
+          console.error("Upload tạm ảnh cho AI thất bại:", uploadErr);
+          throw new Error(
+            "Không thể upload ảnh để AI phân tích. Vui lòng thử lại."
+          );
+        }
+      }
+
+      if (!mainImageUrl) {
+        setAiError(
+          "Vui lòng chọn ít nhất một ảnh sản phẩm rồi thử lại."
+        );
+        return;
+      }
+
+      const res = await fetch(
+        `${API_BASE_URL}/functions/v1/product-from-image`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            imageUrl: mainImageUrl,
+            titleHint: formData.name || "",
+            descriptionHint: formData.description || "",
+            brandName: "",
+            categoryHint: "",
+            priceHint: formData.price ? Number(formData.price) : undefined,
+          }),
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Không thể sinh dữ liệu từ ảnh");
+      }
+
+      setFormData((prev) => ({
+        ...prev,
+        name: data.name || prev.name,
+        slug: data.slug || prev.slug,
+        description: data.description || prev.description,
+        price: data.price || prev.price,
+        original_price: data.original_price || prev.original_price,
+        // category_ids giữ nguyên; admin map thủ công từ data.categories nếu muốn
+      }));
+
+      setAiInfo(
+        "Đã gợi ý dữ liệu sản phẩm từ ảnh. Vui lòng kiểm tra và chỉnh sửa trước khi lưu."
+      );
+    } catch (err) {
+      console.error("AI generate product-from-image error:", err);
+      setAiError(
+        err.message ||
+          "Có lỗi khi gọi AI. Vui lòng thử lại hoặc nhập thủ công."
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const compressAndUploadImage = async (file) => {
     try {
@@ -248,21 +360,50 @@ const AdminProductForm = () => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold">
-          {isEditing ? "Chỉnh sửa sản phẩm" : "Tạo sản phẩm mới"}
-        </h1>{" "}
-        {/* Dịch: Edit product / Create new product */}
-        <p className="text-gray-600">
-          Điền thông tin chi tiết cho sản phẩm.
-        </p>{" "}
-        {/* Dịch: Fill in product details. */}
+    <form onSubmit={handleSubmit} className="space-y-6 pb-16 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+            {isEditing ? "Chỉnh sửa sản phẩm" : "Tạo sản phẩm mới"}
+          </h1>
+          <p className="text-sm text-gray-500">
+            Sử dụng AI để gợi ý nội dung từ hình ảnh, sau đó tinh chỉnh trước khi lưu.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs md:text-sm">
+          <div className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+            Trạng thái:{" "}
+            <span className={formData.is_active ? "text-green-600" : "text-red-600"}>
+              {formData.is_active ? "Hiển thị" : "Đang ẩn"}
+            </span>
+          </div>
+          <div className="px-3 py-1 rounded-full bg-gray-100 text-gray-700">
+            AI hỗ trợ:{" "}
+            <span className={aiLoading ? "text-yellow-600" : "text-green-600"}>
+              {aiLoading ? "Đang chạy..." : "Sẵn sàng"}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Thông tin cơ bản</h2>{" "}
-        {/* Dịch: Basic Information */}
+      {/* Basic Info */}
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base md:text-lg font-semibold">
+              Thông tin cơ bản
+            </h2>
+            <p className="text-xs text-gray-500">
+              Tên, giá, mô tả tổng quan của sản phẩm.
+            </p>
+          </div>
+          {formData.slug && (
+            <span className="hidden md:inline-flex items-center px-3 py-1 rounded-full bg-gray-50 text-[10px] text-gray-500">
+              URL: /products/{formData.slug}
+            </span>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <input
             name="name"
@@ -272,13 +413,18 @@ const AdminProductForm = () => {
             className="p-3 border rounded w-full md:col-span-2"
             required
           />
-          <input
-            name="slug"
-            value={formData.slug}
-            onChange={handleChange}
-            placeholder="Đường dẫn URL (bỏ trống để tự tạo)"
-            className="p-3 border rounded md:col-span-2"
-          />
+          <div className="md:col-span-2 flex flex-col gap-1">
+            <input
+              name="slug"
+              value={formData.slug}
+              onChange={handleChange}
+              placeholder="Đường dẫn URL (bỏ trống để tự tạo)"
+              className="p-3 border rounded"
+            />
+            <p className="text-[10px] text-gray-400">
+              Nếu để trống, hệ thống sẽ tạo slug tự động từ tên sản phẩm.
+            </p>
+          </div>
           <input
             name="price"
             type="number"
@@ -316,10 +462,22 @@ const AdminProductForm = () => {
         </div>
       </div>
 
-      {/* ✨ GIAO DIỆN MỚI: Chọn nhiều danh mục */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Danh mục</h2> {/* Dịch: Categories */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-48 overflow-y-auto">
+      {/* Categories */}
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base md:text-lg font-semibold">Danh mục</h2>
+            <p className="text-xs text-gray-500">
+              Chọn một hoặc nhiều danh mục phù hợp với sản phẩm.
+            </p>
+          </div>
+          <span className="text-[10px] text-gray-400">
+            {formData.category_ids.length > 0
+              ? `${formData.category_ids.length} danh mục đã chọn`
+              : "Chưa chọn danh mục"}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-48 overflow-y-auto">
           {categories.map((c) => (
             <label
               key={c.id}
@@ -338,9 +496,17 @@ const AdminProductForm = () => {
       </div>
 
       {/* Sizes */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 space-y-4">
-        <h2 className="text-lg font-bold">Kích thước & Tồn kho chi tiết</h2>{" "}
-        {/* Dịch: Detailed Sizes & Stock */}
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base md:text-lg font-semibold">
+              Kích thước & tồn kho chi tiết
+            </h2>
+            <p className="text-xs text-gray-500">
+              Khai báo tồn kho theo size để hiển thị chính xác cho khách.
+            </p>
+          </div>
+        </div>
         {sizes.map((s, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
@@ -376,28 +542,58 @@ const AdminProductForm = () => {
         </button>
       </div>
 
-      {/* Images */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h2 className="text-lg font-bold mb-4">Hình ảnh sản phẩm</h2>{" "}
-        {/* Dịch: Product Images */}
+      {/* Images + AI Assist */}
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base md:text-lg font-semibold">
+              Hình ảnh sản phẩm & AI trợ lý
+            </h2>
+            <p className="text-xs text-gray-500">
+              Tải ảnh sản phẩm, sau đó dùng AI để gợi ý nội dung tự động.
+            </p>
+          </div>
+        </div>
         <ImageUpload
           existingImages={images.existing}
           onFilesChange={handleFilesChange}
           onRemoveExisting={handleRemoveExisting}
         />
         {images.toUpload.length > 0 && (
-          <p className="text-sm text-gray-600 mt-2">
-            {images.toUpload.length} ảnh chờ tải lên{" "}
-            {/* Dịch: X images waiting to upload */}
+          <p className="text-sm text-gray-600">
+            {images.toUpload.length} ảnh chờ tải lên
           </p>
         )}
+
+        <div className="flex items-center gap-3 pt-2 border-t mt-2">
+          <button
+            type="button"
+            onClick={handleGenerateFromImage}
+            disabled={aiLoading}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {aiLoading && (
+              <Loader2 className="w-4 h-4 animate-spin text-black" />
+            )}
+            <span>
+              {aiLoading
+                ? "Đang phân tích ảnh..."
+                : "Dùng AI gợi ý từ ảnh (beta)"}
+            </span>
+          </button>
+          {aiInfo && (
+            <span className="text-xs text-green-600">{aiInfo}</span>
+          )}
+          {aiError && (
+            <span className="text-xs text-red-600">{aiError}</span>
+          )}
+        </div>
       </div>
 
       {/* Settings */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200">
-        <h2 className="text-lg font-bold mb-4">Cài đặt</h2>{" "}
-        {/* Dịch: Settings */}
-        <div className="flex gap-6">
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm">
+        <h2 className="text-base md:text-lg font-semibold mb-3">Cài đặt hiển thị</h2>
+        <div className="flex flex-wrap gap-6 text-sm">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -420,7 +616,7 @@ const AdminProductForm = () => {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 pt-4 border-t mt-4">
         <button
           type="button"
           onClick={() => navigate("/admin/products")}

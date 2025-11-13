@@ -549,8 +549,133 @@ export async function handleMessage(body: any, request?: Request) {
             break;
           }
 
+          case "search_products": {
+            const {
+              query,
+              category,
+              price_min,
+              price_max,
+              limit = 20,
+            } = fnCall.args || {};
+
+            if (!query || typeof query !== "string") {
+              functionResult = {
+                success: false,
+                message: "Thiếu từ khóa tìm kiếm sản phẩm",
+              };
+              break;
+            }
+
+            let search = supabase
+              .from("products")
+              .select(
+                `
+                id, name, price, stock, slug, description,
+                attributes, is_active,
+                images:product_images(image_url, is_primary, display_order)
+              `,
+              )
+              .eq("tenant_id", tenantId)
+              .eq("is_active", true);
+
+            // Lọc theo category nếu có
+            if (category) {
+              search = search.ilike("name", `%${category}%`);
+            }
+
+            // Tìm theo query trong name / description / brand_name
+            search = search.or(
+              [
+                `name.ilike.%${query}%`,
+                `description.ilike.%${query}%`,
+                `brand_name.ilike.%${query}%`,
+              ].join(","),
+            );
+
+            if (typeof price_min === "number") {
+              search = search.gte("price", price_min);
+            }
+            if (typeof price_max === "number") {
+              search = search.lte("price", price_max);
+            }
+
+            const { data: results, error: searchErr } = await search
+              .order("created_at", { ascending: false })
+              .limit(Math.min(limit || 20, 50));
+
+            if (searchErr) {
+              console.error("❌ search_products error:", searchErr);
+              functionResult = {
+                success: false,
+                message: "Không tìm được sản phẩm phù hợp (lỗi hệ thống)",
+              };
+            } else {
+              functionResult = {
+                success: true,
+                items: results || [],
+                total: results?.length || 0,
+              };
+            }
+
+            // Cho LLM biết kết quả để nó chọn product_ids phù hợp trong response tiếp theo
+            const cont = await callGeminiWithFunctionResult(
+              context,
+              message_text,
+              fnCall.name,
+              functionResult,
+            );
+            if (cont.text) responseText = cont.text;
+            break;
+          }
+
+          case "get_product_detail": {
+            const { product_id } = fnCall.args || {};
+            if (!product_id) {
+              functionResult = {
+                success: false,
+                message: "Thiếu product_id khi lấy chi tiết sản phẩm",
+              };
+              break;
+            }
+
+            const { data: product, error: prodErr } = await supabase
+              .from("products")
+              .select(
+                `
+                id, name, price, stock, slug, description,
+                attributes, is_active,
+                images:product_images(image_url, is_primary, display_order)
+              `,
+              )
+              .eq("tenant_id", tenantId)
+              .eq("id", product_id)
+              .maybeSingle();
+
+            if (prodErr || !product) {
+              console.error("❌ get_product_detail error:", prodErr);
+              functionResult = {
+                success: false,
+                message: "Không tìm thấy sản phẩm cần xem chi tiết",
+              };
+            } else {
+              functionResult = {
+                success: true,
+                product,
+              };
+            }
+
+            const cont = await callGeminiWithFunctionResult(
+              context,
+              message_text,
+              fnCall.name,
+              functionResult,
+            );
+            if (cont.text) responseText = cont.text;
+            break;
+          }
+
           default:
-            console.log("⚠️ Unknown function:", fnCall.name);
+            console.log("⚠️ Unknown function:", fnCall.name, fnCall.args);
         }
       } catch (err) {
         console.error(
