@@ -2,7 +2,22 @@
   "version": 2,
   "env": {
     "DISABLE_ESLINT_PLUGIN": "true",
-    "CI": "false"
-  
-}
+    "CI": "false",
+    "REACT_APP_OPENROUTER_API_KEY": "@openrouter-key",
+    "REACT_APP_SUPABASE_URL": "@supabase-url",
+    "REACT_APP_SUPABASE_ANON_KEY": "@supabase-key"
+  },
+  "build": {
+    "env": {
+      "REACT_APP_OPENROUTER_API_KEY": "@openrouter-key",
+      "REACT_APP_SUPABASE_URL": "@supabase-url",
+      "REACT_APP_SUPABASE_ANON_KEY": "@supabase-key"
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
