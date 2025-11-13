@@ -3,11 +3,6 @@
   "env": {
     "DISABLE_ESLINT_PLUGIN": "true",
     "CI": "false"
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  
+}
 }
