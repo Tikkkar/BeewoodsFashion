@@ -72,16 +72,27 @@ const FacebookPostsPage = () => {
       }
       setError("");
 
-      const url = 
-        import.meta.env.REACT_APP_SUPABASE_URL||  
-        import.meta.env.VITE_SUPABASE_FUNCTION_URL ||
-        import.meta.env.VITE_FUNCTIONS_BASE_URL ||
-        `${import.meta.env.REACT_APP_SUPABASE_URL}/functions/v1`;
+      // Gọi Edge Function thông qua URL Supabase từ client config (supabase.js),
+      // không phụ thuộc import.meta.env phía browser để tránh lỗi undefined.
+      const supabaseUrl =
+        supabase?.supabaseUrl || supabase?.url || supabase?.restUrl;
+      const supabaseKey =
+        supabase?.supabaseKey || supabase?.anonKey || supabase?.key;
 
-      const res = await fetch(`${url}/facebook-auto-poster`, {
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error(
+          "Không xác định được SUPABASE_URL hoặc anon key từ client. Kiểm tra cấu hình supabase.js."
+        );
+      }
+
+      const functionUrl = `${supabaseUrl}/functions/v1`;
+
+      const res = await fetch(`${functionUrl}/facebook-auto-poster`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({ action, payload }),
       });
@@ -127,6 +138,7 @@ const FacebookPostsPage = () => {
 
   const handlePostNow = (id) => {
     if (window.confirm("Đăng bài này lên Facebook ngay bây giờ?")) {
+      // Gọi Edge Function với action POST_NOW đã được implement trong backend
       callAutoPoster("POST_NOW", { post_id: id }, true, id);
     }
   };
@@ -244,6 +256,12 @@ const FacebookPostsPage = () => {
                             retry: {p.retry_count}
                           </div>
                         )}
+                      </td>
+                      <td className="px-3 py-2 text-[10px]">
+                        {p.auto_post
+                          ? <span className="inline-flex px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">Auto</span>
+                          : <span className="inline-flex px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">Thủ công</span>
+                        }
                       </td>
                       <td className="px-3 py-2">
                         <div className="text-[11px] font-semibold">

@@ -1,16 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
   <head>
-    <!-- Zalo verification -->
-    <meta name="zalo-platform-site-verification" content="UzMO2whzJnzN_lytezPGBbd6u0kri3TSCJKt" />
-
     <meta charset="utf-8" />
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="BeWo - Shop thời trang Linen cao cấp" />
 
-    <!-- Allow Zalo scripts and widgets -->
+    <!-- ✅ OPTIMIZATION 1: Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://image2url.com" />
+    <link rel="dns-prefetch" href="https://sp.zalo.me" />
+
+    <!-- ✅ OPTIMIZATION 2: Preload critical assets -->
+    <!-- Preload logo (LCP image) -->
+    <link 
+      rel="preload" 
+      as="image" 
+      href="https://image2url.com/images/1762405291178-3c948423-ae0b-4be5-8d85-ab843865c994.png"
+      fetchpriority="high"
+    />
+
+    <!-- ✅ OPTIMIZATION 3: Preload fonts with display=swap -->
+    <link 
+      rel="preload" 
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" 
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link 
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" 
+        rel="stylesheet"
+      />
+    </noscript>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Zalo verification -->
+    <meta name="zalo-platform-site-verification" content="UzMO2whzJnzN_lytezPGBbd6u0kri3TSCJKt" />
+
+    <!-- ✅ OPTIMIZATION 4: Relaxed CSP for development -->
     <meta
       http-equiv="Content-Security-Policy"
       content="
@@ -23,40 +56,47 @@
       "
     />
 
-    <!-- Roboto Font -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>BEWO - Thiết Kế Thời Trang</title>
 
+    <!-- ✅ OPTIMIZATION 5: Inline critical CSS (nếu có) -->
     <style>
+      /* Critical CSS - First paint */
       body {
-        font-family: 'Roboto', sans-serif;
-        font-variant: tabular-nums;
-        font-size: 14px;
-        position: relative;
-        line-height: 1.5715 !important;
-        font-feature-settings: 'tnum';
-        overflow-x: hidden;
-        -webkit-tap-highlight-color: transparent;
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
         -webkit-font-smoothing: antialiased;
-        color: #000; /* Màu chữ đen */
-        background: #fff;
       }
-      h1, h2, h3, h4, h5, h6 {
-        font-family: 'Roboto', sans-serif;
-        font-weight: 700;
-        color: #000; /* Màu tiêu đề đen */
+      #root {
+        min-height: 100vh;
+      }
+      /* Loading spinner */
+      .loading-spinner {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #000;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: translate(-50%, -50%) rotate(0deg); }
+        100% { transform: translate(-50%, -50%) rotate(360deg); }
       }
     </style>
-
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-
-    <title>BEWO - Thiết Kế Thời Trang</title>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <noscript>Bạn cần bật JavaScript để chạy ứng dụng này.</noscript>
+    
+    <!-- ✅ OPTIMIZATION 6: Loading indicator -->
+    <div id="root">
+      <div class="loading-spinner"></div>
+    </div>
 
-    <!-- ZALO CHAT WIDGET -->
+    <!-- ✅ OPTIMIZATION 7: Zalo SDK - Async & Deferred -->
     <div
       class="zalo-chat-widget"
       data-oaid="870752253827008707"
@@ -66,32 +106,34 @@
       data-height=""
     ></div>
 
-    <!-- Load Zalo SDK -->
     <script>
+      // ✅ Load Zalo SDK after page interactive
       function loadZaloSDK() {
-        try {
-          var script = document.createElement("script");
-          script.src = "https://sp.zalo.me/plugins/sdk.js";
-          script.async = true;
-          script.defer = true;
-          script.onload = function () {
-            console.log("Zalo SDK loaded successfully");
-          };
-          script.onerror = function () {
-            console.error("Không thể tải Zalo SDK");
-          };
-          document.body.appendChild(script);
-        } catch (error) {
-          console.error("Lỗi khi load Zalo SDK:", error);
+        if (document.readyState !== 'complete') {
+          return setTimeout(loadZaloSDK, 100);
         }
+
+        // Delay 2s để không ảnh hưởng LCP/FCP
+        setTimeout(() => {
+          try {
+            const script = document.createElement("script");
+            script.src = "https://sp.zalo.me/plugins/sdk.js";
+            script.async = true;
+            script.defer = true;
+            script.onload = () => console.log("Zalo SDK loaded");
+            script.onerror = () => console.error("Zalo SDK failed");
+            document.body.appendChild(script);
+          } catch (error) {
+            console.error("Error loading Zalo SDK:", error);
+          }
+        }, 2000); // ✅ Delay 2s
       }
 
+      // Start loading after DOM ready
       if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", function () {
-          setTimeout(loadZaloSDK, 300);
-        });
+        document.addEventListener("DOMContentLoaded", loadZaloSDK);
       } else {
-        setTimeout(loadZaloSDK, 300);
+        loadZaloSDK();
       }
     </script>
   </body>

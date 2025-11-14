@@ -5,7 +5,7 @@ import {
   UploadCloud, X, Loader, Download, BrainCircuit, Clapperboard, Lightbulb, XCircle,
   CheckCircle, Info, TrendingUp, DollarSign,
 } from 'lucide-react';
-import { generateEnhancedAdTargeting } from '../../services/geminiAdTargetingService.ts';
+import { generateAdTargeting } from '../../lib/api/adTargeting';
 
 const AdTargeting = () => {
   const [image, setImage] = useState(null);
@@ -90,12 +90,23 @@ const AdTargeting = () => {
       const request = {
         imageData: base64,
         productName: image.name.split('.').slice(0, -1).join('.'),
-        validateWithFacebook: enableValidation, // NEW: Pass validation flag
+        // Backend function tự dùng facebook_posts làm context
+        // enableValidation hiện chưa dùng trực tiếp, nhưng giữ để mở rộng sau
       };
-      
-      // NEW: Use enhanced service
-      const targetingResult = await generateEnhancedAdTargeting(request);
-      setResult(targetingResult);
+
+      // Gọi Edge Function qua wrapper mới
+      const targetingResult = await generateAdTargeting(request);
+
+      // Chuẩn hoá key tên cho UI hiện tại (nếu backend trả về snake_case)
+      const normalized = {
+        productAnalysis:
+          targetingResult.product_analysis || targetingResult.productAnalysis || '',
+        targetingOptions:
+          targetingResult.targeting_options || targetingResult.targetingOptions || [],
+        metadata: targetingResult.metadata || {},
+      };
+
+      setResult(normalized);
     } catch (err) {
       console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'Lỗi khi phân tích. Vui lòng thử lại!');
@@ -402,20 +413,39 @@ const AdTargeting = () => {
                 )}
                 
                 {/* Psychographics */}
-                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><BrainCircuit className="w-5 h-5 text-teal-500" /> Tâm Lý Học & Nỗi Đau</h4>
+                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6">
+                  <BrainCircuit className="w-5 h-5 text-teal-500" /> Tâm Lý Học & Nỗi Đau
+                </h4>
                 <div className="space-y-3 mb-6 text-sm bg-teal-50/50 p-4 rounded-lg border border-teal-100">
-                  <div>
-                    <p className="font-medium text-teal-800 mb-1">Nỗi đau (Pain Points):</p>
-                    <TagList items={option.psychographics.painPoints} colorClass="bg-red-100 text-red-800" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-teal-800 mb-1">Mục tiêu (Goals):</p>
-                    <TagList items={option.psychographics.goals} colorClass="bg-green-100 text-green-800" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-teal-800 mb-1">Động lực (Motivations):</p>
-                    <TagList items={option.psychographics.motivations} colorClass="bg-blue-100 text-blue-800" />
-                  </div>
+                  {option.psychographics ? (
+                    <>
+                      <div>
+                        <p className="font-medium text-teal-800 mb-1">Nỗi đau (Pain Points):</p>
+                        <TagList
+                          items={option.psychographics.painPoints || []}
+                          colorClass="bg-red-100 text-red-800"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-teal-800 mb-1">Mục tiêu (Goals):</p>
+                        <TagList
+                          items={option.psychographics.goals || []}
+                          colorClass="bg-green-100 text-green-800"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-teal-800 mb-1">Động lực (Motivations):</p>
+                        <TagList
+                          items={option.psychographics.motivations || []}
+                          colorClass="bg-blue-100 text-blue-800"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic">
+                      Chưa có dữ liệu tâm lý học chi tiết cho nhóm này.
+                    </p>
+                  )}
                 </div>
 
                 {/* Demographics */}
@@ -427,26 +457,80 @@ const AdTargeting = () => {
                 </div>
 
                 {/* Job Details */}
-                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><Briefcase className="w-5 h-5 text-yellow-600" /> Nghề Nghiệp</h4>
+                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6">
+                  <Briefcase className="w-5 h-5 text-yellow-600" /> Nghề Nghiệp
+                </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 text-sm">
-                  <div><p className="font-medium text-gray-600 mb-1">Công việc cụ thể:</p><TagList items={option.jobDetails.specificJobs} colorClass="bg-yellow-100 text-yellow-700" /></div>
-                  <div><p className="font-medium text-gray-600 mb-1">Hành vi liên quan:</p><TagList items={option.jobDetails.jobRelatedBehaviors} colorClass="bg-yellow-100 text-yellow-700" /></div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Công việc cụ thể:</p>
+                    <TagList
+                      items={option.jobDetails?.specificJobs || []}
+                      colorClass="bg-yellow-100 text-yellow-700"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Hành vi liên quan:</p>
+                    <TagList
+                      items={option.jobDetails?.jobRelatedBehaviors || []}
+                      colorClass="bg-yellow-100 text-yellow-700"
+                    />
+                  </div>
                 </div>
 
                 {/* Lifestyle & Interests */}
-                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><Heart className="w-5 h-5 text-red-500" /> Sở Thích & Phong Cách Sống</h4>
+                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6">
+                  <Heart className="w-5 h-5 text-red-500" /> Sở Thích & Phong Cách Sống
+                </h4>
                 <div className="space-y-3 mb-6 text-sm">
-                  <div><p className="font-medium text-gray-600 mb-1">Sở thích liên quan:</p><TagList items={option.lifestyleAndInterests.relevantInterests} colorClass="bg-red-100 text-red-700" /></div>
-                  <div><p className="font-medium text-gray-600 mb-1">Nơi thường đến:</p><TagList items={option.lifestyleAndInterests.placesTheyGo} colorClass="bg-purple-100 text-purple-700" /></div>
-                  <div><p className="font-medium text-gray-600 mb-1">Công cụ thường dùng:</p><TagList items={option.lifestyleAndInterests.toolsTheyUse} colorClass="bg-gray-200 text-gray-800" /></div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Sở thích liên quan:</p>
+                    <TagList
+                      items={option.lifestyleAndInterests?.relevantInterests || []}
+                      colorClass="bg-red-100 text-red-700"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Nơi thường đến:</p>
+                    <TagList
+                      items={option.lifestyleAndInterests?.placesTheyGo || []}
+                      colorClass="bg-purple-100 text-purple-700"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Công cụ thường dùng:</p>
+                    <TagList
+                      items={option.lifestyleAndInterests?.toolsTheyUse || []}
+                      colorClass="bg-gray-200 text-gray-800"
+                    />
+                  </div>
                 </div>
 
                 {/* Media Consumption */}
-                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6"><Clapperboard className="w-5 h-5 text-orange-500" /> Thói Quen Tiêu Thụ Nội Dung</h4>
+                <h4 className="text-lg font-semibold flex items-center gap-2 mb-3 text-gray-700 mt-6">
+                  <Clapperboard className="w-5 h-5 text-orange-500" /> Thói Quen Tiêu Thụ Nội Dung
+                </h4>
                 <div className="space-y-3 mb-6 text-sm">
-                  <div><p className="font-medium text-gray-600 mb-1">Influencers/Creators:</p><TagList items={option.mediaConsumption.influencersOrCreators} colorClass="bg-orange-100 text-orange-700" /></div>
-                  <div><p className="font-medium text-gray-600 mb-1">Báo chí/Blogs:</p><TagList items={option.mediaConsumption.publicationsOrBlogs} colorClass="bg-orange-100 text-orange-700" /></div>
-                  <div><p className="font-medium text-gray-600 mb-1">Nền tảng MXH ưa thích:</p><TagList items={option.mediaConsumption.preferredSocialPlatforms} colorClass="bg-orange-100 text-orange-700" /></div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Influencers/Creators:</p>
+                    <TagList
+                      items={option.mediaConsumption?.influencersOrCreators || []}
+                      colorClass="bg-orange-100 text-orange-700"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Báo chí/Blogs:</p>
+                    <TagList
+                      items={option.mediaConsumption?.publicationsOrBlogs || []}
+                      colorClass="bg-orange-100 text-orange-700"
+                    />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-600 mb-1">Nền tảng MXH ưa thích:</p>
+                    <TagList
+                      items={option.mediaConsumption?.preferredSocialPlatforms || []}
+                      colorClass="bg-orange-100 text-orange-700"
+                    />
+                  </div>
                 </div>
                 
                 {/* Creative Angle */}

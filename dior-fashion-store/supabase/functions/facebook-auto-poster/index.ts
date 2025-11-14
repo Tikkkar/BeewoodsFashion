@@ -22,6 +22,9 @@ serve(async (req: Request) => {
       case "PROCESS_PENDING_POSTS":
         return await processPendingPosts(payload?.tenant_id);
 
+      case "POST_NOW":
+        return await postNow(payload.post_id);
+
       case "POST_PRODUCT_NOW":
         return await postProductNow(payload.product_id, payload.tenant_id);
 
@@ -219,6 +222,97 @@ async function processPendingPosts(tenant_id?: string) {
       }
     );
   }
+}
+
+// ============================================
+// POST_NOW: Manual publish one facebook_posts
+// ============================================
+
+async function postNow(post_id: string) {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+  // Lấy post cụ thể
+  const { data: post, error } = await supabase
+    .from("facebook_posts")
+    .select("*")
+    .eq("id", post_id)
+    .maybeSingle();
+
+  if (error || !post) {
+    throw new Error("Post not found");
+  }
+
+  // Lấy config Facebook của tenant
+  const { data: config } = await supabase
+    .from("chatbot_facebook_settings")
+    .select("*")
+    .eq("tenant_id", post.tenant_id)
+    .eq("is_connected", true)
+    .maybeSingle();
+
+  if (!config || !config.access_token || !config.page_id) {
+    throw new Error("Facebook not configured");
+  }
+
+  // Đánh dấu đang đăng
+  await supabase
+    .from("facebook_posts")
+    .update({ status: "posting" })
+    .eq("id", post.id);
+
+  // Nếu chưa có caption, generate nhanh từ product (giống processPendingPosts)
+  let caption = post.caption;
+  let hashtags = post.hashtags || [];
+  if (!caption || caption.trim() === "") {
+    const generatedPost = await generatePostContent(post, config);
+    caption = generatedPost.caption;
+    hashtags = generatedPost.hashtags;
+    await supabase
+      .from("facebook_posts")
+      .update({
+        caption,
+        caption_preview: caption.substring(0, 60),
+        hashtags,
+        ai_metadata: generatedPost.metadata,
+      })
+      .eq("id", post.id);
+  }
+
+  // Đăng lên Facebook
+  const fbResult = await postToFacebook({
+    page_id: config.page_id,
+    access_token: config.access_token,
+    message: caption,
+    images: post.image_urls,
+    link: post.product_url,
+  });
+
+  // Cập nhật trạng thái
+  const { error: updateError } = await supabase
+    .from("facebook_posts")
+    .update({
+      status: "posted",
+      fb_post_id: fbResult.id || fbResult.post_id,
+      posted_at: new Date().toISOString(),
+      fb_response: fbResult,
+    })
+    .eq("id", post.id);
+
+  if (updateError) {
+    throw updateError;
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      post_id,
+      fb_post_id: fbResult.id || fbResult.post_id,
+    }),
+    {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }
+  );
 }
 
 // ============================================

@@ -2,10 +2,8 @@ import React from 'react';
 import { Search, ShoppingCart, User, Menu, X, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import ImageOptimized from '../common/Imageoptimized'; // ✅ Import optimized image
 
-/**
- * Recursive Nav Item Component for nested submenus
- */
 const RecursiveNavItem = ({ item }) => {
   return (
     <li className="relative group/sub">
@@ -17,7 +15,6 @@ const RecursiveNavItem = ({ item }) => {
         {item.submenu && <ChevronRight size={16} />}
       </Link>
       
-      {/* Nested submenu */}
       {item.submenu && (
         <ul className="absolute top-0 left-full ml-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 z-20">
           {item.submenu.map((subItem, subIndex) => (
@@ -81,16 +78,16 @@ const Header = ({
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Left Side - Mobile Menu & Brand Name */}
+          {/* Left Side */}
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
               className="p-2 hover:bg-gray-100 rounded-lg transition md:hidden"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
             
-            {/* Brand Name - Always visible on left */}
             <Link to="/" className="flex items-center">
               <h1 className="text-xl md:text-2xl font-bold tracking-widest uppercase">
                 {brandName}
@@ -98,12 +95,19 @@ const Header = ({
             </Link>
           </div>
 
-          {/* Center - Logo Image */}
-          <Link to="/" className="absolute left-1/2 -translate-x-1/2 flex items-center">
-            <img 
-              src="https://image2url.com/images/1762405291178-3c948423-ae0b-4be5-8d85-ab843865c994.png" 
-              alt={`${brandName} Logo`} 
-              className="h-10 md:h-14 w-auto object-contain"
+          {/* Center - Logo Image - ✅ OPTIMIZED */}
+          <Link 
+            to="/" 
+            className="absolute left-1/2 -translate-x-1/2 flex items-center"
+            aria-label={`${brandName} Home`}
+          >
+            <ImageOptimized
+              src="https://image2url.com/images/1762405291178-3c948423-ae0b-4be5-8d85-ab843865c994.png"
+              alt={`${brandName} Logo`}
+              priority={true} // ✅ High priority - LCP element
+              className="h-10 md:h-14"
+              aspectRatio="auto"
+              objectFit="contain"
             />
           </Link>
 
@@ -111,16 +115,9 @@ const Header = ({
           <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={() => setSearchOpen(!searchOpen)} 
-              className="p-2 hover:bg-gray-100 rounded-lg transition md:hidden" 
+              className="p-2 hover:bg-gray-100 rounded-lg transition" 
               title="Tìm kiếm"
-            >
-              <Search size={20} />
-            </button>
-            
-            <button 
-              onClick={() => setSearchOpen(!searchOpen)} 
-              className="hidden md:flex p-2 hover:bg-gray-100 rounded-lg transition" 
-              title="Tìm kiếm"
+              aria-label="Search"
             >
               <Search size={20} />
             </button>
@@ -130,6 +127,7 @@ const Header = ({
                 <button 
                   className="hidden md:flex p-2 hover:bg-gray-100 rounded-lg transition" 
                   title={user?.email}
+                  aria-label="User menu"
                 >
                   <User size={20} />
                 </button>
@@ -170,6 +168,7 @@ const Header = ({
                 to="/login" 
                 className="hidden md:flex p-2 hover:bg-gray-100 rounded-lg transition" 
                 title="Đăng nhập"
+                aria-label="Login"
               >
                 <User size={20} />
               </Link>
@@ -179,6 +178,7 @@ const Header = ({
               onClick={onCartClick} 
               className="relative p-2 hover:bg-gray-100 rounded-lg transition" 
               title="Giỏ hàng"
+              aria-label={`Cart with ${cart?.length || 0} items`}
             >
               <ShoppingCart size={20} />
               {cart?.length > 0 && (
@@ -207,7 +207,6 @@ const Header = ({
                 )}
               </Link>
               
-              {/* First Level Submenu */}
               {item.submenu && (
                 <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4 w-56 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
                   <ul className="bg-white border border-gray-200 rounded-lg shadow-lg p-2">
@@ -232,10 +231,12 @@ const Header = ({
                 placeholder="Tìm kiếm sản phẩm..." 
                 className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent" 
                 autoFocus 
+                aria-label="Search products"
               />
               <button 
                 type="submit" 
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                aria-label="Submit search"
               >
                 <Search size={20} />
               </button>
@@ -262,6 +263,7 @@ const Header = ({
                     <button
                       onClick={() => toggleMobileSubmenu(index)}
                       className="px-4 py-3 text-gray-700 hover:bg-gray-50"
+                      aria-label="Toggle submenu"
                     >
                       <ChevronDown 
                         size={16} 
@@ -271,7 +273,6 @@ const Header = ({
                   )}
                 </div>
                 
-                {/* Mobile Submenu */}
                 {item.submenu && expandedMobile[index] && (
                   <div className="bg-gray-50 border-t border-gray-200">
                     {item.submenu.map((subItem, subIndex) => (

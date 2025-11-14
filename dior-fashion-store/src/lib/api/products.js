@@ -83,10 +83,10 @@ export const fetchProducts = async (filters = {}) => {
         slug: product.slug,
         price: parseFloat(product.price),
         originalPrice: product.original_price ? parseFloat(product.original_price) : null,
-        category: product.categories?.name || null, // null nếu không có category
+        category: product.categories?.name || null,
         imagePrimary: primaryImage?.image_url || '/placeholder.png',
         imageSecondary: secondaryImage?.image_url || null,
-        brandName: product.brand_name || null, // <-- brand
+        brandName: product.brand_name || null,
       };
     }) || [];
 
@@ -97,7 +97,7 @@ export const fetchProducts = async (filters = {}) => {
 };
 
 // =============================================
-// FETCH PRODUCT BY SLUG
+// FETCH PRODUCT BY SLUG - WITH FEATURES
 // =============================================
 export const fetchProductBySlug = async (slug) => {
   try {
@@ -139,17 +139,32 @@ export const fetchProductBySlug = async (slug) => {
     }
 
     // PARSE ATTRIBUTES NẾU LÀ STRING
+    let parsedAttributes = {};
     if (data.attributes) {
       if (typeof data.attributes === 'string') {
         try {
-          data.attributes = JSON.parse(data.attributes);
+          parsedAttributes = JSON.parse(data.attributes);
         } catch (e) {
-          data.attributes = {};
+          console.error('Error parsing attributes:', e);
+          parsedAttributes = {};
         }
+      } else {
+        parsedAttributes = data.attributes;
       }
-    } else {
-      data.attributes = {};
     }
+
+    // LẤY FEATURES TỪ ATTRIBUTES (nếu có)
+    // Giả sử trong database, attributes có dạng:
+    // {
+    //   "features": [
+    //     "Quần suông kẻ cạp quai nhẹ Hagoo",
+    //     "Áo sơ mi tơ có đức bổ cấu ngực",
+    //     "Áo thun có lộ bầu gần"
+    //   ],
+    //   "content_blocks": [...],
+    //   ...
+    // }
+    const features = parsedAttributes.features || [];
 
     // Transform data
     const transformedData = {
@@ -162,7 +177,11 @@ export const fetchProductBySlug = async (slug) => {
         .filter(Boolean) || [],
       reviews: data.reviews || [],
       category: data.categories?.name || null,
-      brandName: data.brand_name || null, // <-- brand
+      brandName: data.brand_name || null,
+      attributes: {
+        ...parsedAttributes,
+        features, // Đảm bảo features được truyền đi
+      },
     };
 
     return { data: transformedData, error: null };
@@ -191,7 +210,7 @@ export const fetchCategories = async () => {
 };
 
 // =============================================
-// FETCH BANNERS - ✅ FIXED
+// FETCH BANNERS
 // =============================================
 export const fetchBanners = async () => {
   try {
@@ -268,7 +287,7 @@ export const searchProducts = async (searchTerm) => {
         price: parseFloat(product.price),
         category: product.categories?.name || null,
         image: (primaryImage?.image_url || '/placeholder.png'),
-        brandName: product.brand_name || null, // <-- brand
+        brandName: product.brand_name || null,
       };
     }) || [];
     return { data: transformedData, error: null };
@@ -306,7 +325,7 @@ export const fetchFeaturedProducts = async (limit = 8) => {
         originalPrice: product.original_price ? parseFloat(product.original_price) : null,
         category: product.categories?.name || null,
         image: (primaryImage?.image_url || '/placeholder.png'),
-        brandName: product.brand_name || null, // <-- brand
+        brandName: product.brand_name || null,
       };
     }) || [];
     return { data: transformedData, error: null };
@@ -323,7 +342,7 @@ export const fetchProductById = async (productId) => {
     const { data, error } = await supabase
       .from('products')
       .select(`
-        id, name, slug, description, price, original_price, stock, is_featured, brand_name,
+        id, name, slug, description, price, original_price, stock, is_featured, brand_name, attributes,
         categories!inner(id, name, slug),
         product_images (
           id,
@@ -357,14 +376,18 @@ export const fetchProductById = async (productId) => {
     }
 
     // Parse attributes if string
-    if (data.attributes && typeof data.attributes === 'string') {
-      try {
-        data.attributes = JSON.parse(data.attributes);
-      } catch (e) {
-        data.attributes = {};
+    let parsedAttributes = {};
+    if (data.attributes) {
+      if (typeof data.attributes === 'string') {
+        try {
+          parsedAttributes = JSON.parse(data.attributes);
+        } catch (e) {
+          console.error('Error parsing attributes:', e);
+          parsedAttributes = {};
+        }
+      } else {
+        parsedAttributes = data.attributes;
       }
-    } else {
-      data.attributes = data.attributes || {};
     }
 
     const sortedImages = (data.product_images || []).sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
@@ -388,7 +411,7 @@ export const fetchProductById = async (productId) => {
       reviews: data.reviews || [],
       isFeatured: data.is_featured,
       viewCount: data.view_count,
-      attributes: data.attributes,
+      attributes: parsedAttributes,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };

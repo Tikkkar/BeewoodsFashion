@@ -541,11 +541,11 @@ const OrderSuccessPage = () => {
         {/* Support Info */}
         <div className="mt-8 text-center text-sm text-gray-600">
           <p className="mb-2">
-            Bạn có thể theo dõi đơn hàng qua email:{" "}
+            Bạn có thể theo dõi đơn hàng qua Zalo:{" "}
             <strong>{order.customer_email}</strong>
           </p>
           <p>
-            Liên hệ: <strong>036 2014571</strong> nếu cần hỗ trợ
+            Hỗ trợ: <strong>036 2014571</strong>
           </p>
         </div>
       </div>
