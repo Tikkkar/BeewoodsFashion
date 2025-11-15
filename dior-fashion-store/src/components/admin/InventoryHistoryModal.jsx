@@ -11,6 +11,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Clock,
 } from "lucide-react";
 import { getInventoryLogs } from "../../lib/api/inventory";
 
@@ -114,6 +115,15 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
     }).format(date);
   };
 
+  const formatDateOnly = (dateString) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(date);
+  };
+
   const getRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -139,7 +149,7 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
         />
 
         {/* Modal */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
+        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
           {/* Header */}
           <div className="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
             <div className="flex items-center justify-between">
@@ -213,6 +223,9 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
                   const Icon = config.icon;
                   const isExpanded = expandedLog === log.id;
 
+                  // Get import date from metadata
+                  const importDate = log.metadata?.import_date;
+
                   return (
                     <div
                       key={log.id}
@@ -233,13 +246,20 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
                             </div>
 
                             <div className="text-left flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className={`font-semibold ${config.color}`}>
                                   {config.label}
                                 </span>
                                 {log.product_sizes?.size && (
                                   <span className="px-2 py-0.5 bg-white rounded text-xs font-medium">
                                     Size: {log.product_sizes.size}
+                                  </span>
+                                )}
+                                {/* Show import date badge for import type */}
+                                {log.change_type === 'import' && importDate && (
+                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    {formatDateOnly(importDate)}
                                   </span>
                                 )}
                               </div>
@@ -263,7 +283,10 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
                           {/* Right side */}
                           <div className="text-right flex items-center gap-3">
                             <div className="text-xs text-gray-500">
-                              <div>{getRelativeTime(log.created_at)}</div>
+                              <div className="flex items-center gap-1 justify-end">
+                                <Clock className="w-3 h-3" />
+                                {getRelativeTime(log.created_at)}
+                              </div>
                               {log.created_by_user && (
                                 <div className="flex items-center gap-1 justify-end mt-1">
                                   <User className="w-3 h-3" />
@@ -283,7 +306,22 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
 
                       {/* Expanded Details */}
                       {isExpanded && (
-                        <div className="px-4 pb-4 border-t border-gray-200 bg-white space-y-2">
+                        <div className="px-4 pb-4 border-t border-gray-200 bg-white space-y-3">
+                          {/* Import Date - Highlighted for import transactions */}
+                          {log.change_type === 'import' && importDate && (
+                            <div className="flex items-start gap-2 pt-3 bg-blue-50 -mx-4 px-4 py-3">
+                              <Calendar className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <div className="text-sm text-blue-900 font-semibold mb-1">
+                                  Ngày nhập hàng
+                                </div>
+                                <div className="text-base text-blue-700 font-medium">
+                                  {formatDate(importDate)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {log.reason && (
                             <div className="flex items-start gap-2 pt-3">
                               <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -299,13 +337,13 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
                           )}
 
                           <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Calendar className="w-4 h-4" />
-                            <span>{formatDate(log.created_at)}</span>
+                            <Clock className="w-4 h-4" />
+                            <span>Thời gian ghi nhận: {formatDate(log.created_at)}</span>
                           </div>
 
                           {log.reference_type && (
                             <div className="text-xs text-gray-500">
-                              <span className="font-medium">Loại:</span>{" "}
+                              <span className="font-medium">Loại tham chiếu:</span>{" "}
                               {log.reference_type}
                               {log.reference_id && (
                                 <span className="ml-2">
@@ -315,14 +353,49 @@ const InventoryHistoryModal = ({ isOpen, onClose, product }) => {
                             </div>
                           )}
 
-                          {log.metadata && Object.keys(log.metadata).length > 0 && (
-                            <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
-                              <div className="font-medium text-gray-700 mb-1">
-                                Metadata:
+                          {/* Stock Change Summary */}
+                          <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Trước</div>
+                              <div className="text-lg font-semibold text-gray-900">
+                                {log.stock_before}
                               </div>
-                              <pre className="text-gray-600 overflow-x-auto">
-                                {JSON.stringify(log.metadata, null, 2)}
-                              </pre>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Thay đổi</div>
+                              <div className={`text-lg font-semibold ${
+                                log.quantity_change > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}>
+                                {log.quantity_change > 0 ? '+' : ''}{log.quantity_change}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-gray-500 mb-1">Sau</div>
+                              <div className="text-lg font-semibold text-purple-600">
+                                {log.stock_after}
+                              </div>
+                            </div>
+                          </div>
+
+                          {log.metadata && Object.keys(log.metadata).length > 0 && (
+                            <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                              <div className="font-medium text-gray-700 mb-2 text-xs">
+                                Thông tin bổ sung:
+                              </div>
+                              <div className="space-y-1 text-xs">
+                                {log.metadata.updateTarget && (
+                                  <div className="text-gray-600">
+                                    <span className="font-medium">Cập nhật:</span>{" "}
+                                    {log.metadata.updateTarget === 'size' ? 'Theo size' : 'Tổng sản phẩm'}
+                                  </div>
+                                )}
+                                {log.metadata.timestamp && (
+                                  <div className="text-gray-600">
+                                    <span className="font-medium">Timestamp:</span>{" "}
+                                    {formatDate(log.metadata.timestamp)}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>

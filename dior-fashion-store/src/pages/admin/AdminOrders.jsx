@@ -11,14 +11,14 @@ const formatDate = (date) => new Date(date).toLocaleDateString("vi-VN");
 
 const getStatusBadge = (status) => {
   const statusConfig = {
-    pending: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-800" }, // Dịch: Pending
-    processing: { label: "Đang xử lý", color: "bg-blue-100 text-blue-800" }, // Dịch: Processing
+    pending: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-800" },
+    processing: { label: "Đang xử lý", color: "bg-blue-100 text-blue-800" },
     shipping: {
       label: "Đang giao hàng",
       color: "bg-purple-100 text-purple-800",
-    }, // Dịch: Shipping
-    completed: { label: "Hoàn thành", color: "bg-green-100 text-green-800" }, // Dịch: Completed
-    cancelled: { label: "Đã hủy", color: "bg-red-100 text-red-800" }, // Dịch: Cancelled
+    },
+    completed: { label: "Hoàn thành", color: "bg-green-100 text-green-800" },
+    cancelled: { label: "Đã hủy", color: "bg-red-100 text-red-800" },
   };
   const config = statusConfig[status] || statusConfig.pending;
   return (
@@ -108,7 +108,7 @@ const AdminOrders = () => {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Đơn hàng</h1> {/* Dịch: Orders */}
+        <h1 className="text-3xl font-bold">Đơn hàng</h1>
         <p className="text-gray-600">Xem và quản lý các đơn hàng</p>
       </div>
 
@@ -120,8 +120,7 @@ const AdminOrders = () => {
               <ShoppingBag className="text-blue-600" size={20} />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Tổng Đơn hàng</p>{" "}
-              {/* Dịch: Total Orders */}
+              <p className="text-sm text-gray-600">Tổng Đơn hàng</p>
               <p className="text-2xl font-bold">{stats.total}</p>
             </div>
           </div>
@@ -133,8 +132,7 @@ const AdminOrders = () => {
               <DollarSign className="text-green-600" size={20} />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Doanh thu</p>{" "}
-              {/* Dịch: Revenue */}
+              <p className="text-sm text-gray-600">Doanh thu</p>
               <p className="text-xl font-bold">{formatPrice(stats.revenue)}</p>
             </div>
           </div>
@@ -146,8 +144,7 @@ const AdminOrders = () => {
               <ShoppingBag className="text-yellow-600" size={20} />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Chờ xử lý</p>{" "}
-              {/* Dịch: Pending */}
+              <p className="text-sm text-gray-600">Chờ xử lý</p>
               <p className="text-2xl font-bold">{stats.pending}</p>
             </div>
           </div>
@@ -159,8 +156,7 @@ const AdminOrders = () => {
               <ShoppingBag className="text-green-600" size={20} />
             </div>
             <div>
-              <p className="text-sm text-gray-600">Hoàn thành</p>{" "}
-              {/* Dịch: Completed */}
+              <p className="text-sm text-gray-600">Hoàn thành</p>
               <p className="text-2xl font-bold">{stats.completed}</p>
             </div>
           </div>
@@ -196,24 +192,18 @@ const AdminOrders = () => {
               onChange={(e) => setStatusFilter(e.target.value)}
               className="pl-10 pr-8 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent appearance-none bg-white cursor-pointer min-w-[200px]"
             >
-              <option value="all">Tất cả Trạng thái</option>{" "}
-              {/* Dịch: All Status */}
-              <option value="pending">Chờ xử lý ({stats.pending})</option>{" "}
-              {/* Dịch: Pending */}
+              <option value="all">Tất cả Trạng thái</option>
+              <option value="pending">Chờ xử lý ({stats.pending})</option>
               <option value="processing">
                 Đang xử lý ({stats.processing})
-              </option>{" "}
-              {/* Dịch: Processing */}
+              </option>
               <option value="shipping">
                 Đang giao hàng ({stats.shipping})
-              </option>{" "}
-              {/* Dịch: Shipping */}
+              </option>
               <option value="completed">
                 Hoàn thành ({stats.completed})
-              </option>{" "}
-              {/* Dịch: Completed */}
-              <option value="cancelled">Đã hủy ({stats.cancelled})</option>{" "}
-              {/* Dịch: Cancelled */}
+              </option>
+              <option value="cancelled">Đã hủy ({stats.cancelled})</option>
             </select>
           </div>
         </div>
@@ -227,13 +217,11 @@ const AdminOrders = () => {
               <ShoppingBag size={48} className="mx-auto text-gray-300 mb-4" />
               <p className="text-lg font-medium mb-2">
                 Không tìm thấy đơn hàng nào
-              </p>{" "}
-              {/* Dịch: No orders found */}
+              </p>
               <p className="text-sm">
                 {searchTerm || statusFilter !== "all"
-                  ? "Hãy thử điều chỉnh bộ lọc của bạn" // Dịch: Try adjusting your filters
-                  : "Đơn hàng sẽ xuất hiện ở đây khi khách hàng đặt hàng"}{" "}
-                // Dịch: Orders will appear here when customers place them
+                  ? "Hãy thử điều chỉnh bộ lọc của bạn"
+                  : "Đơn hàng sẽ xuất hiện ở đây khi khách hàng đặt hàng"}
               </p>
             </div>
           ) : (
@@ -242,28 +230,22 @@ const AdminOrders = () => {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Mã Đơn hàng
-                  </th>{" "}
-                  {/* Dịch: Order # */}
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ngày
-                  </th>{" "}
-                  {/* Dịch: Date */}
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Khách hàng
-                  </th>{" "}
-                  {/* Dịch: Customer */}
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tổng cộng
-                  </th>{" "}
-                  {/* Dịch: Total */}
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Trạng thái
-                  </th>{" "}
-                  {/* Dịch: Status */}
+                  </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Hành động
-                  </th>{" "}
-                  {/* Dịch: Action */}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -281,8 +263,7 @@ const AdminOrders = () => {
                       <div>
                         <div className="font-medium">
                           {order.users?.full_name || "Khách vãng lai"}
-                        </div>{" "}
-                        {/* Dịch: Guest */}
+                        </div>
                         {order.users?.email && (
                           <div className="text-sm text-gray-500">
                             {order.users.email}
@@ -301,7 +282,7 @@ const AdminOrders = () => {
                         to={`/admin/orders/${order.id}`}
                         className="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center gap-1 hover:underline"
                       >
-                        Xem chi tiết → {/* Dịch: View Details → */}
+                        Xem chi tiết →
                       </Link>
                     </td>
                   </tr>
@@ -318,13 +299,11 @@ const AdminOrders = () => {
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-600">
               Đang hiển thị <strong>{filteredOrders.length}</strong> trong tổng
-              số <strong>{orders.length}</strong> đơn hàng{" "}
-              {/* Dịch: Showing X of Y orders */}
+              số <strong>{orders.length}</strong> đơn hàng
             </span>
             {statusFilter === "all" && (
               <span className="font-medium">
-                Tổng Doanh thu: <strong>{formatPrice(stats.revenue)}</strong>{" "}
-                {/* Dịch: Total Revenue: */}
+                Tổng Doanh thu: <strong>{formatPrice(stats.revenue)}</strong>
               </span>
             )}
           </div>

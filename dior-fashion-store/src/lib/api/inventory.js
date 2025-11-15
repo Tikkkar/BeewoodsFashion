@@ -5,6 +5,8 @@ import { toast } from "react-hot-toast";
  * -----------------------------------------------------------------------------
  * INVENTORY MANAGEMENT API
  * -----------------------------------------------------------------------------
+ * Note: Excel export requires 'xlsx' package
+ * Install: npm install xlsx --save
  */
 
 // Get all products with stock info for inventory dashboard
@@ -82,12 +84,25 @@ export const getInventoryProducts = async (filters = {}) => {
 // Get inventory history for a product
 export const getInventoryLogs = async (productId, options = {}) => {
   try {
+    // Simplified query without foreign key reference to users table
+    // We'll get user info separately if needed
     let query = supabase
       .from("inventory_logs")
       .select(`
-        *,
-        product_sizes(size),
-        created_by_user:users!inventory_logs_created_by_fkey(full_name, email)
+        id,
+        product_id,
+        product_size_id,
+        change_type,
+        quantity_change,
+        stock_before,
+        stock_after,
+        reason,
+        reference_type,
+        reference_id,
+        created_by,
+        created_at,
+        metadata,
+        product_sizes(size)
       `)
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
@@ -103,6 +118,30 @@ export const getInventoryLogs = async (productId, options = {}) => {
     const { data, error } = await query;
 
     if (error) throw error;
+
+    // Get user info for logs that have created_by
+    if (data && data.length > 0) {
+      const userIds = [...new Set(data.filter(log => log.created_by).map(log => log.created_by))];
+      
+      if (userIds.length > 0) {
+        const { data: users } = await supabase
+          .from("users")
+          .select("id, full_name, email")
+          .in("id", userIds);
+
+        // Map user info to logs
+        const usersMap = {};
+        users?.forEach(user => {
+          usersMap[user.id] = user;
+        });
+
+        data.forEach(log => {
+          if (log.created_by && usersMap[log.created_by]) {
+            log.created_by_user = usersMap[log.created_by];
+          }
+        });
+      }
+    }
 
     return { data, error: null };
   } catch (err) {
@@ -122,6 +161,7 @@ export const updateStock = async (adjustmentData) => {
     reason,
     reference_type = "manual",
     reference_id = null,
+    import_date = null, // NEW: Ngày nhập hàng
     metadata = {}
   } = adjustmentData;
 
@@ -177,7 +217,7 @@ export const updateStock = async (adjustmentData) => {
       updateTarget = "product";
     }
 
-    // Create inventory log
+    // Create inventory log with import_date
     const logData = {
       product_id,
       product_size_id,
@@ -192,6 +232,7 @@ export const updateStock = async (adjustmentData) => {
       metadata: {
         ...metadata,
         updateTarget,
+        import_date: import_date || new Date().toISOString(), // Store import date in metadata
         timestamp: new Date().toISOString()
       }
     };
@@ -275,7 +316,183 @@ export const getInventoryStats = async () => {
   }
 };
 
-// Export inventory to CSV (returns data for download)
+// Export inventory to Excel
+export const exportInventoryToExcel = async () => {
+  try {
+    // Dynamic import of xlsx
+    const XLSX = await import('xlsx').catch(() => null);
+    
+    if (!XLSX) {
+      toast.error("Vui lòng cài đặt thư viện xlsx: npm install xlsx");
+      return { success: false, error: "xlsx not installed" };
+    }
+
+    toast.loading("Đang xuất dữ liệu...");
+
+    // Fetch products with detailed info including latest import date from logs
+    const { data: products } = await supabase
+      .from("products")
+      .select(`
+        id,
+        name,
+        slug,
+        brand_name,
+        stock,
+        price,
+        original_price,
+        is_active,
+        created_at,
+        updated_at,
+        categories!product_categories(name),
+        product_sizes(id, size, stock),
+        inventory_logs(
+          created_at,
+          change_type,
+          quantity_change,
+          metadata
+        )
+      `)
+      .order("name");
+
+    if (!products || products.length === 0) {
+      toast.dismiss();
+      toast.error("Không có dữ liệu để xuất");
+      return { success: false, error: "No data to export" };
+    }
+
+    // Helper function to get latest import date
+    const getLatestImportDate = (logs) => {
+      if (!logs || logs.length === 0) return null;
+      
+      const importLogs = logs.filter(log => 
+        log.change_type === 'import' && 
+        log.quantity_change > 0
+      ).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+      if (importLogs.length === 0) return null;
+
+      // Check metadata for import_date first, otherwise use created_at
+      const latestLog = importLogs[0];
+      return latestLog.metadata?.import_date || latestLog.created_at;
+    };
+
+    // Format data for Excel - One row per product or size variant
+    const excelData = [];
+    
+    products.forEach(product => {
+      const categoryNames = product.categories?.map(c => c.name).join(", ") || "Chưa phân loại";
+      const latestImportDate = getLatestImportDate(product.inventory_logs);
+      const formattedImportDate = latestImportDate 
+        ? new Date(latestImportDate).toLocaleDateString('vi-VN')
+        : "Chưa nhập";
+
+      if (product.product_sizes && product.product_sizes.length > 0) {
+        // Product with size variants - one row per size
+        product.product_sizes.forEach(sizeVariant => {
+          excelData.push({
+            "Mã SP": product.id.slice(0, 8).toUpperCase(),
+            "Tên sản phẩm": product.name,
+            "Thương hiệu": product.brand_name || "N/A",
+            "Danh mục": categoryNames,
+            "Size": sizeVariant.size,
+            "Tồn kho": sizeVariant.stock,
+            "Giá bán": product.price,
+            "Giá gốc": product.original_price || product.price,
+            "Giá trị tồn": sizeVariant.stock * product.price,
+            "Trạng thái": product.is_active ? "Đang bán" : "Ngừng bán",
+            "Ngày nhập gần nhất": formattedImportDate,
+            "Ngày tạo": new Date(product.created_at).toLocaleDateString('vi-VN'),
+          });
+        });
+      } else {
+        // Product without size variants
+        excelData.push({
+          "Mã SP": product.id.slice(0, 8).toUpperCase(),
+          "Tên sản phẩm": product.name,
+          "Thương hiệu": product.brand_name || "N/A",
+          "Danh mục": categoryNames,
+          "Size": "One Size",
+          "Tồn kho": product.stock,
+          "Giá bán": product.price,
+          "Giá gốc": product.original_price || product.price,
+          "Giá trị tồn": product.stock * product.price,
+          "Trạng thái": product.is_active ? "Đang bán" : "Ngừng bán",
+          "Ngày nhập gần nhất": formattedImportDate,
+          "Ngày tạo": new Date(product.created_at).toLocaleDateString('vi-VN'),
+        });
+      }
+    });
+
+    // Calculate summary statistics
+    const totalProducts = products.length;
+    const totalVariants = excelData.length;
+    const totalStock = excelData.reduce((sum, item) => sum + item["Tồn kho"], 0);
+    const totalValue = excelData.reduce((sum, item) => sum + item["Giá trị tồn"], 0);
+
+    // Create summary sheet data
+    const summaryData = [
+      { "Chỉ số": "Tổng số sản phẩm", "Giá trị": totalProducts },
+      { "Chỉ số": "Tổng số biến thể", "Giá trị": totalVariants },
+      { "Chỉ số": "Tổng tồn kho", "Giá trị": totalStock },
+      { "Chỉ số": "Tổng giá trị tồn kho", "Giá trị": new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(totalValue) },
+      { "Chỉ số": "Ngày xuất báo cáo", "Giá trị": new Date().toLocaleDateString('vi-VN', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })},
+    ];
+
+    // Create workbook
+    const wb = XLSX.utils.book_new();
+
+    // Add summary sheet
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    XLSX.utils.book_append_sheet(wb, wsSummary, "Tổng quan");
+
+    // Add detailed inventory sheet
+    const wsInventory = XLSX.utils.json_to_sheet(excelData);
+    
+    // Set column widths
+    const colWidths = [
+      { wch: 10 }, // Mã SP
+      { wch: 35 }, // Tên sản phẩm
+      { wch: 15 }, // Thương hiệu
+      { wch: 20 }, // Danh mục
+      { wch: 8 },  // Size
+      { wch: 10 }, // Tồn kho
+      { wch: 12 }, // Giá bán
+      { wch: 12 }, // Giá gốc
+      { wch: 15 }, // Giá trị tồn
+      { wch: 12 }, // Trạng thái
+      { wch: 18 }, // Ngày nhập gần nhất
+      { wch: 12 }, // Ngày tạo
+    ];
+    wsInventory['!cols'] = colWidths;
+
+    XLSX.utils.book_append_sheet(wb, wsInventory, "Chi tiết tồn kho");
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    const filename = `BaoGao_TonKho_${timestamp}.xlsx`;
+
+    // Write file
+    XLSX.writeFile(wb, filename);
+
+    toast.dismiss();
+    toast.success(`Đã xuất file: ${filename}`);
+
+    return { success: true, filename };
+  } catch (err) {
+    toast.dismiss();
+    console.error("Error exporting to Excel:", err);
+    toast.error("Lỗi khi xuất Excel: " + err.message);
+    return { success: false, error: err };
+  }
+};
+
+// Export inventory to CSV (legacy function - kept for backward compatibility)
 export const exportInventoryData = async () => {
   try {
     const { data: products } = await supabase
