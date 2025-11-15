@@ -2,17 +2,12 @@ import React, { useState, useEffect } from "react";
 import {
   Package,
   Search,
-  Filter,
-  Plus,
-  Minus,
   Edit2,
   History,
   AlertTriangle,
   CheckCircle,
   XCircle,
   TrendingUp,
-  TrendingDown,
-  Download,
   FileSpreadsheet,
   Calendar,
   Loader2,
@@ -20,7 +15,6 @@ import {
 import {
   getInventoryProducts,
   updateStock,
-  bulkUpdateStock,
   getInventoryStats,
   exportInventoryToExcel,
 } from "../../lib/api/inventory";

@@ -40,18 +40,6 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
     []
   );
 
-  const handleWishlist = useCallback(
-    (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const wishlist = JSON.parse(
-        localStorage.getItem("bewo_wishlist") || "[]"
-      );
-      const exists = wishlist.find((item) => item.id === product.id);
-      // Logic thêm/xóa wishlist có thể được thêm vào đây
-    },
-    [product.id]
-  );
 
   const handleAddToCart = useCallback(
     (e) => {

@@ -1,38 +1,216 @@
-.App {
-  text-align: center;
-}
+/* ================================================
+   OPTIMIZED APP.CSS - Performance First
+   File: src/App.css
+   ================================================ */
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
+/* ✅ REMOVED: Unused .App class và centered styling
+ * ❌ DELETED: .App-logo, .App-header (không dùng)
+ * ❌ DELETED: App-logo-spin animation (không cần)
+ */
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
+/* =========== Critical App Styles =========== */
 
-.App-header {
-  background-color: #282c34;
+/* App container - minimal styling */
+#root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+/* =========== Loading States =========== */
+
+/* Spinner for lazy loaded components */
+.lazy-loader {
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  min-height: 400px;
 }
 
-.App-link {
-  color: #61dafb;
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #000;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Skeleton loader for content */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* =========== Performance Utilities =========== */
+
+/* GPU acceleration for smooth animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+/* Smooth scroll behavior */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Image container to prevent CLS */
+.img-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.img-container::before {
+  content: '';
+  display: block;
+  padding-top: 100%; /* Default 1:1 ratio */
+}
+
+.img-container.aspect-square::before {
+  padding-top: 100%;
+}
+
+.img-container.aspect-product::before {
+  padding-top: 133.33%; /* 3:4 ratio */
+}
+
+.img-container.aspect-banner::before {
+  padding-top: 56.25%; /* 16:9 ratio */
+}
+
+.img-container img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* =========== Accessibility =========== */
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 2px;
+}
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: #fff;
+  padding: 8px;
+  text-decoration: none;
+  z-index: 100;
+}
+
+.skip-to-main:focus {
+  top: 0;
+}
+
+/* =========== Print Styles =========== */
+
+@media print {
+  /* Hide non-essential elements when printing */
+  header,
+  footer,
+  .no-print,
+  button,
+  .cart-sidebar,
+  .wishlist-sidebar,
+  .toast-container {
+    display: none !important;
   }
-  to {
-    transform: rotate(360deg);
+  
+  /* Optimize for print */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000;
+    background: #fff;
+  }
+  
+  /* Page breaks */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+  
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
   }
 }
+
+/* =========== Reduced Motion =========== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .spinner {
+    animation: none;
+    border-top-color: transparent;
+  }
+}
+
+/* =========== High Contrast Mode =========== */
+
+@media (prefers-contrast: high) {
+  :root {
+    --text-color: #000;
+    --bg-color: #fff;
+  }
+  
+  button,
+  a {
+    border: 2px solid currentColor;
+  }
+}
+
+/* =========== Dark Mode Support (Future) =========== */
+
+/* 
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text-color: #fff;
+    --bg-color: #1a1a1a;
+    --surface-color: #2d2d2d;
+  }
+  
+  body {
+    background: var(--bg-color);
+    color: var(--text-color);
+  }
+}
+*/
+
+/* End of optimized App.css */

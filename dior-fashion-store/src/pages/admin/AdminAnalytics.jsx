@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
@@ -13,7 +11,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   Cell,
 } from "recharts";
@@ -24,7 +21,6 @@ import {
   endOfDay,
   subMonths,
   startOfMonth,
-  endOfMonth,
 } from "date-fns";
 import {
   TrendingUp,
@@ -37,9 +33,6 @@ import {
   Loader2,
   RefreshCw,
   Award,
-  Clock,
-  CheckCircle,
-  XCircle,
 } from "lucide-react";
 import {
   getSalesAnalytics,

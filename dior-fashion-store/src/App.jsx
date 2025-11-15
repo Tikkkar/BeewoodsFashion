@@ -10,6 +10,9 @@ import {
 import { AuthProvider } from "./hooks/useAuth";
 import { useToast } from "./hooks/useToast";
 
+// ✅ Import ScrollToTop component
+import ScrollToTop from "./components/common/ScrollToTop";
+
 // ✅ Import dữ liệu tĩnh
 import { brandData } from "./data";
 
@@ -116,6 +119,9 @@ function AppContent({
 
   return (
     <>
+      {/* ✅ CRITICAL: ScrollToTop - Must be inside Router */}
+      <ScrollToTop />
+
       {/* ✅ ChatWidget - Lazy loaded */}
       {!isAdminRoute && (
         <Suspense fallback={null}>

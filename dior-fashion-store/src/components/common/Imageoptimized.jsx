@@ -1,9 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  getOptimizedImageUrl,
+  getProductImageSrcSet,
+  getBannerImageSrcSet,
+  getLogoImageSrcSet,
+  isSupabaseUrl,
+  getImageSizes
+} from '../../utils/imageOptimization.js';
 
 /**
- * ImageOptimized Component
+ * ImageOptimized Component - With WebP Support
  * - Lazy loading with IntersectionObserver
  * - Responsive images with srcSet
+ * - WebP format with fallback
  * - Blur placeholder while loading
  * - Preload critical images (LCP)
  */
@@ -11,20 +20,21 @@ const ImageOptimized = ({
   src, 
   alt, 
   className = '',
-  priority = false, // true for LCP images (hero, logo)
+  priority = false, // true for LCP images (hero, banner)
   objectFit = 'cover',
   aspectRatio = '3/4', // for product cards
-  sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+  type = 'product', // 'product', 'banner', 'logo'
+  sizes, // Override default sizes
   onLoad, // callback when image loads
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(priority); // Priority images load immediately
+  const [isInView, setIsInView] = useState(priority);
   const imgRef = useRef(null);
 
   // Intersection Observer for lazy loading
   useEffect(() => {
     if (priority || !imgRef.current) {
-      setIsInView(true); // Load immediately if priority or ref not ready
+      setIsInView(true);
       return;
     }
 
@@ -38,7 +48,7 @@ const ImageOptimized = ({
         });
       },
       { 
-        rootMargin: '100px', // Load 100px before entering viewport
+        rootMargin: '100px', // Load 100px before viewport
         threshold: 0.01 
       }
     );
@@ -53,14 +63,39 @@ const ImageOptimized = ({
     };
   }, [priority]);
 
-  // Generate responsive srcSet from original URL
-  const generateSrcSet = (url) => {
-    if (!url || url.includes('image2url.com')) {
-      // For image2url.com, return original (họ không hỗ trợ resize)
-      return url;
+  // Generate srcSet based on image type
+  const getSrcSet = () => {
+    if (!isSupabaseUrl(src)) return src;
+
+    switch (type) {
+      case 'banner':
+        return getBannerImageSrcSet(src);
+      case 'logo':
+        return getLogoImageSrcSet(src);
+      case 'product':
+      default:
+        return getProductImageSrcSet(src);
     }
-    // Nếu dùng CDN khác hỗ trợ resize, thêm logic ở đây
-    return url;
+  };
+
+  // Get sizes attribute
+  const sizesAttr = sizes || getImageSizes(type);
+
+  // Get optimized single image URL (fallback)
+  const getOptimizedSrc = () => {
+    if (!isSupabaseUrl(src)) return src;
+
+    const widthMap = {
+      product: 640,
+      banner: 1920,
+      logo: 200
+    };
+
+    return getOptimizedImageUrl(src, {
+      width: widthMap[type],
+      quality: 80,
+      format: 'webp'
+    });
   };
 
   return (
@@ -74,25 +109,43 @@ const ImageOptimized = ({
         <div className="absolute inset-0 bg-gray-200 animate-pulse" />
       )}
 
-      {/* Actual Image */}
+      {/* Actual Image with WebP support */}
       {isInView && (
-        <img
-          src={src}
-          srcSet={generateSrcSet(src)}
-          alt={alt}
-          sizes={sizes}
-          loading={priority ? 'eager' : 'lazy'}
-          decoding={priority ? 'sync' : 'async'}
-          fetchpriority={priority ? 'high' : 'auto'}
-          className={`w-full h-full transition-opacity duration-500 ${
-            isLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-          style={{ objectFit }}
-          onLoad={() => {
-            setIsLoaded(true);
-            onLoad?.(); // Call parent callback if provided
-          }}
-        />
+        <picture>
+          {/* WebP source for modern browsers */}
+          {isSupabaseUrl(src) && (
+            <source
+              type="image/webp"
+              srcSet={getSrcSet()}
+              sizes={sizesAttr}
+            />
+          )}
+          
+          {/* Fallback img tag */}
+          <img
+            src={getOptimizedSrc()}
+            alt={alt}
+            sizes={sizesAttr}
+            loading={priority ? 'eager' : 'lazy'}
+            decoding={priority ? 'sync' : 'async'}
+            fetchpriority={priority ? 'high' : 'auto'}
+            className={`w-full h-full transition-opacity duration-500 ${
+              isLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ objectFit }}
+            onLoad={() => {
+              setIsLoaded(true);
+              onLoad?.();
+            }}
+            onError={(e) => {
+              console.error('Image failed to load:', src);
+              // Fallback to original URL if optimized version fails
+              if (e.target.src !== src) {
+                e.target.src = src;
+              }
+            }}
+          />
+        </picture>
       )}
     </div>
   );
