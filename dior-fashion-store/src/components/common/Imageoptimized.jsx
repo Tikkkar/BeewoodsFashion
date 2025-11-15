@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 /**
  * ImageOptimized Component
@@ -15,16 +15,18 @@ const ImageOptimized = ({
   objectFit = 'cover',
   aspectRatio = '3/4', // for product cards
   sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+  onLoad, // callback when image loads
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isInView, setIsInView] = useState(priority); // Priority images load immediately
+  const imgRef = useRef(null);
 
   // Intersection Observer for lazy loading
-  React.useEffect(() => {
-    if (priority) return; // Skip for priority images
-
-    const img = document.querySelector(`[data-src="${src}"]`);
-    if (!img) return;
+  useEffect(() => {
+    if (priority || !imgRef.current) {
+      setIsInView(true); // Load immediately if priority or ref not ready
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -35,12 +37,21 @@ const ImageOptimized = ({
           }
         });
       },
-      { rootMargin: '50px' } // Load 50px before entering viewport
+      { 
+        rootMargin: '100px', // Load 100px before entering viewport
+        threshold: 0.01 
+      }
     );
 
-    observer.observe(img);
-    return () => observer.disconnect();
-  }, [src, priority]);
+    observer.observe(imgRef.current);
+    
+    return () => {
+      if (imgRef.current) {
+        observer.unobserve(imgRef.current);
+      }
+      observer.disconnect();
+    };
+  }, [priority]);
 
   // Generate responsive srcSet from original URL
   const generateSrcSet = (url) => {
@@ -54,6 +65,7 @@ const ImageOptimized = ({
 
   return (
     <div 
+      ref={imgRef}
       className={`relative overflow-hidden bg-gray-100 ${className}`}
       style={{ aspectRatio }}
     >
@@ -63,24 +75,25 @@ const ImageOptimized = ({
       )}
 
       {/* Actual Image */}
-      <img
-        data-src={src}
-        src={isInView ? src : undefined}
-        srcSet={isInView ? generateSrcSet(src) : undefined}
-        alt={alt}
-        sizes={sizes}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding={priority ? 'sync' : 'async'}
-        fetchpriority={priority ? 'high' : 'auto'}
-        className={`w-full h-full transition-opacity duration-500 ${
-          isLoaded ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ objectFit }}
-        onLoad={() => setIsLoaded(true)}
-        // Thêm width/height explicit để tránh CLS
-        width={priority ? '100%' : undefined}
-        height={priority ? 'auto' : undefined}
-      />
+      {isInView && (
+        <img
+          src={src}
+          srcSet={generateSrcSet(src)}
+          alt={alt}
+          sizes={sizes}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding={priority ? 'sync' : 'async'}
+          fetchpriority={priority ? 'high' : 'auto'}
+          className={`w-full h-full transition-opacity duration-500 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ objectFit }}
+          onLoad={() => {
+            setIsLoaded(true);
+            onLoad?.(); // Call parent callback if provided
+          }}
+        />
+      )}
     </div>
   );
 };

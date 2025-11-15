@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import ImageOptimized from "../common/Imageoptimized";
 import { ShoppingCart, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const ProductCard = ({ product, onAddToCart, onQuickView }) => {
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [showActions, setShowActions] = useState(false);
-
-  // State để quản lý ảnh đang hiển thị
   const [currentImage, setCurrentImage] = useState(product.imagePrimary);
 
   // Cập nhật lại state ảnh nếu sản phẩm thay đổi
@@ -15,7 +13,7 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   }, [product.imagePrimary]);
 
   // Xử lý sự kiện di chuột để đổi ảnh và hiện actions
-  const handleMouseEnter = () => {
+  const handleMouseEnter = useCallback(() => {
     setShowActions(true);
     // Nếu có ảnh thứ 2, đổi sang ảnh đó
     if (
@@ -24,42 +22,75 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
     ) {
       setCurrentImage(product.imageSecondary);
     }
-  };
+  }, [product.imageSecondary, product.imagePrimary]);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setShowActions(false);
     // Khi chuột rời đi, quay lại ảnh chính
     setCurrentImage(product.imagePrimary);
-  };
+  }, [product.imagePrimary]);
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
+  // Memoize price formatter
+  const formatPrice = useMemo(
+    () =>
+      new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format,
+    []
+  );
 
-  const handleWishlist = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const wishlist = JSON.parse(localStorage.getItem("bewo_wishlist") || "[]");
-    const exists = wishlist.find((item) => item.id === product.id);
-    // Logic thêm/xóa wishlist có thể được thêm vào đây
-  };
+  const handleWishlist = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const wishlist = JSON.parse(
+        localStorage.getItem("bewo_wishlist") || "[]"
+      );
+      const exists = wishlist.find((item) => item.id === product.id);
+      // Logic thêm/xóa wishlist có thể được thêm vào đây
+    },
+    [product.id]
+  );
 
-  const handleAddToCart = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onAddToCart(product);
-  };
+  const handleAddToCart = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onAddToCart(product);
+    },
+    [product, onAddToCart]
+  );
 
-  const handleQuickView = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onQuickView?.(product);
-  };
+  const handleQuickView = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onQuickView?.(product);
+    },
+    [product, onQuickView]
+  );
 
-  const isSale = product.originalPrice && product.originalPrice > product.price;
+  // Memoize calculations
+  const isSale = useMemo(
+    () => product.originalPrice && product.originalPrice > product.price,
+    [product.originalPrice, product.price]
+  );
+
+  const discount = useMemo(() => {
+    if (!isSale) return 0;
+    return Math.round(
+      ((product.originalPrice - product.price) / product.originalPrice) * 100
+    );
+  }, [isSale, product.originalPrice, product.price]);
+
+  const avgRating = useMemo(() => {
+    if (!product.reviews || product.reviews.length === 0) return 0;
+    return (
+      product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+      product.reviews.length
+    );
+  }, [product.reviews]);
 
   return (
     <Link
@@ -69,32 +100,21 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
       onMouseLeave={handleMouseLeave}
     >
       <div className="bg-white overflow-hidden">
-        {/* Image Container */}
-        <div className="relative aspect-[3/4] bg-gray-100 overflow-hidden">
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-          )}
-
-          <img
+        {/* Image Container - Optimized */}
+        <div className="relative overflow-hidden">
+          <ImageOptimized
             src={currentImage}
             alt={product.name}
-            className={`w-full h-full object-cover transition-all duration-700 ${
-              imageLoaded ? "opacity-100 group-hover:scale-110" : "opacity-0"
-            }`}
-            onLoad={() => setImageLoaded(true)}
-            loading="lazy"
+            className="group-hover:scale-110 transition-transform duration-700"
+            aspectRatio="3/4"
+            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            objectFit="cover"
           />
 
           {/* Sale Badge */}
           {isSale && (
             <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-md z-10">
-              -
-              {Math.round(
-                ((product.originalPrice - product.price) /
-                  product.originalPrice) *
-                  100
-              )}
-              %
+              -{discount}%
             </div>
           )}
 
@@ -110,6 +130,7 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
               <button
                 onClick={handleAddToCart}
                 className="flex-1 bg-white text-black py-2.5 px-3 rounded-lg text-sm font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-2 shadow-md"
+                aria-label={`Thêm ${product.name} vào giỏ hàng`}
               >
                 <ShoppingCart size={16} />
                 <span>Thêm vào giỏ</span>
@@ -119,6 +140,7 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
                   onClick={handleQuickView}
                   className="p-2.5 bg-white/90 text-gray-700 rounded-lg hover:bg-white transition shadow-md"
                   title="Xem nhanh"
+                  aria-label={`Xem nhanh ${product.name}`}
                 >
                   <Eye size={16} />
                 </button>
@@ -126,11 +148,12 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
             </div>
           </div>
 
-          {/* Quick Actions - Mobile (FIXED) */}
+          {/* Quick Actions - Mobile */}
           <div className="md:hidden absolute inset-x-3 bottom-3 flex items-center gap-2">
             <button
               onClick={handleAddToCart}
               className="flex-1 bg-white text-black py-2 px-3 rounded-lg text-xs font-semibold hover:bg-gray-100 transition flex items-center justify-center gap-1.5 shadow-md"
+              aria-label={`Thêm ${product.name} vào giỏ hàng`}
             >
               <ShoppingCart size={14} />
               <span className="whitespace-nowrap">Thêm vào giỏ</span>
@@ -140,6 +163,7 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
                 onClick={handleQuickView}
                 className="p-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 transition shadow-md"
                 title="Xem nhanh"
+                aria-label={`Xem nhanh ${product.name}`}
               >
                 <Eye size={14} />
               </button>
@@ -168,24 +192,23 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
           {/* Reviews */}
           {product.reviews && product.reviews.length > 0 && (
             <div className="flex items-center gap-1 mt-2">
-              <div className="flex items-center">
-                {[...Array(5)].map((_, i) => {
-                  const avgRating =
-                    product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-                    product.reviews.length;
-                  return (
-                    <span
-                      key={i}
-                      className={`text-xs ${
-                        i < Math.round(avgRating)
-                          ? "text-yellow-400"
-                          : "text-gray-300"
-                      }`}
-                    >
-                      ★
-                    </span>
-                  );
-                })}
+              <div
+                className="flex items-center"
+                aria-label={`Đánh giá ${avgRating.toFixed(1)} sao`}
+              >
+                {[...Array(5)].map((_, i) => (
+                  <span
+                    key={i}
+                    className={`text-xs ${
+                      i < Math.round(avgRating)
+                        ? "text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    ★
+                  </span>
+                ))}
               </div>
               <span className="text-xs text-gray-500">
                 ({product.reviews.length})
@@ -198,4 +221,15 @@ const ProductCard = ({ product, onAddToCart, onQuickView }) => {
   );
 };
 
-export default ProductCard;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(ProductCard, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if product data actually changed
+  return (
+    prevProps.product.id === nextProps.product.id &&
+    prevProps.product.price === nextProps.product.price &&
+    prevProps.product.imagePrimary === nextProps.product.imagePrimary &&
+    prevProps.product.imageSecondary === nextProps.product.imageSecondary &&
+    prevProps.onAddToCart === nextProps.onAddToCart &&
+    prevProps.onQuickView === nextProps.onQuickView
+  );
+});

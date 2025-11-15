@@ -1,5 +1,6 @@
-import React from "react";
-import ProductCard from "./ProductCard";
+import React, { useMemo, useCallback } from "react";
+import ProductCard from "./ProductCard.jsx";
+import ImageOptimized from ".././common/Imageoptimized.jsx";
 import { ShoppingCart, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -10,15 +11,18 @@ const ProductGrid = ({
   title,
   viewMode = "grid",
 }) => {
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
+  // Memoize formatter để tránh tạo lại mỗi render
+  const formatPrice = useMemo(
+    () =>
+      new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+      }).format,
+    []
+  );
 
   // List View Component
-  const ProductListItem = ({ product }) => {
+  const ProductListItem = React.memo(({ product }) => {
     const [isWishlisted, setIsWishlisted] = React.useState(false);
 
     React.useEffect(() => {
@@ -28,40 +32,55 @@ const ProductGrid = ({
       setIsWishlisted(wishlist.some((item) => item.id === product.id));
     }, [product.id]);
 
-    const handleWishlist = () => {
-      const wishlist = JSON.parse(
-        localStorage.getItem("bewo_wishlist") || "[]"
-      );
-      const exists = wishlist.find((item) => item.id === product.id);
+    const handleWishlist = useCallback(
+      (e) => {
+        e.preventDefault();
+        const wishlist = JSON.parse(
+          localStorage.getItem("bewo_wishlist") || "[]"
+        );
+        const exists = wishlist.find((item) => item.id === product.id);
 
-      if (exists) {
-        const newWishlist = wishlist.filter((item) => item.id !== product.id);
-        localStorage.setItem("bewo_wishlist", JSON.stringify(newWishlist));
-        setIsWishlisted(false);
-      } else {
-        wishlist.push(product);
-        localStorage.setItem("bewo_wishlist", JSON.stringify(wishlist));
-        setIsWishlisted(true);
+        if (exists) {
+          const newWishlist = wishlist.filter((item) => item.id !== product.id);
+          localStorage.setItem("bewo_wishlist", JSON.stringify(newWishlist));
+          setIsWishlisted(false);
+        } else {
+          wishlist.push(product);
+          localStorage.setItem("bewo_wishlist", JSON.stringify(wishlist));
+          setIsWishlisted(true);
+        }
+
+        window.dispatchEvent(new Event("wishlistUpdated"));
+      },
+      [product]
+    );
+
+    const handleAddToCart = useCallback(
+      (e) => {
+        e.preventDefault();
+        onAddToCart(product);
+      },
+      [product, onAddToCart]
+    );
+
+    // Memoize discount calculation
+    const discount = useMemo(() => {
+      if (!product.originalPrice || product.originalPrice <= product.price) {
+        return null;
       }
+      return Math.round(
+        ((product.originalPrice - product.price) / product.originalPrice) * 100
+      );
+    }, [product.originalPrice, product.price]);
 
-      window.dispatchEvent(new Event("wishlistUpdated"));
-    };
-
-    // ⚡ Tính discount
-    const discount =
-      product.originalPrice && product.originalPrice > product.price
-        ? Math.round(
-            ((product.originalPrice - product.price) / product.originalPrice) *
-              100
-          )
-        : null;
-
-    // ⚡ Tính average rating
-    const avgRating =
-      product.reviews && product.reviews.length > 0
-        ? product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-          product.reviews.length
-        : 0;
+    // Memoize average rating calculation
+    const avgRating = useMemo(() => {
+      if (!product.reviews || product.reviews.length === 0) return 0;
+      return (
+        product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+        product.reviews.length
+      );
+    }, [product.reviews]);
 
     return (
       <div className="group bg-white border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
@@ -69,21 +88,23 @@ const ProductGrid = ({
           to={`/product/${product.slug}`}
           className="flex flex-col sm:flex-row gap-4 p-4"
         >
-          {" "}
-          {/* ⚡ SLUG */}
-          {/* Image */}
-          <div className="relative w-full sm:w-48 h-64 sm:h-48 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-            <img
-              src={product.image}
+          {/* Image - Optimized */}
+          <div className="relative w-full sm:w-48 flex-shrink-0">
+            <ImageOptimized
+              src={product.imagePrimary || product.image}
               alt={product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              className="rounded-lg group-hover:scale-105 transition-transform duration-500"
+              aspectRatio="4/3"
+              sizes="(max-width: 640px) 100vw, 192px"
+              objectFit="cover"
             />
             {discount && (
-              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+              <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                 -{discount}%
               </div>
             )}
           </div>
+
           {/* Info */}
           <div className="flex-1 flex flex-col justify-between">
             <div>
@@ -101,7 +122,10 @@ const ProductGrid = ({
               {/* Rating */}
               {product.reviews && product.reviews.length > 0 && (
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="flex items-center">
+                  <div
+                    className="flex items-center"
+                    aria-label={`Đánh giá ${avgRating.toFixed(1)} sao`}
+                  >
                     {[...Array(5)].map((_, i) => (
                       <span
                         key={i}
@@ -110,6 +134,7 @@ const ProductGrid = ({
                             ? "text-yellow-400"
                             : "text-gray-300"
                         }`}
+                        aria-hidden="true"
                       >
                         ★
                       </span>
@@ -138,26 +163,26 @@ const ProductGrid = ({
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onAddToCart(product);
-                  }}
+                  onClick={handleAddToCart}
                   className="px-4 py-2 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition flex items-center gap-2"
+                  aria-label={`Thêm ${product.name} vào giỏ hàng`}
                 >
                   <ShoppingCart size={16} />
                   <span className="hidden sm:inline">Thêm vào giỏ</span>
                 </button>
 
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleWishlist();
-                  }}
+                  onClick={handleWishlist}
                   className={`p-2 rounded-lg transition ${
                     isWishlisted
                       ? "bg-red-500 text-white"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
+                  aria-label={
+                    isWishlisted
+                      ? `Xóa ${product.name} khỏi danh sách yêu thích`
+                      : `Thêm ${product.name} vào danh sách yêu thích`
+                  }
                 >
                   <Heart
                     size={18}
@@ -170,7 +195,9 @@ const ProductGrid = ({
         </Link>
       </div>
     );
-  };
+  });
+
+  ProductListItem.displayName = "ProductListItem";
 
   // Empty State
   if (!products || products.length === 0) {
@@ -182,6 +209,7 @@ const ProductGrid = ({
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"
@@ -233,4 +261,14 @@ const ProductGrid = ({
   );
 };
 
-export default ProductGrid;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(ProductGrid, (prevProps, nextProps) => {
+  // Only re-render if products array or callbacks changed
+  return (
+    prevProps.products === nextProps.products &&
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.title === nextProps.title &&
+    prevProps.onAddToCart === nextProps.onAddToCart &&
+    prevProps.onQuickView === nextProps.onQuickView
+  );
+});

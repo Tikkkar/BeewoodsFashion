@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ImageOptimized from '../common/Imageoptimized';
 
 const HeroSlider = ({ banners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -8,60 +9,47 @@ const HeroSlider = ({ banners }) => {
   const [imageLoaded, setImageLoaded] = useState({});
   const [isMobile, setIsMobile] = useState(false);
 
-  // Detect mobile - HOOK #1
+  // ✅ Detect mobile - Debounced
   useEffect(() => {
+    let timeoutId;
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        setIsMobile(window.innerWidth < 768);
+      }, 150);
     };
+    
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
-  // Filter active banners - MEMO để optimize performance
+  // ✅ Filter active banners - Memoized
   const activeBanners = useMemo(() => {
-    console.log('🔍 HeroSlider - Raw banners:', banners);
-    console.log('🔍 Is Array?', Array.isArray(banners));
-    console.log('🔍 Length?', banners?.length);
+    if (!banners || !Array.isArray(banners)) return [];
+    if (banners.length === 0) return [];
     
-    if (!banners || !Array.isArray(banners)) {
-      console.warn('⚠️ Banners is not valid array');
-      return [];
-    }
-    
+    const now = new Date();
     const filtered = banners.filter(banner => {
-      // Check if banner is active
-      if (!banner.is_active) {
-        console.log('❌ Banner inactive:', banner.title);
-        return false;
-      }
+      // Assume active if is_active is undefined
+      const isActive = banner.is_active !== false;
+      if (!isActive) return false;
       
-      // Check schedule if exists
-      const now = new Date();
-      if (banner.start_date && new Date(banner.start_date) > now) {
-        console.log('❌ Banner not started yet:', banner.title);
-        return false;
-      }
-      if (banner.end_date && new Date(banner.end_date) < now) {
-        console.log('❌ Banner expired:', banner.title);
-        return false;
-      }
+      if (banner.start_date && new Date(banner.start_date) > now) return false;
+      if (banner.end_date && new Date(banner.end_date) < now) return false;
       
-      console.log('✅ Banner active:', banner.title);
       return true;
     });
     
-    const sorted = filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-    
-    console.log('✅ Active banners count:', sorted.length);
-    console.log('✅ Active banners:', sorted);
-    
-    return sorted;
+    return filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
   }, [banners]);
 
-  // Auto-play functionality - HOOK #2
+  // ✅ Auto-play
   useEffect(() => {
-    if (!isAutoPlaying || !activeBanners?.length) return;
+    if (!isAutoPlaying || !activeBanners?.length || activeBanners.length <= 1) return;
 
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
@@ -70,36 +58,38 @@ const HeroSlider = ({ banners }) => {
     return () => clearInterval(timer);
   }, [isAutoPlaying, activeBanners?.length]);
 
-  // Navigation functions
-  const goToSlide = (index) => {
+  // ✅ Navigation functions - Memoized
+  const goToSlide = useCallback((index) => {
     setCurrentSlide(index);
     setIsAutoPlaying(false);
     setTimeout(() => setIsAutoPlaying(true), 10000);
-  };
+  }, []);
 
-  const goToPrev = () => {
-    setCurrentSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length);
+  const goToPrev = useCallback(() => {
+    setCurrentSlide((prev) => 
+      prev === 0 ? activeBanners.length - 1 : prev - 1
+    );
     setIsAutoPlaying(false);
     setTimeout(() => setIsAutoPlaying(true), 10000);
-  };
+  }, [activeBanners.length]);
 
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
     setIsAutoPlaying(false);
     setTimeout(() => setIsAutoPlaying(true), 10000);
-  };
+  }, [activeBanners.length]);
 
-  // Helper functions for styling
-  const getTextPositionClass = (position) => {
+  // ✅ Helper functions - Memoized
+  const getTextPositionClass = useCallback((position) => {
     const positions = {
       left: 'items-start text-left',
       center: 'items-center text-center',
       right: 'items-end text-right',
     };
     return positions[position] || positions.left;
-  };
+  }, []);
 
-  const getButtonStyleClass = (style) => {
+  const getButtonStyleClass = useCallback((style) => {
     const styles = {
       primary: 'bg-black text-white hover:bg-gray-800',
       secondary: 'bg-white text-black hover:bg-gray-100',
@@ -107,9 +97,9 @@ const HeroSlider = ({ banners }) => {
       ghost: 'bg-white/20 backdrop-blur text-white hover:bg-white/30',
     };
     return styles[style] || styles.primary;
-  };
+  }, []);
 
-  const getAnimationClass = (animation) => {
+  const getAnimationClass = useCallback((animation) => {
     const animations = {
       none: '',
       fade: 'animate-fadeIn',
@@ -117,37 +107,36 @@ const HeroSlider = ({ banners }) => {
       zoom: 'animate-zoomIn',
     };
     return animations[animation] || '';
-  };
+  }, []);
 
-  // Early return AFTER all hooks
-  if (!activeBanners || activeBanners.length === 0) {
-    console.warn('⚠️ No active banners to display');
-    console.log('📊 Debug info:', {
-      banners,
-      bannersLength: banners?.length,
-      activeBannersLength: activeBanners?.length,
-      isArray: Array.isArray(banners)
-    });
+  // ✅ Preload next image
+  useEffect(() => {
+    if (!activeBanners?.length || activeBanners.length <= 1) return;
     
-    // LOG BANNER CHI TIẾT
-    if (banners && banners.length > 0) {
-      console.log('🔍 Banner details:', banners[0]);
-      console.table(banners.map(b => ({
-        title: b.title,
-        is_active: b.is_active,
-        start_date: b.start_date,
-        end_date: b.end_date,
-        display_order: b.display_order
-      })));
+    const nextIndex = (currentSlide + 1) % activeBanners.length;
+    const nextBanner = activeBanners[nextIndex];
+    
+    if (nextBanner) {
+      const imageUrl = isMobile && nextBanner.mobile_image_url 
+        ? nextBanner.mobile_image_url 
+        : (nextBanner.image_url || nextBanner.image);
+      
+      if (imageUrl) {
+        const img = new Image();
+        img.src = imageUrl;
+      }
     }
-    
+  }, [currentSlide, activeBanners, isMobile]);
+
+  // Early return
+  if (!activeBanners || activeBanners.length === 0) {
     return null;
   }
 
   return (
     <section className="w-full py-4 md:py-8 bg-white">
       <div 
-        className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 relative overflow-hidden rounded-lg md:rounded-xl"
+        className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 relative overflow-hidden rounded-lg md:rounded-xl bg-gray-100"
         style={{
           height: activeBanners[0]?.height_mobile ? `${activeBanners[0].height_mobile}px` : '500px',
           '--height-tablet': activeBanners[0]?.height_tablet ? `${activeBanners[0].height_tablet}px` : '600px',
@@ -155,6 +144,7 @@ const HeroSlider = ({ banners }) => {
           '--height-large': activeBanners[0]?.height_large ? `${activeBanners[0].height_large}vh` : '80vh',
         }}
       >
+        {/* Responsive height styles */}
         <style>{`
           @media (min-width: 640px) {
             div[style*="--height-tablet"] {
@@ -175,10 +165,12 @@ const HeroSlider = ({ banners }) => {
         
         {/* Slides */}
         {activeBanners.map((banner, index) => {
-          // Determine which image to use
           const imageUrl = isMobile && banner.mobile_image_url 
             ? banner.mobile_image_url 
             : (banner.image_url || banner.image);
+
+          // Skip rendering if no image URL
+          if (!imageUrl) return null;
 
           return (
             <div
@@ -187,33 +179,37 @@ const HeroSlider = ({ banners }) => {
                 index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
               }`}
             >
-              {/* Image with Skeleton Loader */}
+              {/* Image Container */}
               <div className="relative w-full h-full">
-                {/* Skeleton */}
+                {/* Skeleton loader */}
                 {!imageLoaded[index] && (
-                  <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
                 )}
                 
-                <img
+                {/* ✅ OPTIMIZED: ImageOptimized with onLoad callback */}
+                <ImageOptimized
                   src={imageUrl}
-                  alt={banner.title || `Slide ${index + 1}`}
-                  className={`w-full h-full object-cover transition-opacity duration-500 ${
+                  alt={banner.title || `Banner ${index + 1}`}
+                  priority={index === 0}  // ⚡ First banner = LCP
+                  aspectRatio="21/9"
+                  className={`w-full h-full transition-opacity duration-500 ${
                     imageLoaded[index] ? 'opacity-100' : 'opacity-0'
                   } ${getAnimationClass(banner.animation)}`}
+                  objectFit="cover"
+                  sizes="100vw"
                   onLoad={() => setImageLoaded(prev => ({ ...prev, [index]: true }))}
-                  loading={index === 0 ? 'eager' : 'lazy'}
                 />
               </div>
 
-              {/* Overlay with Custom Opacity - Only if content is shown */}
+              {/* Overlay */}
               {banner.show_content !== false && (
                 <div 
-                  className="absolute inset-0 bg-black"
+                  className="absolute inset-0 bg-black transition-opacity duration-1000"
                   style={{ opacity: banner.overlay_opacity || 0.3 }}
                 />
               )}
 
-              {/* Content - Only render if show_content is true */}
+              {/* Content */}
               {banner.show_content !== false &&
                 (banner.show_title !== false ||
                   banner.show_subtitle !== false ||
@@ -226,25 +222,24 @@ const HeroSlider = ({ banners }) => {
                     >
                       <div className="max-w-2xl">
                         {/* Subtitle */}
-                        {banner.show_subtitle !== false &&
-                          banner.subtitle && (
-                            <p
-                              className={`${
-                                banner.subtitle_size || "text-xl"
-                              } font-light tracking-wider md:tracking-widest uppercase mb-1.5 sm:mb-2 md:mb-3 opacity-90`}
-                              style={{
-                                color: banner.text_color || "#FFFFFF",
-                              }}
-                            >
-                              {banner.subtitle}
-                            </p>
-                          )}
+                        {banner.show_subtitle !== false && banner.subtitle && (
+                          <p
+                            className={`${
+                              banner.subtitle_size || "text-sm sm:text-base md:text-xl"
+                            } font-light tracking-wider md:tracking-widest uppercase mb-1.5 sm:mb-2 md:mb-3 opacity-90`}
+                            style={{
+                              color: banner.text_color || "#FFFFFF",
+                            }}
+                          >
+                            {banner.subtitle}
+                          </p>
+                        )}
 
-                        {/* Title with Custom Size */}
+                        {/* Title */}
                         {banner.show_title !== false && banner.title && (
                           <h2
                             className={`${
-                              banner.title_size || "text-5xl"
+                              banner.title_size || "text-3xl sm:text-4xl md:text-5xl lg:text-6xl"
                             } font-bold tracking-wide uppercase mb-3 sm:mb-4 md:mb-6 leading-tight`}
                             style={{
                               color: banner.text_color || "#FFFFFF",
@@ -254,25 +249,20 @@ const HeroSlider = ({ banners }) => {
                           </h2>
                         )}
 
-                      {/* Description (if exists) */}
-                      {banner.description && (
-                        <p 
-                          className="hidden sm:block text-sm md:text-base lg:text-lg font-light mb-4 sm:mb-6 md:mb-8 opacity-90 max-w-xl line-clamp-3"
-                          style={{ color: banner.text_color || '#FFFFFF' }}
-                        >
-                          {banner.description}
-                        </p>
-                      )}
+                        {/* Description */}
+                        {banner.description && (
+                          <p 
+                            className="hidden sm:block text-sm md:text-base lg:text-lg font-light mb-4 sm:mb-6 md:mb-8 opacity-90 max-w-xl line-clamp-3"
+                            style={{ color: banner.text_color || '#FFFFFF' }}
+                          >
+                            {banner.description}
+                          </p>
+                        )}
 
-                      {/* CTA Button with Custom Style */}
-                      {banner.show_button !== false &&
-                        banner.button_text && (
+                        {/* CTA Button */}
+                        {banner.show_button !== false && banner.button_text && (
                           <Link
-                            to={
-                              banner.button_link ||
-                              banner.link_url ||
-                              "/products"
-                            }
+                            to={banner.button_link || banner.link_url || "/products"}
                             className={`inline-block px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 text-xs sm:text-sm md:text-base font-medium tracking-wide uppercase transition-all duration-300 shadow-lg rounded-sm ${getButtonStyleClass(
                               banner.button_style
                             )}`}
@@ -280,9 +270,9 @@ const HeroSlider = ({ banners }) => {
                             {banner.button_text}
                           </Link>
                         )}
+                      </div>
                     </div>
                   </div>
-                </div>
               )}
             </div>
           );

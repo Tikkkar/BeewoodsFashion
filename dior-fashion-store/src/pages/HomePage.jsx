@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback, memo } from "react";
 import { Link } from "react-router-dom";
 import {
   TrendingUp,
@@ -14,31 +14,64 @@ import QuickViewModal from "../components/products/QuickViewModal";
 import { useProducts, useBanners, useCategories } from "../hooks/useProducts";
 import { supabase } from "../lib/supabase";
 
+// ✅ OPTIMIZATION 1: Memoize CustomerCard để tránh re-render
+const CustomerCard = memo(({ customer }) => (
+  <div className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2">
+    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
+      <div className="aspect-square relative overflow-hidden">
+        <img
+          src={customer.image}
+          alt={customer.name}
+          loading="lazy"
+          className="w-full h-full object-cover transform group-hover/card:scale-110 transition-transform duration-500"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300" />
+      </div>
+      <div className="p-4 text-center">
+        <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
+          {customer.name}
+        </h3>
+        <p className="text-xs md:text-sm text-gray-500">{customer.role}</p>
+      </div>
+    </div>
+  </div>
+));
+CustomerCard.displayName = 'CustomerCard';
+
+// ✅ OPTIMIZATION 2: Memoize CategoryButton
+const CategoryButton = memo(({ category, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`px-5 py-3 border-2 rounded-md text-sm md:text-base transition-all duration-150 ${
+      isActive
+        ? "bg-black text-white border-black shadow"
+        : "bg-white text-gray-800 border-gray-800 hover:shadow-sm"
+    }`}
+  >
+    {category.name}
+  </button>
+));
+CategoryButton.displayName = 'CategoryButton';
+
 const HomePage = ({ onAddToCart }) => {
-  // ======= Hooks / state: MUST be at top-level (not after returns) =======
+  // =============================================
+  // STATE
+  // =============================================
   const [quickViewProduct, setQuickViewProduct] = useState(null);
-
-  // Slider bán chạy
-  const featuredScrollRef = useRef(null);
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Customer carousel from database
-  const customerScrollRef = useRef(null);
-  const [isCustomerHovered, setIsCustomerHovered] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("all");
   const [customers, setCustomers] = useState([]);
   const [customersLoading, setCustomersLoading] = useState(true);
 
-  // **activeCategory state - bây giờ sẽ lưu slug thực tế hoặc "all"**
-  const [activeCategory, setActiveCategory] = useState("all");
+  // Slider state
+  const featuredScrollRef = useRef(null);
+  const customerScrollRef = useRef(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isCustomerHovered, setIsCustomerHovered] = useState(false);
 
   // =============================================
-  // FETCH CUSTOMER FEEDBACKS FROM DATABASE
+  // ✅ OPTIMIZATION 3: Memoized fetch function
   // =============================================
-  useEffect(() => {
-    fetchCustomerFeedbacks();
-  }, []);
-
-  const fetchCustomerFeedbacks = async () => {
+  const fetchCustomerFeedbacks = useCallback(async () => {
     try {
       setCustomersLoading(true);
       const { data, error } = await supabase
@@ -49,140 +82,127 @@ const HomePage = ({ onAddToCart }) => {
 
       if (error) throw error;
       
-      // Transform data to match the expected format
-      const transformedData = data.map(feedback => ({
+      const transformedData = data?.map(feedback => ({
         id: feedback.id,
         name: feedback.customer_name,
-        role: 'Khách hàng', // Default role
+        role: 'Khách hàng',
         image: feedback.customer_image,
-      }));
+      })) || [];
       
-      setCustomers(transformedData || []);
+      setCustomers(transformedData);
     } catch (error) {
       console.error('Error fetching customer feedbacks:', error);
+      setCustomers([]);
     } finally {
       setCustomersLoading(false);
     }
-  };
-
-  // =============================================
-  // LOGIC & EFFECTS
-  // =============================================
-  const handleScroll = (direction) => {
-    const container = featuredScrollRef.current;
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8;
-      const newScrollLeft =
-        direction === "right"
-          ? container.scrollLeft + scrollAmount
-          : container.scrollLeft - scrollAmount;
-      container.scrollTo({
-        left: newScrollLeft,
-        behavior: "smooth",
-      });
-    }
-  };
+  }, []);
 
   useEffect(() => {
+    fetchCustomerFeedbacks();
+  }, [fetchCustomerFeedbacks]);
+
+  // =============================================
+  // ✅ OPTIMIZATION 4: Memoized scroll handlers
+  // =============================================
+  const handleScroll = useCallback((direction) => {
+    const container = featuredScrollRef.current;
+    if (!container) return;
+    
+    const scrollAmount = container.clientWidth * 0.8;
+    const newScrollLeft =
+      direction === "right"
+        ? container.scrollLeft + scrollAmount
+        : container.scrollLeft - scrollAmount;
+    
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: "smooth",
+    });
+  }, []);
+
+  const handleCustomerScroll = useCallback((direction) => {
+    const container = customerScrollRef.current;
+    if (!container) return;
+    
+    const scrollAmount = container.clientWidth * 0.8;
+    const newScrollLeft =
+      direction === "right"
+        ? container.scrollLeft + scrollAmount
+        : container.scrollLeft - scrollAmount;
+    
+    container.scrollTo({
+      left: newScrollLeft,
+      behavior: "smooth",
+    });
+  }, []);
+
+  // ✅ OPTIMIZATION 5: Auto-scroll với cleanup
+  useEffect(() => {
     if (isHovered) return;
+    
     const timer = setInterval(() => {
       const container = featuredScrollRef.current;
-      if (container) {
-        if (
-          container.scrollLeft + container.clientWidth >=
-          container.scrollWidth - 10
-        ) {
-          container.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          handleScroll("right");
-        }
+      if (!container) return;
+      
+      if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+        container.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        handleScroll("right");
       }
     }, 5000);
+    
     return () => clearInterval(timer);
-  }, [isHovered]);
-
-  const handleCustomerScroll = (direction) => {
-    const container = customerScrollRef.current;
-    if (container) {
-      const scrollAmount = container.clientWidth * 0.8;
-      const newScrollLeft =
-        direction === "right"
-          ? container.scrollLeft + scrollAmount
-          : container.scrollLeft - scrollAmount;
-      container.scrollTo({
-        left: newScrollLeft,
-        behavior: "smooth",
-      });
-    }
-  };
+  }, [isHovered, handleScroll]);
 
   useEffect(() => {
     if (isCustomerHovered || customers.length === 0) return;
+    
     const timer = setInterval(() => {
       const container = customerScrollRef.current;
-      if (container) {
-        if (
-          container.scrollLeft + container.clientWidth >=
-          container.scrollWidth - 10
-        ) {
-          container.scrollTo({ left: 0, behavior: "smooth" });
-        } else {
-          handleCustomerScroll("right");
-        }
+      if (!container) return;
+      
+      if (container.scrollLeft + container.clientWidth >= container.scrollWidth - 10) {
+        container.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        handleCustomerScroll("right");
       }
     }, 4000);
+    
     return () => clearInterval(timer);
-  }, [isCustomerHovered, customers.length]);
+  }, [isCustomerHovered, customers.length, handleCustomerScroll]);
 
   // =============================================
-  // FETCH DATA TỪ HOOKS
+  // FETCH DATA
   // =============================================
+  const { categories: dbCategories, loading: categoriesLoading, error: categoriesError } = useCategories();
   
-  // Fetch danh mục từ database
-  const {
-    categories: dbCategories,
-    loading: categoriesLoading,
-    error: categoriesError,
-  } = useCategories();
-
-  // Fetch sản phẩm featured (không đổi)
-  const {
-    products: featuredProducts,
-    loading: featuredLoading,
-    error: featuredError,
-  } = useProducts({
+  const { products: featuredProducts, loading: featuredLoading, error: featuredError } = useProducts({
     featured: true,
     limit: 12,
   });
 
-  // Fetch sản phẩm "Mua gì hôm nay" - thay đổi filter dựa trên activeCategory
   const todayFilters = {
-    limit: 15, // Tăng limit để có nhiều sản phẩm hơn
-    ...(activeCategory !== "all" && { category: activeCategory }), // Chỉ thêm category filter nếu không phải "all"
+    limit: 15,
+    ...(activeCategory !== "all" && { category: activeCategory }),
   };
 
-  const {
-    products: todayProducts,
-    loading: todayLoading,
-    error: todayError,
-  } = useProducts(todayFilters);
-
-  const {
-    banners,
-    loading: bannersLoading,
-    error: bannersError,
-  } = useBanners();
+  const { products: todayProducts, loading: todayLoading, error: todayError } = useProducts(todayFilters);
+  const { banners, loading: bannersLoading, error: bannersError } = useBanners();
 
   const isLoading = featuredLoading || todayLoading || bannersLoading || categoriesLoading;
   const combinedError = featuredError || todayError || bannersError || categoriesError;
 
-  // =============================================
-  // XỬ LÝ CATEGORIES - Thêm "Tất cả" vào đầu danh sách
-  // =============================================
-  const displayCategories = [
+  // ✅ OPTIMIZATION 6: Memoize categories
+  const displayCategories = React.useMemo(() => [
     { id: "all", name: "Tất cả", slug: "all" },
     ...(dbCategories || []),
-  ];
+  ], [dbCategories]);
+
+  // ✅ OPTIMIZATION 7: Memoize category click handler
+  const handleCategoryClick = useCallback((slug) => {
+    setActiveCategory(slug);
+  }, []);
 
   // =============================================
   // ERROR & LOADING STATES
@@ -220,7 +240,7 @@ const HomePage = ({ onAddToCart }) => {
   // =============================================
   return (
     <div className="min-h-screen bg-white">
-      {/* 1. Hero Banner */}
+      {/* ✅ 1. Hero Banner - CRITICAL LCP */}
       <HeroSlider banners={banners || []} />
 
       {/* 2. Sản Phẩm Bán Chạy */}
@@ -256,13 +276,15 @@ const HomePage = ({ onAddToCart }) => {
               className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
             >
               {featuredProducts.length > 0 ? (
-                featuredProducts.map((product) => (
+                featuredProducts.map((product, index) => (
                   <div
                     key={product.id}
                     className="flex-shrink-0 w-1/2 md:w-1/3 lg:w-1/4 snap-start px-2"
                   >
+                    {/* ✅ First 3 products have priority */}
                     <ProductCard
                       product={product}
+                      priority={index < 3}
                       onAddToCart={onAddToCart}
                       onQuickView={setQuickViewProduct}
                     />
@@ -301,27 +323,19 @@ const HomePage = ({ onAddToCart }) => {
             </p>
           </div>
 
-          {/* Thanh nút danh mục - Lấy từ database */}
+          {/* Category Buttons - Memoized */}
           <div className="flex flex-wrap justify-center gap-3 mb-6">
-            {displayCategories.map((cat) => {
-              const active = activeCategory === cat.slug;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.slug)}
-                  className={`px-5 py-3 border-2 rounded-md text-sm md:text-base transition-all duration-150 ${
-                    active
-                      ? "bg-black text-white border-black shadow"
-                      : "bg-white text-gray-800 border-gray-800 hover:shadow-sm"
-                  }`}
-                >
-                  {cat.name}
-                </button>
-              );
-            })}
+            {displayCategories.map((cat) => (
+              <CategoryButton
+                key={cat.id}
+                category={cat}
+                isActive={activeCategory === cat.slug}
+                onClick={() => handleCategoryClick(cat.slug)}
+              />
+            ))}
           </div>
 
-          {/* Loading state cho khi đổi category */}
+          {/* Products Grid */}
           {todayLoading ? (
             <div className="text-center py-12">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-black" />
@@ -333,6 +347,7 @@ const HomePage = ({ onAddToCart }) => {
                 <ProductCard
                   key={product.id}
                   product={product}
+                  priority={false}
                   onAddToCart={onAddToCart}
                   onQuickView={setQuickViewProduct}
                 />
@@ -361,7 +376,7 @@ const HomePage = ({ onAddToCart }) => {
         </div>
       </section>
 
-      {/* 5. Customer Feedbacks - FROM DATABASE */}
+      {/* 5. Customer Feedbacks - Memoized Cards */}
       {!customersLoading && customers.length > 0 && (
         <section className="py-12 md:py-16 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4">
@@ -382,6 +397,7 @@ const HomePage = ({ onAddToCart }) => {
                   <button
                     onClick={() => handleCustomerScroll("left")}
                     className="absolute top-1/2 left-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+                    aria-label="Previous Customer"
                   >
                     <ChevronLeft size={24} />
                   </button>
@@ -389,6 +405,7 @@ const HomePage = ({ onAddToCart }) => {
                   <button
                     onClick={() => handleCustomerScroll("right")}
                     className="absolute top-1/2 right-0 -translate-y-1/2 z-10 bg-white/90 hover:bg-white text-black rounded-full p-2 shadow-lg transition-opacity opacity-0 group-hover:opacity-100"
+                    aria-label="Next Customer"
                   >
                     <ChevronRight size={24} />
                   </button>
@@ -400,29 +417,7 @@ const HomePage = ({ onAddToCart }) => {
                 className="flex overflow-x-auto scroll-smooth snap-x snap-mandatory hide-scrollbar -mx-2"
               >
                 {customers.map((customer) => (
-                  <div
-                    key={customer.id}
-                    className="flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 snap-start px-2"
-                  >
-                    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 group/card">
-                      <div className="aspect-square relative overflow-hidden">
-                        <img
-                          src={customer.image}
-                          alt={customer.name}
-                          className="w-full h-full object-cover transform group-hover/card:scale-110 transition-transform duration-500"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"></div>
-                      </div>
-                      <div className="p-4 text-center">
-                        <h3 className="font-semibold text-gray-900 mb-1 text-sm md:text-base">
-                          {customer.name}
-                        </h3>
-                        <p className="text-xs md:text-sm text-gray-500">
-                          {customer.role}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+                  <CustomerCard key={customer.id} customer={customer} />
                 ))}
               </div>
             </div>
