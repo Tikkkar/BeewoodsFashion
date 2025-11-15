@@ -1,4 +1,5 @@
-import { useState, useEffect, createContext, useContext, useRef } from 'react';
+// hooks/useAuth.js - OPTIMIZED VERSION
+import { useState, useEffect, createContext, useContext, useRef, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
@@ -6,65 +7,11 @@ const AuthContext = createContext({});
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
-  const initialized = useRef(false); // ⚡ TRACK ĐÃ INIT CHƯA
+  const initialized = useRef(false);
   const loadingProfile = useRef(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const initAuth = async () => {
-      try {
-        
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (mounted && session?.user) {
-          await loadUserProfile(session.user);
-        } else {
-        }
-        
-        initialized.current = true; 
-      } catch (error) {
-        console.error('Init auth error:', error);
-        initialized.current = true;
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-
-        if (!mounted) return;
-
-        // ⚡ IGNORE INITIAL_SESSION - ĐÃ XỬ LÝ Ở initAuth
-        if (event === 'INITIAL_SESSION') {
-          return;
-        }
-
-        // ⚡ CHỈ XỬ LÝ SIGNED_IN NẾU ĐÃ INITIALIZED
-        if (event === 'SIGNED_IN') {
-          if (!initialized.current) {
-            return;
-          }
-          
-          if (session?.user && !loadingProfile.current) {
-            await loadUserProfile(session.user);
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          loadingProfile.current = false;
-        } else if (event === 'TOKEN_REFRESHED') {
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []); // ⚡ EMPTY DEPS - CHỈ CHẠY 1 LẦN
-
-  const loadUserProfile = async (authUser) => {
+  // ⚡ OPTIMIZATION: Memoize loadUserProfile to prevent recreations
+  const loadUserProfile = useCallback(async (authUser) => {
     if (loadingProfile.current) {
       return;
     }
@@ -72,7 +19,6 @@ export const AuthProvider = ({ children }) => {
     loadingProfile.current = true;
 
     try {
-
       const { data: profile, error } = await supabase
         .from('users')
         .select('*')
@@ -90,8 +36,6 @@ export const AuthProvider = ({ children }) => {
         role: 'customer'
       };
 
-    
-
       setUser({
         ...authUser,
         profile: finalProfile
@@ -100,6 +44,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('❌ Load profile error:', error);
       
+      // Fallback user object
       setUser({
         ...authUser,
         profile: {
@@ -112,11 +57,65 @@ export const AuthProvider = ({ children }) => {
     } finally {
       loadingProfile.current = false;
     }
-  };
+  }, []); // Empty deps - function is stable
 
- 
-   // ✅ THÊM HÀM LOGOUT
-  const logout = async () => {
+  useEffect(() => {
+    let mounted = true;
+
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (mounted && session?.user) {
+          await loadUserProfile(session.user);
+        }
+        
+        initialized.current = true;
+      } catch (error) {
+        console.error('Init auth error:', error);
+        initialized.current = true;
+      }
+    };
+
+    initAuth();
+
+    // ⚡ Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        // Skip initial session (already handled in initAuth)
+        if (event === 'INITIAL_SESSION') {
+          return;
+        }
+
+        // Handle sign in
+        if (event === 'SIGNED_IN') {
+          if (!initialized.current) {
+            return;
+          }
+          
+          if (session?.user && !loadingProfile.current) {
+            await loadUserProfile(session.user);
+          }
+        } 
+        // Handle sign out
+        else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          loadingProfile.current = false;
+        }
+        // Token refresh is silent, no action needed
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [loadUserProfile]); // Include loadUserProfile in deps
+
+  // ⚡ OPTIMIZATION: Memoize logout function
+  const logout = useCallback(async () => {
     try {
       const { error } = await supabase.auth.signOut();
       
@@ -130,14 +129,16 @@ export const AuthProvider = ({ children }) => {
       console.error('❌ Logout failed:', error);
       throw error;
     }
-  };
- const value = {
+  }, []);
+
+  // ⚡ OPTIMIZATION: Memoize context value to prevent unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     loading,
     logout,
     isAdmin: user?.profile?.role === 'admin',
     isAuthenticated: !!user
-  };
+  }), [user, loading, logout]);
 
   return (
     <AuthContext.Provider value={value}>

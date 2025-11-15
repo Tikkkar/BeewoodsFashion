@@ -16,7 +16,7 @@ export default defineConfig({
       deleteOriginFile: false,
     }),
 
-    // ✅ Brotli Compression (better than gzip)
+    // ✅ Brotli Compression (better than gzip, ~20% smaller)
     viteCompression({
       algorithm: 'brotliCompress',
       ext: '.br',
@@ -24,96 +24,154 @@ export default defineConfig({
       deleteOriginFile: false,
     }),
 
-    // ✅ Bundle analyzer (chỉ chạy khi cần)
-    // Uncomment để xem bundle size analysis
+    // ✅ Bundle analyzer (uncomment when needed)
     // visualizer({
     //   open: true,
     //   gzipSize: true,
     //   brotliSize: true,
+    //   filename: 'dist/stats.html',
     // }),
   ],
 
   // ✅ Build optimizations
   build: {
-    // Output directory
     outDir: 'dist',
+    sourcemap: false, // Disable in production for smaller bundle
     
-    // ✅ Source maps (disable in production)
-    sourcemap: false,
+    // ✅ Target modern browsers for smaller output
+    target: 'es2015',
     
     // ✅ Minification
     minify: 'terser',
     terserOptions: {
       compress: {
-        drop_console: true, // Remove console.log in production
+        drop_console: true,
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.warn'],
+        passes: 2, // Multiple passes for better compression
+      },
+      mangle: {
+        safari10: true, // Fix Safari 10 bugs
       },
     },
 
-    // ✅ Code splitting strategy
+    // ✅ Code splitting strategy - FIXED
     rollupOptions: {
       output: {
-        // Manual chunks for better caching
-        manualChunks: {
-          // Vendor chunks
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-ui': ['lucide-react'],
+        // ⚡ IMPROVED: Dynamic chunking instead of hardcoded paths
+        manualChunks: (id) => {
+          // Node modules chunking
+          if (id.includes('node_modules')) {
+            // React ecosystem
+            if (id.includes('react') && !id.includes('router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('react-router')) {
+              return 'vendor-router';
+            }
+            // Supabase
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+            // UI libraries
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            // Other node_modules
+            return 'vendor-other';
+          }
           
-          // Admin routes (heavy)
-          'admin': [
-            './src/pages/admin/AdminLayout.jsx',
-            './src/pages/admin/AdminDashboard.jsx',
-            './src/pages/admin/AdminProducts.jsx',
-            './src/pages/admin/AdminOrders.jsx',
-          ],
+          // ⚡ Admin pages (heavy - separate chunk)
+          if (id.includes('/pages/admin/')) {
+            return 'chunk-admin';
+          }
           
-          // Chatbot (load separately)
-          'chatbot': [
-            './src/components/chatbot/ChatWidget.jsx',
-          ],
+          // ⚡ Auth pages
+          if (id.includes('/pages/auth/')) {
+            return 'chunk-auth';
+          }
+          
+          // ⚡ User profile pages
+          if (id.includes('/pages/user/')) {
+            return 'chunk-user';
+          }
+          
+          // ⚡ Chatbot (lazy load)
+          if (id.includes('/components/chatbot/') || id.includes('ChatWidget')) {
+            return 'chunk-chatbot';
+          }
         },
         
-        // ✅ Chunk naming
+        // ✅ Organized file naming
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
-          // Organize assets by type
-          if (assetInfo.name.endsWith('.css')) {
+          const name = assetInfo.name || '';
+          
+          // CSS files
+          if (name.endsWith('.css')) {
             return 'assets/css/[name]-[hash][extname]';
           }
-          if (/\.(png|jpe?g|svg|gif|webp|avif)$/.test(assetInfo.name)) {
+          
+          // Images
+          if (/\.(png|jpe?g|svg|gif|webp|avif|ico)$/i.test(name)) {
             return 'assets/images/[name]-[hash][extname]';
           }
-          if (/\.(woff|woff2|eot|ttf|otf)$/.test(assetInfo.name)) {
+          
+          // Fonts
+          if (/\.(woff2?|eot|ttf|otf)$/i.test(name)) {
             return 'assets/fonts/[name]-[hash][extname]';
           }
+          
+          // Other assets
           return 'assets/[name]-[hash][extname]';
         },
       },
     },
 
-    // ✅ Chunk size warnings
-    chunkSizeWarningLimit: 1000, // 1000KB warning threshold
+    // ✅ Performance settings
+    chunkSizeWarningLimit: 800, // More strict warning (800KB instead of 1000KB)
+    cssCodeSplit: true, // Split CSS per route
+    assetsInlineLimit: 4096, // 4KB - inline small assets
     
-    // ✅ CSS code splitting
-    cssCodeSplit: true,
+    // ✅ Improve build performance
+    reportCompressedSize: false, // Faster builds (skip gzip reporting)
     
-    // ✅ Asset inline limit
-    assetsInlineLimit: 4096, // 4KB - inline small assets as base64
+    // ✅ Modern browser target for smaller output
+    cssTarget: 'chrome80',
   },
 
   // ✅ Dev server optimizations
   server: {
     port: 3000,
     open: true,
+    strictPort: false, // Try next port if 3000 is busy
+    
+    // ✅ CORS for development
+    cors: true,
+    
     // ✅ HMR optimization
     hmr: {
       overlay: true,
     },
+    
+    // ✅ Faster warmup
+    warmup: {
+      clientFiles: [
+        './src/App.jsx',
+        './src/main.jsx',
+        './src/pages/HomePage.jsx',
+      ],
+    },
   },
 
-  // ✅ Dependencies pre-bundling
+  // ✅ Preview server (production testing)
+  preview: {
+    port: 4173,
+    open: true,
+  },
+
+  // ✅ Dependencies pre-bundling (IMPROVED)
   optimizeDeps: {
     include: [
       'react',
@@ -121,15 +179,45 @@ export default defineConfig({
       'react-router-dom',
       'lucide-react',
     ],
-    // Exclude heavy libs that should be lazy loaded
-    exclude: [],
+    
+    // ✅ Exclude large deps that benefit from lazy loading
+    exclude: [
+      '@supabase/supabase-js', // Load on-demand
+    ],
+    
+    // ✅ Force optimization on these
+    force: false, // Only re-optimize when dependencies change
   },
 
-  // ✅ CSS preprocessing
+  // ✅ CSS optimizations
   css: {
     devSourcemap: false,
-    preprocessorOptions: {
-      // Add preprocessor options if needed
+    
+    // ✅ PostCSS optimization (if you use Tailwind)
+    postcss: {
+      plugins: [
+        // Add autoprefixer if needed
+        // require('autoprefixer'),
+      ],
     },
+  },
+
+  // ✅ Resolve aliases (optional but useful)
+  resolve: {
+    alias: {
+      // Add path aliases if needed
+      // '@': '/src',
+      // '@components': '/src/components',
+      // '@pages': '/src/pages',
+    },
+  },
+
+  // ✅ Performance optimizations
+  esbuild: {
+    // ✅ Remove console in production via esbuild (faster than terser)
+    drop: ['console', 'debugger'],
+    
+    // ✅ Legal comments handling
+    legalComments: 'none',
   },
 })
