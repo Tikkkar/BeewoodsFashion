@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, MessageSquare, Star } from "lucide-react";
 import {
   TrendingUp,
   ShoppingBag,
@@ -23,8 +23,11 @@ const AdminDashboard = () => {
     totalProducts: 0,
     activeProducts: 0,
     productsWithSEO: 0,
+    totalFeedbacks: 0,
+    averageRating: 0,
   });
   const [recentOrders, setRecentOrders] = useState([]);
+  const [recentFeedbacks, setRecentFeedbacks] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -34,16 +37,16 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
 
-      // Single query for orders with minimal data
+      // Orders query
       const { data: orders, error: ordersError } = await supabase
         .from("orders")
         .select("id, total_amount, status, created_at, order_number")
         .order("created_at", { ascending: false })
-        .limit(50); // Limit to recent orders only
+        .limit(50);
 
       if (ordersError) throw ordersError;
 
-      // Calculate stats from limited data
+      // Calculate order stats
       const totalRevenue =
         orders
           ?.filter((o) => o.status === "completed")
@@ -55,7 +58,7 @@ const AdminDashboard = () => {
       const completedOrders =
         orders?.filter((o) => o.status === "completed").length || 0;
 
-      // Get products count (optimized - count only)
+      // Products count
       const { count: totalProducts } = await supabase
         .from("products")
         .select("*", { count: "exact", head: true });
@@ -65,12 +68,26 @@ const AdminDashboard = () => {
         .select("*", { count: "exact", head: true })
         .eq("is_active", true);
 
-      // Get products with SEO data
+      // Products with SEO
       const { data: productsWithSEO } = await supabase
         .from("products")
         .select("id")
         .not("seo_title", "is", null)
         .not("seo_description", "is", null);
+
+      // ✅ Feedbacks stats
+      const { data: feedbacks, error: feedbacksError } = await supabase
+        .from("customer_feedbacks")
+        .select("id, customer_name, customer_image, rating_average, total_responses, created_at")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (feedbacksError) throw feedbacksError;
+
+      const totalFeedbacks = feedbacks?.length || 0;
+      const averageRating = totalFeedbacks > 0
+        ? feedbacks.reduce((sum, f) => sum + (f.rating_average || 0), 0) / totalFeedbacks
+        : 0;
 
       setStats({
         totalRevenue,
@@ -80,10 +97,12 @@ const AdminDashboard = () => {
         totalProducts: totalProducts || 0,
         activeProducts: activeProducts || 0,
         productsWithSEO: productsWithSEO?.length || 0,
+        totalFeedbacks,
+        averageRating: averageRating.toFixed(1),
       });
 
-      // Recent orders (already limited above)
       setRecentOrders(orders?.slice(0, 5) || []);
+      setRecentFeedbacks(feedbacks || []);
     } catch (error) {
       console.error("Error loading dashboard:", error);
     } finally {
@@ -134,6 +153,16 @@ const AdminDashboard = () => {
     );
   };
 
+  const renderStars = (rating) => {
+    return [...Array(5)].map((_, i) => (
+      <Star
+        key={i}
+        size={14}
+        className={i < Math.round(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
+      />
+    ));
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -182,7 +211,8 @@ const AdminDashboard = () => {
             {stats.completedOrders} đã hoàn thành
           </p>
         </div>
-        {/* Analytics Card - NEW */}
+
+        {/* Analytics Card */}
         <Link
           to="/admin/analytics"
           className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border-2 border-purple-200 p-6 hover:border-purple-400 hover:shadow-lg transition-all group"
@@ -199,6 +229,7 @@ const AdminDashboard = () => {
             <TrendingUp size={14} />
           </div>
         </Link>
+
         {/* Pending Orders */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
@@ -224,82 +255,121 @@ const AdminDashboard = () => {
           </p>
           <p className="text-xs text-gray-500 mt-1">Sản phẩm đang bán</p>
         </div>
+
+        {/* ✅ Customer Feedbacks Stats */}
+        <Link
+          to="/admin/feedbacks"
+          className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border-2 border-amber-200 p-6 hover:border-amber-400 hover:shadow-lg transition-all group"
+        >
+          <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-amber-200 transition">
+            <MessageSquare className="text-amber-600" size={24} />
+          </div>
+          <p className="text-gray-600 text-sm mb-1">Phản hồi khách hàng</p>
+          <p className="text-2xl font-bold">{stats.totalFeedbacks}</p>
+          <div className="flex items-center gap-1 mt-2">
+            {renderStars(stats.averageRating)}
+            <span className="text-sm text-gray-600 ml-1">
+              {stats.averageRating}
+            </span>
+          </div>
+        </Link>
       </div>
 
-      {/* Recent Orders */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-xl font-bold">Đơn hàng gần đây</h2>
-          <Link
-            to="/admin/orders"
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-          >
-            Xem Tất cả
-          </Link>
+      {/* Recent Orders & Feedbacks Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Orders */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Đơn hàng gần đây</h2>
+            <Link
+              to="/admin/orders"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Xem Tất cả
+            </Link>
+          </div>
+
+          {recentOrders.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              Chưa có đơn hàng nào
+            </div>
+          ) : (
+            <div className="divide-y">
+              {recentOrders.map((order) => (
+                <div key={order.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium">{order.order_number}</span>
+                    {getStatusBadge(order.status)}
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">
+                      {formatDate(order.created_at)}
+                    </span>
+                    <span className="font-bold text-green-600">
+                      {formatPrice(order.total_amount)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {recentOrders.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            Chưa có đơn hàng nào
+        {/* ✅ Recent Feedbacks */}
+        <div className="bg-white rounded-lg border border-gray-200">
+          <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-xl font-bold">Phản hồi gần đây</h2>
+            <Link
+              to="/admin/feedbacks"
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Xem Tất cả
+            </Link>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Mã đơn hàng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Ngày
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Tổng cộng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
-                      {order.order_number}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {formatDate(order.created_at)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
-                      {formatPrice(order.total_amount)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(order.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        to={`/admin/orders/${order.id}`}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        Xem
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+
+          {recentFeedbacks.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              Chưa có phản hồi nào
+            </div>
+          ) : (
+            <div className="divide-y">
+              {recentFeedbacks.map((feedback) => (
+                <div key={feedback.id} className="p-4 hover:bg-gray-50">
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={feedback.customer_image}
+                      alt={feedback.customer_name}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-medium mb-1">
+                        {feedback.customer_name}
+                      </h4>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="flex">
+                          {renderStars(feedback.rating_average)}
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          {feedback.rating_average}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {feedback.total_responses} phản hồi
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Quick Actions */}
       <div>
         <h2 className="text-xl font-bold mb-4">Thao tác nhanh</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* SEO Manager - NEW & FEATURED */}
+          {/* SEO Manager */}
           <Link
             to="/admin/seo-manager"
             className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border-2 border-blue-200 p-6 hover:border-blue-400 hover:shadow-lg transition-all group relative overflow-hidden"
@@ -326,7 +396,7 @@ const AdminDashboard = () => {
             </div>
           </Link>
 
-          {/* Customer Feedbacks - NEW */}
+          {/* Customer Feedbacks */}
           <Link
             to="/admin/feedbacks"
             className="bg-gradient-to-br from-pink-50 to-rose-50 rounded-lg border-2 border-pink-200 p-6 hover:border-pink-400 hover:shadow-lg transition-all group relative overflow-hidden"
@@ -343,10 +413,10 @@ const AdminDashboard = () => {
               Feedback Khách hàng
             </h3>
             <p className="text-sm text-gray-600 mb-3">
-              Quản lý ảnh khách hàng trên trang chủ
+              Quản lý phản hồi trên trang chủ
             </p>
             <div className="flex items-center justify-between text-xs text-pink-600 font-medium">
-              <span>Quản lý feedback</span>
+              <span>{stats.totalFeedbacks} feedbacks</span>
               <TrendingUp size={14} />
             </div>
           </Link>
@@ -415,7 +485,6 @@ const AdminDashboard = () => {
                 phẩm đã được tối ưu hóa SEO
               </p>
 
-              {/* Progress Bar */}
               <div className="mb-3">
                 <div className="flex justify-between text-xs text-gray-600 mb-1">
                   <span>Tiến độ</span>

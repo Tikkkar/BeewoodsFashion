@@ -51,6 +51,7 @@ const AdminProductForm = () => {
   const [formData, setFormData] = useState({
     name: "",
     slug: "",
+    product_code: "",
     description: "",
     price: "",
     original_price: "",
@@ -58,6 +59,10 @@ const AdminProductForm = () => {
     category_ids: [],
     is_active: true,
     is_featured: false,
+    weight_g: "",
+    length_cm: "",
+    width_cm: "",
+    height_cm: "",
   });
   const [categories, setCategories] = useState([]);
   const [sizes, setSizes] = useState([{ size: "", stock: "" }]);
@@ -87,6 +92,7 @@ const AdminProductForm = () => {
             setFormData({
               name: prodData.name || "",
               slug: prodData.slug || "",
+              product_code: prodData.product_code || "",
               description: prodData.description || "",
               price: prodData.price || "",
               original_price: prodData.original_price || "",
@@ -95,6 +101,10 @@ const AdminProductForm = () => {
               category_ids: prodData.categories?.map((c) => c.id) || [],
               is_active: prodData.is_active,
               is_featured: prodData.is_featured,
+              weight_g: prodData.weight_g || "",
+              length_cm: prodData.length_cm || "",
+              width_cm: prodData.width_cm || "",
+              height_cm: prodData.height_cm || "",
             });
             setImages((prev) => ({
               ...prev,
@@ -247,7 +257,7 @@ const AdminProductForm = () => {
       console.error("AI generate product-from-image error:", err);
       setAiError(
         err.message ||
-          "Có lỗi khi gọi AI. Vui lòng thử lại hoặc nhập thủ công."
+        "Có lỗi khi gọi AI. Vui lòng thử lại hoặc nhập thủ công."
       );
     } finally {
       setAiLoading(false);
@@ -309,6 +319,7 @@ const AdminProductForm = () => {
         slug: formData.slug
           ? slugify(formData.slug)
           : generateUniqueSlug(formData.name),
+        product_code: formData.product_code || null,
         description: formData.description,
         price: parseFloat(formData.price) || 0,
         original_price: formData.original_price
@@ -317,11 +328,15 @@ const AdminProductForm = () => {
         stock: parseInt(formData.stock) || 0,
         is_active: formData.is_active,
         is_featured: formData.is_featured,
+        weight_g: parseInt(formData.weight_g) || 0,
+        length_cm: parseInt(formData.length_cm) || 0,
+        width_cm: parseInt(formData.width_cm) || 0,
+        height_cm: parseInt(formData.height_cm) || 0,
       };
 
       const finalSizes = sizes
         .filter((s) => s.size && s.stock)
-        .map((s) => ({ ...s, stock: parseInt(s.stock, 10) || 0 }));
+        .map((s) => ({ size: s.size, stock: parseInt(s.stock, 10) || 0 }));
 
       if (isEditing) {
         await updateProduct(
@@ -425,6 +440,18 @@ const AdminProductForm = () => {
               Nếu để trống, hệ thống sẽ tạo slug tự động từ tên sản phẩm.
             </p>
           </div>
+          <div className="md:col-span-2 flex flex-col gap-1">
+            <input
+              name="product_code"
+              value={formData.product_code}
+              onChange={handleChange}
+              placeholder="Mã sản phẩm (VD: SP001, DIOR-TS-001)"
+              className="p-3 border rounded"
+            />
+            <p className="text-[10px] text-gray-400">
+              Mã sản phẩm để quản lý nội bộ, khác với slug (URL).
+            </p>
+          </div>
           <input
             name="price"
             type="number"
@@ -459,6 +486,66 @@ const AdminProductForm = () => {
             placeholder="Mô tả sản phẩm"
             className="p-3 border rounded md:col-span-2 h-28"
           />
+        </div>
+      </div>
+
+      {/* Shipping Info */}
+      <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base md:text-lg font-semibold">
+              Thông tin vận chuyển (J&T)
+            </h2>
+            <p className="text-xs text-gray-500">
+              Cần thiết để tính phí vận chuyển chính xác.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Trọng lượng (gram)</label>
+            <input
+              name="weight_g"
+              type="number"
+              value={formData.weight_g || ""}
+              onChange={handleChange}
+              placeholder="VD: 500"
+              className="p-3 border rounded"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Dài (cm)</label>
+            <input
+              name="length_cm"
+              type="number"
+              value={formData.length_cm || ""}
+              onChange={handleChange}
+              placeholder="VD: 30"
+              className="p-3 border rounded"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Rộng (cm)</label>
+            <input
+              name="width_cm"
+              type="number"
+              value={formData.width_cm || ""}
+              onChange={handleChange}
+              placeholder="VD: 20"
+              className="p-3 border rounded"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-700">Cao (cm)</label>
+            <input
+              name="height_cm"
+              type="number"
+              value={formData.height_cm || ""}
+              onChange={handleChange}
+              placeholder="VD: 10"
+              className="p-3 border rounded"
+            />
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getAdminOrders } from "../../lib/api/admin";
-import { Loader2, Search, Filter, DollarSign, ShoppingBag } from "lucide-react";
+import { Loader2, Search, Filter, DollarSign, ShoppingBag, Plus } from "lucide-react";
+import ManualOrderModal from "../../components/admin/ManualOrderModal";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
@@ -36,6 +37,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -107,9 +109,18 @@ const AdminOrders = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Đơn hàng</h1>
-        <p className="text-gray-600">Xem và quản lý các đơn hàng</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Đơn hàng</h1>
+          <p className="text-gray-600">Xem và quản lý các đơn hàng</p>
+        </div>
+        <button
+          onClick={() => setOrderModalOpen(true)}
+          className="bg-black text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-800 transition"
+        >
+          <Plus size={18} />
+          <span>Tạo đơn hàng</span>
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -309,6 +320,13 @@ const AdminOrders = () => {
           </div>
         </div>
       )}
+
+      {/* Modal tạo đơn hàng */}
+      <ManualOrderModal
+        isOpen={orderModalOpen}
+        onClose={() => setOrderModalOpen(false)}
+        onSuccess={loadOrders}
+      />
     </div>
   );
 };

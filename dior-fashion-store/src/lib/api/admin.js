@@ -37,12 +37,12 @@ export const getAdminProducts = async () => {
       product_images(id, image_url, is_primary, display_order)
     `)
     .order("created_at", { ascending: false });
-  
+
   if (error) {
     console.error("❌ Error fetching products:", error);
     toast.error("Failed to fetch products.");
   }
-  
+
   // Debug log
   if (data && data.length > 0) {
     console.log("✅ Total products loaded:", data.length);
@@ -53,7 +53,7 @@ export const getAdminProducts = async () => {
       first_image: data[0].product_images?.[0]
     });
   }
-  
+
   return { data, error };
 };
 
@@ -265,7 +265,7 @@ export const getAdminOrderDetails = async (id) => {
   const { data, error } = await supabase
     .from("orders")
     .select(
-      "*, users(*), order_items(*, products(name,product_images(image_url)))"
+      "*, users(*), order_items(*, products(name,product_images(image_url))), shipments(*)"
     )
     .eq("id", id)
     .single();
@@ -318,12 +318,12 @@ export const createManualOrder = async (orderData) => {
     .insert([orderData])
     .select()
     .single();
-  
+
   if (error) {
     console.error("❌ Error creating manual order:", error);
     throw error;
   }
-  
+
   console.log("✅ Manual order created:", data.order_number);
   return { data };
 };
@@ -346,12 +346,12 @@ export const createOrderItems = async (orderId, items) => {
     .from('order_items')
     .insert(orderItems)
     .select();
-  
+
   if (error) {
     console.error("❌ Error creating order items:", error);
     throw error;
   }
-  
+
   console.log("✅ Order items created:", data.length);
   return { data };
 };
@@ -375,7 +375,7 @@ export const updateProductStock = async (productId, quantity, size = null) => {
       }
 
       const newSizeStock = Math.max(0, sizeData.stock - quantity);
-      
+
       const { error: updateSizeError } = await supabase
         .from('product_sizes')
         .update({ stock: newSizeStock })
@@ -386,7 +386,7 @@ export const updateProductStock = async (productId, quantity, size = null) => {
         console.error("❌ Error updating size stock:", updateSizeError);
         throw updateSizeError;
       }
-      
+
       console.log(`✅ Size stock updated: ${size} - ${sizeData.stock} → ${newSizeStock}`);
     }
 
@@ -403,7 +403,7 @@ export const updateProductStock = async (productId, quantity, size = null) => {
     }
 
     const newProductStock = Math.max(0, productData.stock - quantity);
-    
+
     const { error: updateProductError } = await supabase
       .from('products')
       .update({ stock: newProductStock })
@@ -413,9 +413,9 @@ export const updateProductStock = async (productId, quantity, size = null) => {
       console.error("❌ Error updating product stock:", updateProductError);
       throw updateProductError;
     }
-    
+
     console.log(`✅ Product stock updated: ${productData.stock} → ${newProductStock}`);
-    
+
     return { success: true };
   } catch (error) {
     console.error("❌ updateProductStock failed:", error);

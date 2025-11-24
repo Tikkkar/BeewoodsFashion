@@ -30,8 +30,7 @@ const OPENROUTER_BASE_URL =
   Deno.env.get("OPENROUTER_BASE_URL") ||
   "https://openrouter.ai/api/v1/chat/completions";
 // @ts-ignore
-const OPENROUTER_MODEL =
-  Deno.env.get("OPENROUTER_MODEL") || "google/gemini-2.0-flash-exp:free";
+const OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free";
 
 if (!OPENROUTER_API_KEY) {
   console.error("⚠️ OPENROUTER_API_KEY not found in environment variables");

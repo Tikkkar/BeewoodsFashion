@@ -30,9 +30,9 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
   // Map original_price (snake_case từ DB) sang originalPrice (camelCase)
   const product = rawProduct
     ? {
-        ...rawProduct,
-        originalPrice: rawProduct.original_price || rawProduct.originalPrice,
-      }
+      ...rawProduct,
+      originalPrice: rawProduct.original_price || rawProduct.originalPrice,
+    }
     : null;
 
   const { products: allProducts } = useProducts({
@@ -78,19 +78,27 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
     product?.images && product.images.length > 0
       ? product.images
       : product?.image
-      ? [product.image]
-      : [];
+        ? [product.image]
+        : [];
 
   const sizes = product?.sizes
-    ? product.sizes.map((s) => (typeof s === "object" ? s.size : s))
+    ? product.sizes
+      .map((s) => {
+        if (typeof s === "object") return s.size || s.name || s.label;
+        return s;
+      })
+      .filter(Boolean)
     : [];
+
+  console.log("Product Data:", product);
+  console.log("Sizes:", sizes);
 
   const averageRating =
     product?.reviews && product.reviews.length > 0
       ? (
-          product.reviews.reduce((sum, r) => sum + r.rating, 0) /
-          product.reviews.length
-        ).toFixed(1)
+        product.reviews.reduce((sum, r) => sum + r.rating, 0) /
+        product.reviews.length
+      ).toFixed(1)
       : "5.0";
 
   const isSale =
@@ -280,11 +288,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                 <button
                   key={idx}
                   onClick={() => setSelectedImage(idx)}
-                  className={`aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all ${
-                    selectedImage === idx
-                      ? "border-black"
-                      : "border-transparent hover:border-gray-300"
-                  }`}
+                  className={`aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx
+                    ? "border-black"
+                    : "border-transparent hover:border-gray-300"
+                    }`}
                 >
                   <img
                     src={img}
@@ -315,7 +322,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                   {Math.round(
                     ((product.originalPrice - product.price) /
                       product.originalPrice) *
-                      100
+                    100
                   )}
                   %
                 </div>
@@ -365,11 +372,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
-                    className={`h-1 md:h-2 rounded-full transition-all ${
-                      selectedImage === idx
-                        ? "w-6 md:w-10 bg-black"
-                        : "w-1 md:w-2 bg-gray-300 hover:bg-gray-400"
-                    }`}
+                    className={`h-1 md:h-2 rounded-full transition-all ${selectedImage === idx
+                      ? "w-6 md:w-10 bg-black"
+                      : "w-1 md:w-2 bg-gray-300 hover:bg-gray-400"
+                      }`}
                   />
                 ))}
               </div>
@@ -395,11 +401,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                       <Star
                         key={i}
                         size={12}
-                        className={`${
-                          i < Math.floor(averageRating)
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-300"
-                        }`}
+                        className={`${i < Math.floor(averageRating)
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                          }`}
                       />
                     ))}
                   </div>
@@ -411,11 +416,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
                 <button
                   onClick={handleToggleWishlist}
-                  className={`p-1.5 md:p-2 rounded-full border transition-colors ${
-                    isWishlisted
-                      ? "bg-red-50 border-red-200 text-red-600"
-                      : "hover:bg-gray-50 border-gray-200"
-                  }`}
+                  className={`p-1.5 md:p-2 rounded-full border transition-colors ${isWishlisted
+                    ? "bg-red-50 border-red-200 text-red-600"
+                    : "hover:bg-gray-50 border-gray-200"
+                    }`}
                 >
                   <Heart
                     size={16}
@@ -449,7 +453,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                     {Math.round(
                       ((product.originalPrice - product.price) /
                         product.originalPrice) *
-                        100
+                      100
                     )}
                     %
                   </span>
@@ -472,15 +476,14 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               </button>
             </div>
             <div className="grid grid-cols-4 gap-1.5 md:gap-2">
-              {sizes.map((size) => (
+              {sizes.map((size, index) => (
                 <button
-                  key={size}
+                  key={`${size}-${index}`}
                   onClick={() => setSelectedSize(size)}
-                  className={`py-2 md:py-2.5 px-2 md:px-3 border rounded-lg text-xs md:text-sm font-medium transition-all ${
-                    selectedSize === size
-                      ? "border-black bg-black text-white"
-                      : "border-gray-300 hover:border-gray-400"
-                  }`}
+                  className={`py-2 md:py-2.5 px-2 md:px-3 border rounded-lg text-xs md:text-sm font-medium transition-all ${selectedSize === size
+                    ? "border-black bg-black text-white"
+                    : "border-gray-300 hover:border-gray-400"
+                    }`}
                 >
                   {size}
                 </button>
@@ -542,17 +545,17 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-3">
-              <svg 
+              <svg
                 className="text-gray-700 flex-shrink-0 w-4 h-4 md:w-5 md:h-5"
-                viewBox="0 0 24 24" 
-                fill="none" 
+                viewBox="0 0 24 24"
+                fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
               <div>
                 <div className="text-xs md:text-sm font-semibold">
@@ -564,19 +567,19 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-3">
-              <svg 
+              <svg
                 className="text-gray-700 flex-shrink-0 w-4 h-4 md:w-5 md:h-5"
-                viewBox="0 0 24 24" 
-                fill="none" 
+                viewBox="0 0 24 24"
+                fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <rect x="1" y="3" width="15" height="13"/>
-                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                <circle cx="5.5" cy="18.5" r="2.5"/>
-                <circle cx="18.5" cy="18.5" r="2.5"/>
+                <rect x="1" y="3" width="15" height="13" />
+                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                <circle cx="5.5" cy="18.5" r="2.5" />
+                <circle cx="18.5" cy="18.5" r="2.5" />
               </svg>
               <div>
                 <div className="text-xs md:text-sm font-semibold">
@@ -594,7 +597,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
             <h3 className="text-sm md:text-lg font-bold mb-2">
               Đặc điểm sản phẩm
             </h3>
-            
+
             <div className="mb-2 md:mb-3">
               <p className="text-xs md:text-sm leading-relaxed text-gray-700">
                 {product.description}
@@ -607,8 +610,8 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                   {product.attributes.features.slice(0, 3).map((feature, idx) => (
                     <li key={idx} className="flex items-start gap-1.5 md:gap-2 text-xs md:text-sm">
                       <span className="text-gray-700 mt-0.5">•</span>
-                      <a 
-                        href="#chi-tiet-san-pham" 
+                      <a
+                        href="#chi-tiet-san-pham"
                         className="text-gray-700 underline hover:text-black transition-colors flex-1"
                         onClick={(e) => {
                           e.preventDefault();
@@ -638,15 +641,15 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
           <h2 className="text-base md:text-xl font-bold mb-3 md:mb-4 text-center">
             CHI TIẾT SẢN PHẨM
           </h2>
-          
+
           <div className="mb-3 md:mb-4">
             <h3 className="text-sm md:text-base font-semibold mb-2">
               {product.name} - Thanh lịch và hiện đại
             </h3>
-            
+
             <div className="text-xs md:text-sm text-gray-700 leading-relaxed">
               <p className="font-semibold mb-2">1. Giới thiệu sản phẩm</p>
-              
+
               {!showFullDetails ? (
                 <div className="relative">
                   <div className="line-clamp-3">
@@ -682,11 +685,11 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
       {/* Đánh giá Section */}
       <div className="mt-6 md:mt-8 border-t pt-6 md:pt-8">
         <h2 className="text-base md:text-xl font-bold mb-3 md:mb-4 text-center">Đánh giá</h2>
-        
+
         <div className="text-center mb-3 md:mb-4 text-xs md:text-sm text-gray-600">
           Hãy chia sẻ suy nghĩ của bạn. Hãy là người đầu tiên để lại bài đánh giá.
         </div>
-        
+
         <div className="flex justify-center mb-4 md:mb-6">
           <button className="px-4 md:px-6 py-2 border-2 border-black rounded-lg font-medium hover:bg-gray-50 transition-colors text-xs md:text-sm">
             Để lại đánh giá
@@ -711,11 +714,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                           <Star
                             key={i}
                             size={10}
-                            className={`md:w-3 md:h-3 ${
-                              i < review.rating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            }`}
+                            className={`md:w-3 md:h-3 ${i < review.rating
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                              }`}
                           />
                         ))}
                       </div>
@@ -771,7 +773,7 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                 <X size={18} className="md:w-5 md:h-5" />
               </button>
             </div>
-            
+
             <div className="p-4 md:p-6">
               {product.attributes?.content_blocks && product.attributes.content_blocks.length > 0 ? (
                 <div className="prose max-w-none text-xs md:text-sm">
@@ -879,11 +881,10 @@ const ProductDetailPage = ({ onAddToCart, brand }) => {
                         e.stopPropagation();
                         setLightboxImage(idx);
                       }}
-                      className={`flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                        lightboxImage === idx
-                          ? "border-white scale-110"
-                          : "border-white/30 hover:border-white/60"
-                      }`}
+                      className={`flex-shrink-0 w-12 h-12 md:w-20 md:h-20 rounded-lg overflow-hidden border-2 transition-all ${lightboxImage === idx
+                        ? "border-white scale-110"
+                        : "border-white/30 hover:border-white/60"
+                        }`}
                     >
                       <img
                         src={img}

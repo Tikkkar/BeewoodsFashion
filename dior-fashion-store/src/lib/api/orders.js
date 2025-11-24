@@ -61,7 +61,7 @@ const updateProductStock = async (cartItems) => {
 
     return { success: true };
   } catch (error) {
-    // console.error("Error updating stock:", error); // Đã loại bỏ console.error
+    // console.error("Error updating stock:", error);
     return { success: false, error };
   }
 };
@@ -96,53 +96,69 @@ export const createOrder = async (orderData) => {
         .from("users")
         .select("id")
         .eq("id", user.id)
-        .maybeSingle(); // Dùng maybeSingle() thay vì single() để không throw error
+        .maybeSingle();
 
       userId = publicUser?.id || null;
     }
 
-    // 2. THÊM: Generate order number
+    // 2. Generate order number
     const orderNumber = generateOrderNumber();
 
-    // 3. Tạo đối tượng payload
+    // 3. Tạo đối tượng payload cho bảng ORDERS
     const orderPayload = {
-      order_number: orderNumber, // THÊM dòng này
-      user_id: userId, // SỬA: Dùng userId từ auth
+      order_number: orderNumber,
+      user_id: userId,
       customer_name: customerInfo.name,
       customer_email: customerInfo.email,
       customer_phone: customerInfo.phone,
+
+      // Nối chuỗi địa chỉ đầy đủ để tiện hiển thị nếu cần
       shipping_address: shippingInfo.address,
       shipping_city: shippingInfo.city,
       shipping_district: shippingInfo.district,
       shipping_ward: shippingInfo.ward || "",
+
       notes: customerInfo.notes || null,
       subtotal: originalSubtotal,
       discount_amount: discountAmount,
       applied_discount_code: appliedDiscountCode,
       shipping_fee: shippingFee,
       total_amount: finalTotal,
-      status: "pending",
-      payment_method: "cod",
+      status: "pending", // Mặc định pending. Khi admin chuyển sang 'processing', Trigger sẽ tạo vận đơn J&T.
+      payment_method: "cod", // Mặc định COD
       payment_status: "pending",
     };
 
-    // console.log("📦 Đang tạo đơn hàng với payload:", orderPayload); // Đã loại bỏ console.log
-
-    // 4. Chèn đơn hàng
+    // 4. Chèn đơn hàng vào DB
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert([orderPayload])
       .select()
       .single();
 
-    if (orderError) {
-      // console.error("❌ Lỗi khi tạo đơn hàng:", orderError); // Đã loại bỏ console.error
-      throw orderError;
+    if (orderError) throw orderError;
+
+    // =========================================================================
+    // MỚI: Lấy thông tin cân nặng (Weight) từ bảng Products để Snapshot dữ liệu
+    // =========================================================================
+    // Lấy danh sách ID sản phẩm trong giỏ hàng
+    const productIds = cartItems.map((item) => item.id);
+
+    // Fetch dữ liệu weight_g từ DB
+    const { data: productsWeightData } = await supabase
+      .from("products")
+      .select("id, weight_g")
+      .in("id", productIds);
+
+    // Tạo Map để tra cứu nhanh: { productId: weight }
+    const weightMap = {};
+    if (productsWeightData) {
+      productsWeightData.forEach(p => {
+        weightMap[p.id] = p.weight_g || 0; // Nếu null thì set bằng 0
+      });
     }
 
-    // console.log("✅ Đơn hàng đã tạo:", order); // Đã loại bỏ console.log
-
-    // 5. Chèn order items
+    // 5. Chèn order items (Kèm cân nặng snapshot)
     const orderItems = cartItems.map((item) => ({
       order_id: order.id,
       product_id: item.id,
@@ -152,6 +168,10 @@ export const createOrder = async (orderData) => {
       quantity: item.quantity,
       price: item.price,
       subtotal: item.price * item.quantity,
+
+      // TRƯỜNG MỚI: Snapshot cân nặng (để sau này đối soát J&T chính xác)
+      // Nếu không tìm thấy trong DB thì mặc định 200g (giá trị an toàn)
+      weight_g: weightMap[item.id] !== undefined ? weightMap[item.id] : 200
     }));
 
     const { error: itemsError } = await supabase
@@ -159,8 +179,7 @@ export const createOrder = async (orderData) => {
       .insert(orderItems);
 
     if (itemsError) {
-      // console.error("❌ Lỗi khi tạo chi tiết đơn hàng:", itemsError); // Đã loại bỏ console.error
-      // Rollback: xóa đơn hàng vừa tạo
+      // Rollback: xóa đơn hàng vừa tạo nếu lỗi insert items
       await supabase.from("orders").delete().eq("id", order.id);
       throw itemsError;
     }
@@ -168,17 +187,11 @@ export const createOrder = async (orderData) => {
     // 6. Cập nhật tồn kho
     const stockResult = await updateProductStock(cartItems);
     if (!stockResult.success) {
-      // console.warn(
-      //   "⚠️ Cảnh báo: Không thể cập nhật tồn kho:",
-      //   stockResult.error
-      // ); // Đã loại bỏ console.warn
-      // Không throw error ở đây vì đơn hàng đã tạo thành công
+      // Log warning nhưng không throw lỗi chặn đơn hàng
     }
 
-    // console.log("✅ Đã tạo đơn hàng thành công:", order.order_number); // Đã loại bỏ console.log
     return { data: order, error: null };
   } catch (error) {
-    // console.error("❌ Lỗi nghiêm trọng khi tạo đơn hàng:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message || "Lỗi không xác định" };
   }
 };
@@ -203,7 +216,6 @@ export const getOrderById = async (orderId) => {
 
     return { data, error: null };
   } catch (error) {
-    // console.error("Error fetching order:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -228,7 +240,6 @@ export const getOrderByNumber = async (orderNumber) => {
 
     return { data, error: null };
   } catch (error) {
-    // console.error("Error fetching order:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };
@@ -253,7 +264,6 @@ export const getUserOrders = async (userId) => {
 
     return { data, error: null };
   } catch (error) {
-    // console.error("Error fetching user orders:", error); // Đã loại bỏ console.error
     return { data: null, error: error.message };
   }
 };

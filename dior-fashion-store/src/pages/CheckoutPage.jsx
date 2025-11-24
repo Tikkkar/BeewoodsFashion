@@ -1,19 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, CreditCard, Truck, ShieldCheck, Tag, XCircle } from 'lucide-react';
+import { ChevronLeft, CreditCard, Truck, ShieldCheck, Tag, XCircle, Package } from 'lucide-react';
 import { createOrder } from '../lib/api/orders';
 import { useToast } from '../hooks/useToast';
 import { verifyDiscountCode } from '../lib/api/discounts';
+import AddressSelector from '../components/checkout/AddressSelector';
+import { calculateTotalWeight, estimateDeliveryTime, validateAddress, formatFullAddress } from '../lib/services/shippingCalculator';
 
 const CheckoutPage = ({ cart, onClearCart }) => {
   const navigate = useNavigate();
   const { success, error: showError } = useToast();
   const [loading, setLoading] = useState(false);
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
-    address: '',
+    fullAddress: '',
+    city: '',
+    district: '',
+    ward: '',
     note: '',
     paymentMethod: 'cod',
   });
@@ -48,7 +53,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
       }
       newDiscountAmount = Math.min(newDiscountAmount, subtotal);
     }
-    
+
     setDiscountAmount(newDiscountAmount);
     setFinalTotal(subtotal - newDiscountAmount + shippingFee);
   }, [subtotal, appliedDiscount, shippingFee]);
@@ -65,7 +70,19 @@ const CheckoutPage = ({ cart, onClearCart }) => {
     const newErrors = {};
     if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
     if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = 'Số điện thoại không hợp lệ';
-    if (!formData.address.trim()) newErrors.address = 'Vui lòng nhập địa chỉ';
+
+    // Validate address using shipping calculator
+    const addressValidation = validateAddress({
+      city: formData.city,
+      district: formData.district,
+      ward: formData.ward,
+      fullAddress: formData.fullAddress
+    });
+
+    if (!addressValidation.isValid) {
+      newErrors.address = addressValidation.errors[0];
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,7 +104,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
       showError('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
     }
   };
-  
+
   const handleRemoveDiscount = () => {
     setAppliedDiscount(null);
     setDiscountCodeInput('');
@@ -106,10 +123,15 @@ const CheckoutPage = ({ cart, onClearCart }) => {
       const orderData = {
         cartItems: cart,
         customerInfo: { name: formData.fullName, phone: formData.phone, notes: formData.note },
-        shippingInfo: { address: formData.address, city: '', district: '', ward: '' },
+        shippingInfo: {
+          address: formatFullAddress(formData),
+          city: formData.city,
+          district: formData.district,
+          ward: formData.ward
+        },
         discountInfo: discountInfo,
       };
-      
+
       const { data: order, error } = await createOrder(orderData);
       if (error) throw new Error(error.message || 'Lỗi không xác định');
 
@@ -176,9 +198,8 @@ const CheckoutPage = ({ cart, onClearCart }) => {
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                        errors.fullName ? 'border-red-500' : 'border-gray-300 focus:border-black'
-                      }`}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors ${errors.fullName ? 'border-red-500' : 'border-gray-300 focus:border-black'
+                        }`}
                       placeholder="Nguyễn Văn A"
                     />
                     {errors.fullName && (
@@ -194,9 +215,8 @@ const CheckoutPage = ({ cart, onClearCart }) => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                        errors.phone ? 'border-red-500' : 'border-gray-300 focus:border-black'
-                      }`}
+                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300 focus:border-black'
+                        }`}
                       placeholder="0123456789"
                     />
                     {errors.phone && (
@@ -210,23 +230,37 @@ const CheckoutPage = ({ cart, onClearCart }) => {
                   ĐỊA CHỈ GIAO HÀNG
                 </h2>
                 <div className="space-y-4">
+                  <AddressSelector
+                    value={{
+                      city: formData.city,
+                      district: formData.district,
+                      ward: formData.ward
+                    }}
+                    onChange={(address) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        city: address.city,
+                        district: address.district,
+                        ward: address.ward
+                      }));
+                      if (errors.address) {
+                        setErrors(prev => ({ ...prev, address: '' }));
+                      }
+                    }}
+                    error={errors.address}
+                  />
                   <div>
-                    <label className="block text-sm font-medium mb-2">
-                      Địa chỉ <span className="text-red-500">*</span>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Số nhà, tên đường <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
-                      name="address"
-                      value={formData.address}
+                      name="fullAddress"
+                      value={formData.fullAddress}
                       onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-lg focus:outline-none transition-colors ${
-                        errors.address ? 'border-red-500' : 'border-gray-300 focus:border-black'
-                      }`}
-                      placeholder="Số nhà, tên đường, phường/xã, tỉnh/thành phố"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
+                      placeholder="Ví dụ: 123 Nguyễn Huệ"
                     />
-                    {errors.address && (
-                      <p className="text-red-500 text-sm mt-1">{errors.address}</p>
-                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-2">
@@ -288,7 +322,7 @@ const CheckoutPage = ({ cart, onClearCart }) => {
               <h2 className="text-xl font-light tracking-widest mb-6">
                 ĐƠN HÀNG CỦA BẠN
               </h2>
-              
+
               <div className="space-y-4 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item) => (
                   <div key={item.cartId || item.id} className="flex gap-3">
@@ -356,6 +390,18 @@ const CheckoutPage = ({ cart, onClearCart }) => {
                   <span className="text-gray-600">Phí vận chuyển:</span>
                   <span className="font-medium">{formatPrice(shippingFee)}</span>
                 </div>
+                {formData.city && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Truck size={16} />
+                    <span>Dự kiến giao: {estimateDeliveryTime({ city: formData.city })}</span>
+                  </div>
+                )}
+                {cart.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Package size={16} />
+                    <span>Trọng lượng: {(calculateTotalWeight(cart) / 1000).toFixed(2)} kg</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xl font-medium pt-3 border-t">
                   <span>Tổng cộng:</span>
                   <span>{formatPrice(finalTotal)}</span>
@@ -365,25 +411,24 @@ const CheckoutPage = ({ cart, onClearCart }) => {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className={`w-full mt-6 py-4 rounded-lg tracking-widest uppercase font-medium transition-colors flex items-center justify-center gap-2 ${
-                  loading
+                className={`w-full mt-6 py-4 rounded-lg tracking-widest uppercase font-medium transition-colors flex items-center justify-center gap-2 ${loading
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-black text-white hover:bg-gray-800'
-                }`}
+                  }`}
               >
                 <ShieldCheck size={20} />
                 {loading ? 'Đang xử lý...' : 'Đặt hàng'}
               </button>
 
               <div className="mt-6 pt-6 border-t space-y-2 text-sm text-gray-600">
-                  <p className="flex items-center gap-2">
-                    <ShieldCheck size={16} />
-                    Thanh toán an toàn & bảo mật
-                  </p>
-                  <p className="flex items-center gap-2">
-                    <Truck size={16} />
-                    Miễn phí vận chuyển toàn quốc
-                  </p>
+                <p className="flex items-center gap-2">
+                  <ShieldCheck size={16} />
+                  Thanh toán an toàn & bảo mật
+                </p>
+                <p className="flex items-center gap-2">
+                  <Truck size={16} />
+                  Miễn phí vận chuyển toàn quốc
+                </p>
               </div>
             </div>
           </div>

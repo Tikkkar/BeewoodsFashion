@@ -23,6 +23,7 @@ import {
   Bot,
   FileText,
   TrendingUp,
+  Truck,
 } from "lucide-react";
 
 const AdminLayout = () => {
@@ -82,6 +83,11 @@ const AdminLayout = () => {
           title: "Đơn hàng",
           icon: ShoppingBag,
           path: "/admin/orders",
+        },
+        {
+          title: "Vận chuyển",
+          icon: Truck,
+          path: "/admin/shipments",
         },
         {
           title: "Quản lý SEO",
@@ -231,10 +237,9 @@ const AdminLayout = () => {
                   onClick={() => setSidebarOpen(false)}
                   className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg transition
-                    ${
-                      active
-                        ? "bg-black text-white"
-                        : "text-gray-700 hover:bg-gray-100"
+                    ${active
+                      ? "bg-black text-white"
+                      : "text-gray-700 hover:bg-gray-100"
                     }
                   `}
                 >
@@ -256,10 +261,9 @@ const AdminLayout = () => {
                   onClick={() => toggleMenu(section.key)}
                   className={`
                     w-full flex items-center justify-between px-4 py-3 rounded-lg transition
-                    ${
-                      hasActiveChild
-                        ? "bg-gray-100 text-black"
-                        : "text-gray-700 hover:bg-gray-50"
+                    ${hasActiveChild
+                      ? "bg-gray-100 text-black"
+                      : "text-gray-700 hover:bg-gray-50"
                     }
                   `}
                 >
@@ -288,10 +292,9 @@ const AdminLayout = () => {
                           onClick={() => setSidebarOpen(false)}
                           className={`
                             flex items-center gap-3 px-4 py-2.5 rounded-lg transition text-sm
-                            ${
-                              active
-                                ? "bg-black text-white"
-                                : "text-gray-600 hover:bg-gray-100"
+                            ${active
+                              ? "bg-black text-white"
+                              : "text-gray-600 hover:bg-gray-100"
                             }
                           `}
                         >

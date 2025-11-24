@@ -58,6 +58,7 @@ const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
 const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
 const AdminOrderDetail = lazy(() => import("./pages/admin/AdminOrderDetail"));
+const AdminShipments = lazy(() => import("./pages/admin/AdminShipments"));
 const SEOManagerPage = lazy(() => import("./pages/admin/SEOManager"));
 const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
 const FacebookSettingsPage = lazy(() => import("./pages/admin/chatbot/FacebookSettingsPage"));
@@ -79,7 +80,7 @@ const AddressesPage = lazy(() => import("./pages/user/AddressesPage"));
 const WishlistPage = lazy(() => import("./pages/user/WishlistPage"));
 
 // ChatWidget - Load sau 3s
-const ChatWidget = lazy(() => 
+const ChatWidget = lazy(() =>
   new Promise(resolve => {
     setTimeout(() => resolve(import("./components/chatbot/ChatWidget")), 3000);
   })
@@ -270,6 +271,7 @@ function AppContent({
                 <Route path="banners" element={<AdminBanners />} />
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:id" element={<AdminOrderDetail />} />
+                <Route path="shipments" element={<AdminShipments />} />
                 <Route path="chatbot/facebook" element={<FacebookSettingsPage />} />
                 <Route path="chatbot/conversations" element={<ConversationsPage />} />
                 <Route path="chatbot/scenarios" element={<ScenariosTab />} />

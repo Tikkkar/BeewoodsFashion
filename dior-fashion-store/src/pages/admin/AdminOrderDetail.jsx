@@ -187,15 +187,14 @@ const AdminOrderDetail = () => {
       {/* ZNS Status Notification */}
       {znsStatus && (
         <div
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 animate-slide-in ${
-            znsStatus === "success"
-              ? "bg-green-50 border-green-500 text-green-800"
-              : znsStatus === "sending"
+          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 animate-slide-in ${znsStatus === "success"
+            ? "bg-green-50 border-green-500 text-green-800"
+            : znsStatus === "sending"
               ? "bg-blue-50 border-blue-500 text-blue-800"
               : znsStatus === "skipped"
-              ? "bg-yellow-50 border-yellow-500 text-yellow-800"
-              : "bg-red-50 border-red-500 text-red-800"
-          }`}
+                ? "bg-yellow-50 border-yellow-500 text-yellow-800"
+                : "bg-red-50 border-red-500 text-red-800"
+            }`}
         >
           <div className="flex items-center gap-3">
             {znsStatus === "sending" && (
@@ -251,13 +250,34 @@ const AdminOrderDetail = () => {
             <StatusIcon size={18} />
             {meta.label}
           </span>
+          {order.status === 'pending' && (
+            <button
+              onClick={async () => {
+                if (window.confirm('Xác nhận đơn hàng và tạo vận đơn J&T?')) {
+                  setUpdating(true);
+                  try {
+                    await updateOrderStatus(order.id, 'processing');
+                    await loadOrder(); // Reload để hiện shipment
+                  } catch (error) {
+                    // Error already handled by updateOrderStatus
+                  } finally {
+                    setUpdating(false);
+                  }
+                }
+              }}
+              disabled={updating}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 flex items-center gap-2 transition-colors"
+            >
+              <CheckCircle className="w-5 h-5" />
+              {updating ? 'Đang xử lý...' : 'Xác nhận đơn hàng'}
+            </button>
+          )}
           <select
             value={order.status}
             onChange={handleStatusUpdate}
             disabled={updating}
-            className={`ml-3 border text-sm p-2 rounded-lg bg-white shadow-sm ${
-              updating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-            }`}
+            className={`ml-3 border text-sm p-2 rounded-lg bg-white shadow-sm ${updating ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+              }`}
           >
             {ORDER_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -276,18 +296,16 @@ const AdminOrderDetail = () => {
         {ORDER_STATUSES.map((st, idx) => (
           <div key={st} className="flex flex-col items-center">
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                order.status === st
-                  ? statusMeta[st].color
-                  : "bg-gray-200 text-gray-500"
-              }`}
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${order.status === st
+                ? statusMeta[st].color
+                : "bg-gray-200 text-gray-500"
+                }`}
             >
               {React.createElement(statusMeta[st].icon, { size: 24 })}
             </div>
             <div
-              className={`mt-1 text-xs font-medium ${
-                order.status === st ? "text-black" : "text-gray-400"
-              }`}
+              className={`mt-1 text-xs font-medium ${order.status === st ? "text-black" : "text-gray-400"
+                }`}
             >
               {statusMeta[st].label}
             </div>
@@ -408,7 +426,95 @@ const AdminOrderDetail = () => {
           </div>
         </div>
       </div>
+      {/* Thông tin vận chuyển J&T */}
+      {order.shipments && order.shipments.length > 0 ? (
+        <div className="bg-white p-6 rounded-lg shadow-sm">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <Truck className="w-5 h-5" />
+            Thông tin Vận chuyển (J&T)
+          </h2>
+          {order.shipments.map((shipment) => (
+            <div key={shipment.id} className="space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Mã vận đơn</p>
+                  <p className="font-medium">{shipment.tracking_number || "Chưa có"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Trạng thái</p>
+                  <p className="font-medium capitalize">{shipment.status}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Tiền thu hộ (COD)</p>
+                  <p className="font-medium">{formatPrice(shipment.cod_amount)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Trọng lượng</p>
+                  <p className="font-medium">{(shipment.total_weight_g / 1000).toFixed(2)} kg</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Nhà vận chuyển</p>
+                  <p className="font-medium">{shipment.carrier_code}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Phí vận chuyển</p>
+                  <p className="font-medium">{formatPrice(shipment.shipping_fee_actual || 0)}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        order.status === 'pending' && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+            <p className="text-yellow-800">
+              💡 Đơn hàng chưa được đẩy sang vận chuyển. Chuyển trạng thái sang "Đang chuẩn bị" để tạo vận đơn tự động.
+            </p>
+          </div>
+        )
+      )}
+      {/* Shipment Info */}
+      {order.shipments && order.shipments.length > 0 && (
+        <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow border border-gray-100 mt-8">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Truck size={22} /> Thông tin vận chuyển (J&T Express)
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3">Mã vận đơn</th>
+                  <th className="px-4 py-3">Đơn vị</th>
+                  <th className="px-4 py-3">Trạng thái</th>
+                  <th className="px-4 py-3">COD</th>
+                  <th className="px-4 py-3">Phí ship</th>
+                  <th className="px-4 py-3">Cân nặng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.shipments.map((shipment) => (
+                  <tr key={shipment.id} className="bg-white border-b">
+                    <td className="px-4 py-3 font-medium text-blue-600">
+                      {shipment.tracking_number || "Đang tạo..."}
+                    </td>
+                    <td className="px-4 py-3">{shipment.carrier_code}</td>
+                    <td className="px-4 py-3">
+                      <span className="px-2 py-1 rounded-full bg-gray-100 text-xs">
+                        {shipment.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{formatPrice(shipment.cod_amount)}</td>
+                    <td className="px-4 py-3">{formatPrice(shipment.shipping_fee_actual)}</td>
+                    <td className="px-4 py-3">{shipment.total_weight_g}g</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 };
 

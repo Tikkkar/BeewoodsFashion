@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { callOpenRouterChat } from "../facebook-auto-poster/openRouterClient.ts";
 
+const OpenRouter_Model ="deepseek/deepseek-chat-v3.1:free"
+
 interface SEOContentRequest {
   productId?: string;
   productName: string;
@@ -189,7 +191,7 @@ serve(async (req: Request) => {
     const prompt = buildSEOPromptWithImages(body, validImageUrls.length);
 
     const { content: aiContent } = await callOpenRouterChat({
-      model: "openrouter/polaris-alpha",
+      model: OpenRouter_Model,
       messages: [
         {
           role: "system",

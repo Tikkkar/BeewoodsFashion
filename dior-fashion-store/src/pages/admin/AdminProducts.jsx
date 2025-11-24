@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { getAdminProducts, deleteProduct } from "../../lib/api/admin";
-import { Package, Plus, Edit, Trash2, Loader2, FileText, ShoppingCart, Image as ImageIcon } from "lucide-react";
-import ManualOrderModal from "../../components/admin/ManualOrderModal";
+import { Package, Plus, Edit, Trash2, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 
 const formatPrice = (price) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(
@@ -12,8 +11,6 @@ const formatPrice = (price) =>
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [orderModalOpen, setOrderModalOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const loadProducts = async () => {
     setLoading(true);
@@ -36,29 +33,24 @@ const AdminProducts = () => {
     }
   };
 
-  const handleCreateOrder = (product) => {
-    setSelectedProduct(product);
-    setOrderModalOpen(true);
-  };
-
   // Hàm lấy ảnh đại diện với fallback chain
   const getPrimaryImage = (product) => {
     // Kiểm tra product_images có tồn tại không
     if (!product.product_images || product.product_images.length === 0) {
       return null;
     }
-    
+
     // Tìm ảnh primary
     const primaryImage = product.product_images.find(img => img.is_primary === true);
     if (primaryImage && primaryImage.image_url) {
       return primaryImage.image_url;
     }
-    
+
     // Sắp xếp theo display_order và lấy ảnh đầu tiên
-    const sortedImages = [...product.product_images].sort((a, b) => 
+    const sortedImages = [...product.product_images].sort((a, b) =>
       (a.display_order || 999) - (b.display_order || 999)
     );
-    
+
     return sortedImages[0]?.image_url || null;
   };
 
@@ -119,7 +111,7 @@ const AdminProducts = () => {
             <tbody className="divide-y divide-gray-200">
               {products.map((product) => {
                 const primaryImage = getPrimaryImage(product);
-                
+
                 return (
                   <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                     {/* Cột hình ảnh */}
@@ -191,15 +183,14 @@ const AdminProducts = () => {
                         )}
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         <span
-                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            product.is_active
+                          className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${product.is_active
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {product.is_active ? "Hiển thị" : "Ẩn"}
                         </span>
@@ -212,21 +203,9 @@ const AdminProducts = () => {
                         )}
                       </div>
                     </td>
-                    
+
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
-                        {/* Nút tạo đơn hàng */}
-                        <button
-                          onClick={() => handleCreateOrder(product)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition group relative"
-                          title="Tạo đơn hàng"
-                        >
-                          <ShoppingCart size={18} />
-                          <span className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10">
-                            Tạo đơn hàng
-                          </span>
-                        </button>
-
                         {/* Edit Product Button */}
                         <Link
                           to={`/admin/products/${product.id}`}
@@ -319,17 +298,6 @@ const AdminProducts = () => {
           </div>
         </div>
       )}
-
-      {/* Modal tạo đơn hàng */}
-      <ManualOrderModal
-        isOpen={orderModalOpen}
-        onClose={() => {
-          setOrderModalOpen(false);
-          setSelectedProduct(null);
-        }}
-        onSuccess={loadProducts}
-        preselectedProduct={selectedProduct}
-      />
     </div>
   );
 };
