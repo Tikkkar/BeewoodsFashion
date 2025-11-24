@@ -27,16 +27,38 @@ export const uploadImage = async (file, bucket = "products") => {
  * Products Management (CRUD)
  * -----------------------------------------------------------------------------
  */
-export const getAdminProducts = async () => {
-  const { data, error } = await supabase
+export const getAdminProducts = async (filters = {}) => {
+  let query = supabase
     .from("products")
     .select(`
       *,
       categories!product_categories(id, name),
       product_sizes(*),
       product_images(id, image_url, is_primary, display_order)
-    `)
-    .order("created_at", { ascending: false });
+    `);
+
+  // Apply filters
+  if (filters.productCode) {
+    query = query.ilike("product_code", `%${filters.productCode}%`);
+  }
+
+  if (filters.minPrice) {
+    const minPrice = parseFloat(filters.minPrice);
+    if (!isNaN(minPrice)) {
+      query = query.gte("price", minPrice);
+    }
+  }
+
+  if (filters.maxPrice) {
+    const maxPrice = parseFloat(filters.maxPrice);
+    if (!isNaN(maxPrice)) {
+      query = query.lte("price", maxPrice);
+    }
+  }
+
+  query = query.order("created_at", { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("❌ Error fetching products:", error);

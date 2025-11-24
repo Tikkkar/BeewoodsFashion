@@ -38,7 +38,7 @@ const LoginPage = () => {
 
     try {
       console.log('🔐 Attempting login...');
-      
+
       const { data, error } = await signIn(formData.email, formData.password);
 
       if (error) {
@@ -50,10 +50,30 @@ const LoginPage = () => {
 
       if (data?.user) {
         console.log('✅ Login successful:', data.user.email);
-        
-        // ⚡ WAIT A BIT FOR AUTH STATE TO UPDATE
+
+        // Get user profile to check role
+        const { data: { user: authUser } } = await import('../../lib/supabase').then(m => m.supabase.auth.getUser());
+        const { data: profile } = await import('../../lib/supabase').then(m =>
+          m.supabase
+            .from('users')
+            .select('role')
+            .eq('id', authUser.id)
+            .single()
+        );
+
+        // Redirect based on role
+        let redirectPath = '/';
+        if (profile?.role === 'admin') {
+          redirectPath = '/admin/dashboard';
+        } else if (profile?.role === 'sale') {
+          redirectPath = '/employee/sale';
+        } else if (profile?.role === 'warehouse') {
+          redirectPath = '/employee/warehouse';
+        }
+
+        // Wait a bit for auth state to update
         setTimeout(() => {
-          navigate('/', { replace: true });
+          navigate(redirectPath, { replace: true });
         }, 500);
       }
     } catch (err) {
@@ -134,8 +154,8 @@ const LoginPage = () => {
 
             {/* Forgot Password */}
             <div className="text-right">
-              <Link 
-                to="/forgot-password" 
+              <Link
+                to="/forgot-password"
                 className="text-sm text-gray-600 hover:text-black"
               >
                 Quên mật khẩu?

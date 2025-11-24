@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
+import { useRBAC } from "../../hooks/useRBAC";
 import { signOut } from "../../lib/api/auth";
 import {
   LayoutDashboard,
@@ -24,10 +24,11 @@ import {
   FileText,
   TrendingUp,
   Truck,
+  Users,
 } from "lucide-react";
 
 const AdminLayout = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, canAccessAdmin, canManageEmployees, getRoleDisplayName, userRole } = useRBAC();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,10 +37,11 @@ const AdminLayout = () => {
     marketing: false,
     chatbot: false,
     analytics: false,
+    management: false,
   });
 
-  // Redirect if not admin
-  if (!isAdmin) {
+  // Redirect if not authorized
+  if (!canAccessAdmin) {
     navigate("/");
     return null;
   }
@@ -160,6 +162,20 @@ const AdminLayout = () => {
         },
       ]
     },
+    // Employee Management - Only for Admin
+    ...(canManageEmployees ? [{
+      title: "Quản lý Nhân viên",
+      icon: Users,
+      key: "management",
+      type: "group",
+      items: [
+        {
+          title: "Danh sách Nhân viên",
+          icon: Users,
+          path: "/admin/employees",
+        },
+      ]
+    }] : []),
   ];
 
   const isActive = (path) => {
@@ -219,6 +235,9 @@ const AdminLayout = () => {
                   "Quản trị viên"}
               </p>
               <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+              <span className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full mt-1 inline-block">
+                {getRoleDisplayName(userRole)}
+              </span>
             </div>
           </div>
         </div>

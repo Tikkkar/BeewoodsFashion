@@ -11,10 +11,15 @@ const formatPrice = (price) =>
 const AdminProducts = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState({
+    productCode: '',
+    minPrice: '',
+    maxPrice: ''
+  });
 
-  const loadProducts = async () => {
+  const loadProducts = async (appliedFilters = {}) => {
     setLoading(true);
-    const { data } = await getAdminProducts();
+    const { data } = await getAdminProducts(appliedFilters);
     if (data) {
       console.log("📦 Products loaded successfully:", data.length);
       setProducts(data);
@@ -29,8 +34,26 @@ const AdminProducts = () => {
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
       await deleteProduct(id);
-      loadProducts();
+      loadProducts(filters);
     }
+  };
+
+  const handleFilterChange = (field, value) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleApplyFilters = () => {
+    loadProducts(filters);
+  };
+
+  const handleResetFilters = () => {
+    const resetFilters = {
+      productCode: '',
+      minPrice: '',
+      maxPrice: ''
+    };
+    setFilters(resetFilters);
+    loadProducts(resetFilters);
   };
 
   // Hàm lấy ảnh đại diện với fallback chain
@@ -80,6 +103,63 @@ const AdminProducts = () => {
         </Link>
       </div>
 
+      {/* Filter Section */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+        <h3 className="text-lg font-semibold mb-4">Bộ lọc</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Mã sản phẩm
+            </label>
+            <input
+              type="text"
+              value={filters.productCode}
+              onChange={(e) => handleFilterChange('productCode', e.target.value)}
+              placeholder="Nhập mã sản phẩm..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Giá tối thiểu (VND)
+            </label>
+            <input
+              type="number"
+              value={filters.minPrice}
+              onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+              placeholder="0"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Giá tối đa (VND)
+            </label>
+            <input
+              type="number"
+              value={filters.maxPrice}
+              onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+              placeholder="999999999"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <button
+              onClick={handleApplyFilters}
+              className="flex-1 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+            >
+              Áp dụng lọc
+            </button>
+            <button
+              onClick={handleResetFilters}
+              className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition"
+            >
+              Đặt lại
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -90,6 +170,9 @@ const AdminProducts = () => {
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Sản phẩm
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Mã sản phẩm
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Danh mục
@@ -145,6 +228,13 @@ const AdminProducts = () => {
                       )}
                     </td>
 
+                    {/* Cột mã sản phẩm */}
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-mono text-gray-700">
+                        {product.product_code || <span className="text-gray-400 italic">Chưa có</span>}
+                      </div>
+                    </td>
+
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {product.categories && product.categories.length > 0
                         ? product.categories.map((cat) => cat.name).join(", ")
@@ -188,8 +278,8 @@ const AdminProducts = () => {
                       <div className="space-y-1">
                         <span
                           className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${product.is_active
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
                             }`}
                         >
                           {product.is_active ? "Hiển thị" : "Ẩn"}

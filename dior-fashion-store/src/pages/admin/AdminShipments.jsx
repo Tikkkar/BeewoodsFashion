@@ -267,15 +267,23 @@ const AdminShipments = () => {
                                                 className="w-4 h-4"
                                             />
                                         </th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mã đơn</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Khách hàng</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Tên người nhận</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Số điện thoại</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Địa chỉ nhận hàng</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mã đơn hàng</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mã sản phẩm</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Mã vận đơn</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Carrier</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Trạng thái</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">COD</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Trọng lượng</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Ngày tạo</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Loại hàng</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Dịch vụ</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Gói dịch vụ</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">PT thanh toán</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Cước phí</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Loại COD</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Giá trị COD</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Kích thước (cm)</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Khối lượng (g)</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Số kiện</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Giá trị hàng</th>
+                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Ghi chú</th>
                                         <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Thao tác</th>
                                     </tr>
                                 </thead>
@@ -290,33 +298,41 @@ const AdminShipments = () => {
                                                     className="w-4 h-4"
                                                 />
                                             </td>
+                                            <td className="px-4 py-3 text-sm">{shipment.receiver_name || '-'}</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.receiver_phone || '-'}</td>
+                                            <td className="px-4 py-3 text-sm max-w-xs truncate" title={shipment.receiver_address_detail}>
+                                                {shipment.receiver_address_detail || '-'}
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <Link
                                                     to={`/admin/orders/${shipment.order_id}`}
-                                                    className="text-blue-600 hover:underline font-medium"
+                                                    className="text-blue-600 hover:underline font-medium text-sm"
                                                 >
                                                     {shipment.order_number}
                                                 </Link>
                                             </td>
-                                            <td className="px-4 py-3 text-sm">{shipment.customer_name}</td>
                                             <td className="px-4 py-3 text-sm">
                                                 <span className="text-xs text-gray-600 font-mono">
                                                     {shipment.product_codes || <span className="text-gray-400">-</span>}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono">
-                                                {shipment.tracking_number || <span className="text-gray-400">Chưa có</span>}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">{shipment.carrier_code}</td>
-                                            <td className="px-4 py-3">
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(shipment.shipment_status)}`}>
-                                                    {getStatusLabel(shipment.shipment_status)}
-                                                </span>
-                                            </td>
+                                            <td className="px-4 py-3 text-sm">{shipment.product_type || '-'}</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.service_type || '-'}</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.service_package || '-'}</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.payment_method || '-'}</td>
+                                            <td className="px-4 py-3 text-sm">{formatPrice(shipment.shipping_fee_customer || 0)}</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.cod_type || '-'}</td>
                                             <td className="px-4 py-3 text-sm">{formatPrice(shipment.cod_amount || 0)}</td>
-                                            <td className="px-4 py-3 text-sm">{((shipment.calculated_weight_g || 0) / 1000).toFixed(2)} kg</td>
-                                            <td className="px-4 py-3 text-sm text-gray-600">
-                                                {shipment.shipment_created_at ? format(new Date(shipment.shipment_created_at), 'dd/MM/yyyy') : '-'}
+                                            <td className="px-4 py-3 text-sm">
+                                                {shipment.package_length_cm && shipment.package_width_cm && shipment.package_height_cm
+                                                    ? `${shipment.package_length_cm}×${shipment.package_width_cm}×${shipment.package_height_cm}`
+                                                    : '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">{shipment.package_weight_g || 0}g</td>
+                                            <td className="px-4 py-3 text-sm">{shipment.package_count || 1}</td>
+                                            <td className="px-4 py-3 text-sm">{formatPrice(shipment.product_value || 0)}</td>
+                                            <td className="px-4 py-3 text-sm max-w-xs truncate" title={shipment.note}>
+                                                {shipment.note || '-'}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex gap-2">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { getAdminOrders } from "../../lib/api/admin";
-import { Loader2, Search, Filter, DollarSign, ShoppingBag, Plus } from "lucide-react";
+import { getOrdersForEmployee } from "../../lib/api/employees";
+import { useRBAC } from "../../hooks/useRBAC";
+import { Loader2, Search, Filter, DollarSign, ShoppingBag, Plus, AlertCircle } from "lucide-react";
 import ManualOrderModal from "../../components/admin/ManualOrderModal";
 
 const formatPrice = (price) =>
@@ -32,6 +33,7 @@ const getStatusBadge = (status) => {
 };
 
 const AdminOrders = () => {
+  const { userRole, isSale, isWarehouse, canAccessAdmin } = useRBAC();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,8 +42,10 @@ const AdminOrders = () => {
   const [orderModalOpen, setOrderModalOpen] = useState(false);
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (canAccessAdmin) {
+      loadOrders();
+    }
+  }, [canAccessAdmin]);
 
   useEffect(() => {
     filterOrders();
@@ -49,7 +53,7 @@ const AdminOrders = () => {
 
   const loadOrders = async () => {
     setLoading(true);
-    const { data } = await getAdminOrders();
+    const { data } = await getOrdersForEmployee({ status: statusFilter !== 'all' ? statusFilter : null });
     if (data) setOrders(data);
     setLoading(false);
   };
@@ -122,6 +126,35 @@ const AdminOrders = () => {
           <span>Tạo đơn hàng</span>
         </button>
       </div>
+
+      {/* Role-based Info Banner */}
+      {isSale && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Bạn đang xem đơn hàng với quyền Sale
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              Chỉ hiển thị các đơn hàng do bạn tạo trong 30 ngày gần nhất
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isWarehouse && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-green-900">
+              Bạn đang xem đơn hàng với quyền Warehouse
+            </p>
+            <p className="text-sm text-green-700 mt-1">
+              Bạn có thể xem tất cả đơn hàng để thực hiện đóng gói và xuất kho
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

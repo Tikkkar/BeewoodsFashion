@@ -48,6 +48,7 @@ const CareersPage = lazy(() => import("./pages/CareersPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 const ProtectedRoute = lazy(() => import("./components/auth/ProtectedRoute"));
+const RoleBasedRoute = lazy(() => import("./components/auth/RoleBasedRoute"));
 
 // Admin pages - Heavy, nên lazy load
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
@@ -70,6 +71,11 @@ const FacebookAutoPostSettings = lazy(() => import("./pages/admin/FacebookAutoPo
 const FacebookPostsHistory = lazy(() => import("./pages/admin/FacebookPostsHistory"));
 const InventoryManagement = lazy(() => import("./pages/admin/InventoryManagement"));
 const AdTargeting = lazy(() => import("./pages/admin/AdTargeting"));
+const EmployeeManagement = lazy(() => import("./pages/admin/EmployeeManagement"));
+
+// Employee pages
+const SaleDashboard = lazy(() => import("./pages/employee/SaleDashboard"));
+const WarehouseDashboard = lazy(() => import("./pages/employee/WarehouseDashboard"));
 
 // User pages
 const ProfileLayout = lazy(() => import("./pages/user/ProfileLayout"));
@@ -245,6 +251,24 @@ function AppContent({
                 <Route path="wishlist" element={<WishlistPage />} />
               </Route>
 
+              {/* EMPLOYEE ROUTES */}
+              <Route
+                path="/employee/sale"
+                element={
+                  <RoleBasedRoute allowedRoles={['sale']}>
+                    <SaleDashboard />
+                  </RoleBasedRoute>
+                }
+              />
+              <Route
+                path="/employee/warehouse"
+                element={
+                  <RoleBasedRoute allowedRoles={['warehouse']}>
+                    <WarehouseDashboard />
+                  </RoleBasedRoute>
+                }
+              />
+
               {/* ADMIN ROUTES */}
               <Route
                 path="/admin"
@@ -272,6 +296,7 @@ function AppContent({
                 <Route path="orders" element={<AdminOrders />} />
                 <Route path="orders/:id" element={<AdminOrderDetail />} />
                 <Route path="shipments" element={<AdminShipments />} />
+                <Route path="employees" element={<EmployeeManagement />} />
                 <Route path="chatbot/facebook" element={<FacebookSettingsPage />} />
                 <Route path="chatbot/conversations" element={<ConversationsPage />} />
                 <Route path="chatbot/scenarios" element={<ScenariosTab />} />
