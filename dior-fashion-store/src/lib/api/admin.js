@@ -277,36 +277,108 @@ export const deleteBanner = async (id) => {
 export const getAdminOrders = async () => {
   const { data, error } = await supabase
     .from("orders")
-    .select("*, users(full_name, email)")
+    .select("*") // ✅ Chỉ lấy data từ orders, không join users
     .order("created_at", { ascending: false });
-  if (error) toast.error("Failed to fetch orders.");
+
+  if (error) {
+    console.error("❌ Error fetching orders:", error);
+    toast.error("Failed to fetch orders.");
+  }
+
   return { data, error };
 };
 
 export const getAdminOrderDetails = async (id) => {
   const { data, error } = await supabase
     .from("orders")
-    .select(
-      "*, users(*), order_items(*, products(name,product_images(image_url))), shipments(*)"
-    )
+    .select(`
+      *,
+      order_items!left(
+        *,
+        products!left(
+          name,
+          slug,
+          product_images!left(image_url, is_primary)
+        )
+      ),
+      shipments!left(*)
+    `)
     .eq("id", id)
     .single();
-  if (error) toast.error("Failed to fetch order details.");
-  return { data, error };
-};
-
-export const updateOrderStatus = async (id, status) => {
-  const { error } = await supabase
-    .from("orders")
-    .update({ status })
-    .eq("id", id);
 
   if (error) {
-    toast.error("Failed to update order status.");
-    throw error;
+    console.error("❌ Error fetching order details:", error);
+    toast.error("Failed to fetch order details.");
   }
 
-  toast.success("Order status updated!");
+  return { data, error };
+};
+export const updateOrderStatus = async (id, status) => {
+  try {
+    // 1. Update order status
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", id);
+
+    if (updateError) {
+      console.error("❌ Error updating order status:", updateError);
+      throw updateError;
+    }
+
+    // 2. Nếu chuyển sang "processing", tạo vận đơn J&T
+    if (status === 'processing') {
+      console.log("📦 Creating J&T shipment for order:", id);
+
+      try {
+        // Lấy session token
+        const { data: { session } } = await supabase.auth.getSession();
+
+        // Lấy Supabase URL từ instance
+        const supabaseUrl = supabase.supabaseUrl;
+
+        const response = await fetch(
+          `${supabaseUrl}/functions/v1/jnt-create-order`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session?.access_token || ''}`
+            },
+            body: JSON.stringify({ order_id: id })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || result.error) {
+          console.error("⚠️ J&T shipment creation failed:", result.error);
+          toast.error(`Đơn hàng đã xác nhận nhưng không tạo được vận đơn. Vui lòng tạo thủ công.`, {
+            duration: 5000
+          });
+        } else {
+          console.log("✅ J&T shipment created:", result.tracking_number);
+          toast.success(`Đơn hàng đã được xác nhận và tạo vận đơn J&T: ${result.tracking_number}`);
+        }
+      } catch (fetchError) {
+        console.error("⚠️ Error calling J&T function:", fetchError);
+        toast.error(`Đơn hàng đã xác nhận nhưng không thể kết nối dịch vụ vận chuyển.`, {
+          duration: 5000
+        });
+      }
+    } else {
+      toast.success("Cập nhật trạng thái đơn hàng thành công!");
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("❌ updateOrderStatus failed:", error);
+    toast.error("Không thể cập nhật trạng thái đơn hàng.");
+    throw error;
+  }
 };
 
 /**

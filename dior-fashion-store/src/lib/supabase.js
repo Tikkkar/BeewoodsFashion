@@ -15,37 +15,37 @@ try {
     supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   } else if (isVercel) {
     // Vercel environment - prioritize VITE_ prefix
-    supabaseUrl = 
-      process.env.VITE_SUPABASE_URL || 
+    supabaseUrl =
+      process.env.VITE_SUPABASE_URL ||
       process.env.REACT_APP_SUPABASE_URL ||
       process.env.SUPABASE_URL;
-    
-    supabaseAnonKey = 
-      process.env.VITE_SUPABASE_ANON_KEY || 
+
+    supabaseAnonKey =
+      process.env.VITE_SUPABASE_ANON_KEY ||
       process.env.REACT_APP_SUPABASE_ANON_KEY ||
       process.env.SUPABASE_ANON_KEY;
   } else {
     // CRA or other environments
-    supabaseUrl = 
+    supabaseUrl =
       process.env.REACT_APP_SUPABASE_URL ||
       process.env.VITE_SUPABASE_URL ||
       process.env.SUPABASE_URL;
-    
-    supabaseAnonKey = 
+
+    supabaseAnonKey =
       process.env.REACT_APP_SUPABASE_ANON_KEY ||
       process.env.VITE_SUPABASE_ANON_KEY ||
       process.env.SUPABASE_ANON_KEY;
   }
 } catch (err) {
   console.error('Error loading Supabase config:', err);
-  
+
   // Fallback
-  supabaseUrl = 
+  supabaseUrl =
     process.env.VITE_SUPABASE_URL ||
     process.env.REACT_APP_SUPABASE_URL ||
     process.env.SUPABASE_URL;
-  
-  supabaseAnonKey = 
+
+  supabaseAnonKey =
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.REACT_APP_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_ANON_KEY;
@@ -82,21 +82,21 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
   },
-  
+
   // ⚡ CRITICAL: Disable realtime if not using subscriptions
   // This saves ~10KB of bundle size
   // ❓ Set to TRUE only if you use .on('INSERT/UPDATE/DELETE') or .channel() subscriptions
   realtime: {
     enabled: false, // ← Change to true if you need realtime features
   },
-  
+
   // ⚡ Global settings
   global: {
     headers: {
       'x-client-info': 'bewo-fashion@1.0.0',
     },
   },
-  
+
   // ⚡ Database settings
   db: {
     schema: 'public',
@@ -120,5 +120,24 @@ export const enableRealtime = () => {
     },
   });
 };
+
+// Admin client with service_role (bypass RLS for admin APIs)
+let supabaseServiceRoleKey;
+try {
+  supabaseServiceRoleKey = isVite
+    ? import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY
+    : process.env.VITE_SUPABASE_SERVICE_ROLE_KEY || process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+} catch (err) {
+  console.warn('Admin service_role key not found');
+}
+
+export const adminSupabase = supabaseServiceRoleKey
+  ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+    auth: { autoRefreshToken: false },
+    realtime: { enabled: false },
+    global: { headers: { 'x-client-info': 'admin-bypass' } },
+    db: { schema: 'public' },
+  })
+  : null;
 
 export default supabase;

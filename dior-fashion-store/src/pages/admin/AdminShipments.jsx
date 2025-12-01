@@ -68,7 +68,7 @@ const AdminShipments = () => {
 
     const handleSelectAll = (e) => {
         if (e.target.checked) {
-            setSelectedIds(shipments.map(s => s.shipment_id));
+            setSelectedIds(shipments.map(s => s.id));
         } else {
             setSelectedIds([]);
         }
@@ -106,7 +106,7 @@ const AdminShipments = () => {
             alert('Vui lòng chọn ít nhất một vận đơn');
             return;
         }
-        const selectedShipments = shipments.filter(s => selectedIds.includes(s.shipment_id));
+        const selectedShipments = shipments.filter(s => selectedIds.includes(s.id));
         exportShipmentsToExcel(selectedShipments, `shipments_selected_${format(new Date(), 'yyyyMMdd')}.xlsx`);
     };
 
@@ -289,7 +289,7 @@ const AdminShipments = () => {
                                 </thead>
                                 <tbody className="divide-y">
                                     {shipments.map((shipment) => (
-                                        <tr key={shipment.shipment_id} className="hover:bg-gray-50">
+                                        <tr key={shipment.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3">
                                                 <input
                                                     type="checkbox"

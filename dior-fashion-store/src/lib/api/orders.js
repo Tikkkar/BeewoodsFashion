@@ -267,3 +267,150 @@ export const getUserOrders = async (userId) => {
     return { data: null, error: error.message };
   }
 };
+
+// =============================================
+// CREATE ORDER FROM AI (For AI Assistant)
+// =============================================
+export const createOrderFromAI = async (orderData) => {
+  try {
+    const {
+      customerInfo,
+      productId,
+      quantity = 1,
+      size = "One Size",
+      shippingFee = 30000,
+      status = "pending",
+    } = orderData;
+
+    // 1. Fetch product details
+    const { data: product, error: productError } = await supabase
+      .from("products")
+      .select("id, name, price, weight_g, product_images(image_url, is_primary)")
+      .eq("id", productId)
+      .single();
+
+    if (productError) throw productError;
+    if (!product) throw new Error("Sản phẩm không tồn tại");
+
+    // 2. Calculate totals
+    const subtotal = product.price * quantity;
+    const totalAmount = subtotal + shippingFee;
+
+    // 3. Generate order number
+    const orderNumber = generateOrderNumber();
+
+    // 4. Get user_id if logged in
+    let userId = null;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: publicUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      userId = publicUser?.id || null;
+    }
+
+    // 5. Create order payload
+    const orderPayload = {
+      order_number: orderNumber,
+      user_id: userId,
+      customer_name: customerInfo.customer_name,
+      customer_email: customerInfo.customer_email || null,
+      customer_phone: customerInfo.customer_phone,
+      shipping_address: customerInfo.shipping_address,
+      shipping_city: customerInfo.shipping_city || null,
+      shipping_district: customerInfo.shipping_district || null,
+      shipping_ward: customerInfo.shipping_ward || null,
+      notes: customerInfo.notes || null,
+      subtotal: subtotal,
+      discount_amount: 0,
+      applied_discount_code: null,
+      shipping_fee: shippingFee,
+      total_amount: totalAmount,
+      status: status,
+      payment_method: "cod",
+      payment_status: "pending",
+    };
+
+    // 6. Insert order
+    const { data: order, error: orderError } = await supabase
+      .from("orders")
+      .insert([orderPayload])
+      .select()
+      .single();
+
+    if (orderError) throw orderError;
+
+    // 7. Get product image
+    const primaryImage = product.product_images?.find((img) => img.is_primary);
+    const productImage = primaryImage?.image_url || product.product_images?.[0]?.image_url || null;
+
+    // 8. Create order item
+    const orderItem = {
+      order_id: order.id,
+      product_id: product.id,
+      product_name: product.name,
+      product_image: productImage,
+      size: size,
+      quantity: quantity,
+      price: product.price,
+      subtotal: subtotal,
+      weight_g: product.weight_g || 200,
+    };
+
+    const { error: itemError } = await supabase
+      .from("order_items")
+      .insert([orderItem]);
+
+    if (itemError) {
+      // Rollback: delete order if item creation fails
+      await supabase.from("orders").delete().eq("id", order.id);
+      throw itemError;
+    }
+
+    // 9. Update stock
+    const { data: currentProduct, error: fetchError } = await supabase
+      .from("products")
+      .select("stock")
+      .eq("id", productId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const newStock = currentProduct.stock - quantity;
+    const { error: updateError } = await supabase
+      .from("products")
+      .update({ stock: Math.max(0, newStock) })
+      .eq("id", productId);
+
+    if (updateError) throw updateError;
+
+    // Update size stock if applicable
+    if (size && size !== "One Size") {
+      const { data: sizeData, error: sizeError } = await supabase
+        .from("product_sizes")
+        .select("stock")
+        .eq("product_id", productId)
+        .eq("size", size)
+        .single();
+
+      if (!sizeError && sizeData) {
+        await supabase
+          .from("product_sizes")
+          .update({ stock: Math.max(0, sizeData.stock - quantity) })
+          .eq("product_id", productId)
+          .eq("size", size);
+      }
+    }
+
+    return { data: order, error: null };
+  } catch (error) {
+    console.error("❌ createOrderFromAI error:", error);
+    return { data: null, error: error.message || "Lỗi không xác định" };
+  }
+};

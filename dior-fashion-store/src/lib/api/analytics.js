@@ -29,7 +29,7 @@ export const getSalesAnalytics = async (startDate, endDate) => {
           cancelled: 0
         };
       }
-      
+
       salesByDate[date].orders += 1;
       if (order.status === 'completed') {
         salesByDate[date].revenue += order.total_amount;
@@ -83,7 +83,7 @@ export const getTopProducts = async (limit = 10, startDate, endDate) => {
           revenue: 0
         };
       }
-      
+
       productStats[productId].quantity += item.quantity;
       productStats[productId].revenue += item.price * item.quantity;
     });
@@ -98,7 +98,7 @@ export const getTopProducts = async (limit = 10, startDate, endDate) => {
   }
 };
 
-// Get category performance - FIXED for many-to-many relationship
+// Get category performance - many-to-many relationship
 export const getCategoryPerformance = async (startDate, endDate) => {
   try {
     // Step 1: Get all order items
@@ -156,14 +156,11 @@ export const getCategoryPerformance = async (startDate, endDate) => {
 
     // Step 6: Aggregate by category
     const categoryStats = {};
-    
     orderItems.forEach(item => {
       const categoryIds = productToCategoriesMap[item.product_id] || [];
-      
       categoryIds.forEach(categoryId => {
         const categoryName = categoryMap[categoryId];
         if (!categoryName) return;
-
         if (!categoryStats[categoryId]) {
           categoryStats[categoryId] = {
             id: categoryId,
@@ -172,7 +169,6 @@ export const getCategoryPerformance = async (startDate, endDate) => {
             revenue: 0
           };
         }
-        
         categoryStats[categoryId].quantity += item.quantity;
         categoryStats[categoryId].revenue += item.price * item.quantity;
       });
@@ -181,10 +177,9 @@ export const getCategoryPerformance = async (startDate, endDate) => {
     // Step 7: Convert to array and sort
     return Object.values(categoryStats)
       .sort((a, b) => b.revenue - a.revenue);
-      
   } catch (error) {
     console.error('Error fetching category performance:', error);
-    return []; // Return empty instead of throwing
+    return [];
   }
 };
 
@@ -228,7 +223,6 @@ export const getOrderStatusDistribution = async (startDate, endDate) => {
 // Get customer statistics
 export const getCustomerStats = async (startDate, endDate) => {
   try {
-    // Get orders with customer info
     const { data: orders, error } = await supabase
       .from('orders')
       .select('user_id, total_amount, status, created_at')
@@ -237,13 +231,11 @@ export const getCustomerStats = async (startDate, endDate) => {
 
     if (error) throw error;
 
-    // Calculate stats
     const customerData = {};
     let newCustomers = 0;
 
     orders.forEach(order => {
       const customerId = order.user_id || 'guest';
-      
       if (!customerData[customerId]) {
         customerData[customerId] = {
           orders: 0,
@@ -252,7 +244,6 @@ export const getCustomerStats = async (startDate, endDate) => {
         };
         newCustomers += 1;
       }
-      
       customerData[customerId].orders += 1;
       if (order.status === 'completed') {
         customerData[customerId].revenue += order.total_amount;
@@ -261,8 +252,8 @@ export const getCustomerStats = async (startDate, endDate) => {
 
     const totalCustomers = Object.keys(customerData).length;
     const repeatingCustomers = Object.values(customerData).filter(c => c.orders > 1).length;
-    const avgOrderValue = orders.length > 0 
-      ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length 
+    const avgOrderValue = orders.length > 0
+      ? orders.reduce((sum, o) => sum + o.total_amount, 0) / orders.length
       : 0;
 
     return {
@@ -283,7 +274,7 @@ export const getRevenueByHour = async (date) => {
   try {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
-    
+
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
@@ -296,7 +287,6 @@ export const getRevenueByHour = async (date) => {
 
     if (error) throw error;
 
-    // Group by hour
     const hourlyData = Array.from({ length: 24 }, (_, i) => ({
       hour: i,
       revenue: 0,
@@ -337,12 +327,10 @@ export const getComparisonData = async (currentStart, currentEnd, previousStart,
 
     if (previousError) throw previousError;
 
-    // Calculate metrics
     const calculateMetrics = (orders) => {
       const revenue = orders
         .filter(o => o.status === 'completed')
         .reduce((sum, o) => sum + o.total_amount, 0);
-      
       return {
         revenue,
         orders: orders.length,
@@ -354,7 +342,6 @@ export const getComparisonData = async (currentStart, currentEnd, previousStart,
     const current = calculateMetrics(currentOrders);
     const previous = calculateMetrics(previousOrders);
 
-    // Calculate growth percentages
     const calculateGrowth = (current, previous) => {
       if (previous === 0) return current > 0 ? 100 : 0;
       return ((current - previous) / previous) * 100;
@@ -372,6 +359,293 @@ export const getComparisonData = async (currentStart, currentEnd, previousStart,
     };
   } catch (error) {
     console.error('Error fetching comparison data:', error);
+    throw error;
+  }
+};
+
+// ============================================================================
+// NEW ANALYTICS FUNCTIONS
+// ============================================================================
+
+/**
+ * Get inventory statistics
+ * Returns overall inventory metrics including total stock, low stock count, out of stock count
+ */
+export const getInventoryStats = async () => {
+  try {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('id, name, stock, price, is_active');
+    if (error) throw error;
+
+    const totalProducts = products.length;
+    const activeProducts = products.filter(p => p.is_active).length;
+    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+    const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length;
+    const outOfStockCount = products.filter(p => p.stock === 0).length;
+    const totalStockValue = products.reduce((sum, p) => sum + (p.stock * p.price), 0);
+
+    return {
+      totalProducts,
+      activeProducts,
+      totalStock,
+      lowStockCount,
+      outOfStockCount,
+      totalStockValue,
+      inStockCount: totalProducts - outOfStockCount
+    };
+  } catch (error) {
+    console.error('Error fetching inventory stats:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get stock status distribution
+ * Returns breakdown of products by stock status (in stock, low stock, out of stock)
+ */
+export const getStockStatusDistribution = async () => {
+  try {
+    const { data: products, error } = await supabase
+      .from('products')
+      .select('id, stock, is_active')
+      .eq('is_active', true);
+    if (error) throw error;
+
+    const inStock = products.filter(p => p.stock > 10).length;
+    const lowStock = products.filter(p => p.stock > 0 && p.stock <= 10).length;
+    const outOfStock = products.filter(p => p.stock === 0).length;
+
+    return [
+      { status: 'inStock', label: 'Còn hàng', count: inStock },
+      { status: 'lowStock', label: 'Sắp hết', count: lowStock },
+      { status: 'outOfStock', label: 'Hết hàng', count: outOfStock }
+    ];
+  } catch (error) {
+    console.error('Error fetching stock status distribution:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get sales by day of week
+ * Returns sales breakdown by day of week (Monday-Sunday)
+ */
+export const getSalesByDayOfWeek = async (startDate, endDate) => {
+  try {
+    const { data: orders, error } = await supabase
+      .from('orders')
+      .select('created_at, total_amount, status')
+      .eq('status', 'completed')
+      .gte('created_at', startDate)
+      .lte('created_at', endDate);
+    if (error) throw error;
+
+    const dayNames = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const dayStats = dayNames.map((name, index) => ({
+      day: name,
+      dayIndex: index,
+      revenue: 0,
+      orders: 0
+    }));
+
+    orders.forEach(order => {
+      const dayOfWeek = new Date(order.created_at).getDay();
+      dayStats[dayOfWeek].revenue += order.total_amount;
+      dayStats[dayOfWeek].orders += 1;
+    });
+
+    return dayStats;
+  } catch (error) {
+    console.error('Error fetching sales by day of week:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get trending products
+ * Returns products with growing sales (comparing current period vs previous period)
+ */
+export const getTrendingProducts = async (startDate, endDate, limit = 10) => {
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    const prevEnd = new Date(start);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - periodDays + 1);
+
+    const { data: currentItems, error: currentError } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        price,
+        product_id,
+        product_name,
+        product_image,
+        orders!inner (
+          created_at,
+          status
+        )
+      `)
+      .eq('orders.status', 'completed')
+      .gte('orders.created_at', startDate)
+      .lte('orders.created_at', endDate);
+    if (currentError) throw currentError;
+
+    const { data: previousItems, error: previousError } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        product_id,
+        orders!inner (
+          created_at,
+          status
+        )
+      `)
+      .eq('orders.status', 'completed')
+      .gte('orders.created_at', prevStart.toISOString())
+      .lte('orders.created_at', prevEnd.toISOString());
+    if (previousError) throw previousError;
+
+    const currentStats = {};
+    currentItems.forEach(item => {
+      if (!currentStats[item.product_id]) {
+        currentStats[item.product_id] = {
+          id: item.product_id,
+          name: item.product_name,
+          image: item.product_image,
+          quantity: 0,
+          revenue: 0
+        };
+      }
+      currentStats[item.product_id].quantity += item.quantity;
+      currentStats[item.product_id].revenue += item.price * item.quantity;
+    });
+
+    const previousStats = {};
+    previousItems.forEach(item => {
+      if (!previousStats[item.product_id]) {
+        previousStats[item.product_id] = { quantity: 0 };
+      }
+      previousStats[item.product_id].quantity += item.quantity;
+    });
+
+    const trending = Object.values(currentStats)
+      .map(product => {
+        const prevQuantity = previousStats[product.id]?.quantity || 0;
+        const growth = prevQuantity > 0
+          ? ((product.quantity - prevQuantity) / prevQuantity) * 100
+          : product.quantity > 0 ? 100 : 0;
+        return { ...product, previousQuantity: prevQuantity, growth };
+      })
+      .filter(p => p.growth > 0)
+      .sort((a, b) => b.growth - a.growth)
+      .slice(0, limit);
+
+    return trending;
+  } catch (error) {
+    console.error('Error fetching trending products:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get declining products
+ * Returns products with declining sales (comparing current period vs previous period)
+ */
+export const getDecliningProducts = async (startDate, endDate, limit = 10) => {
+  try {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+    const prevEnd = new Date(start);
+    prevEnd.setDate(prevEnd.getDate() - 1);
+    const prevStart = new Date(prevEnd);
+    prevStart.setDate(prevStart.getDate() - periodDays + 1);
+
+    const { data: currentItems, error: currentError } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        price,
+        product_id,
+        product_name,
+        product_image,
+        orders!inner (
+          created_at,
+          status
+        )
+      `)
+      .eq('orders.status', 'completed')
+      .gte('orders.created_at', startDate)
+      .lte('orders.created_at', endDate);
+    if (currentError) throw currentError;
+
+    const { data: previousItems, error: previousError } = await supabase
+      .from('order_items')
+      .select(`
+        quantity,
+        product_id,
+        orders!inner (
+          created_at,
+          status
+        )
+      `)
+      .eq('orders.status', 'completed')
+      .gte('orders.created_at', prevStart.toISOString())
+      .lte('orders.created_at', prevEnd.toISOString());
+    if (previousError) throw previousError;
+
+    const currentStats = {};
+    currentItems.forEach(item => {
+      if (!currentStats[item.product_id]) {
+        currentStats[item.product_id] = {
+          id: item.product_id,
+          name: item.product_name,
+          image: item.product_image,
+          quantity: 0,
+          revenue: 0
+        };
+      }
+      currentStats[item.product_id].quantity += item.quantity;
+      currentStats[item.product_id].revenue += item.price * item.quantity;
+    });
+
+    const previousStats = {};
+    previousItems.forEach(item => {
+      if (!previousStats[item.product_id]) {
+        previousStats[item.product_id] = { quantity: 0 };
+      }
+      previousStats[item.product_id].quantity += item.quantity;
+    });
+
+    const declining = Object.keys(previousStats)
+      .filter(productId => previousStats[productId].quantity > 0)
+      .map(productId => {
+        const currentQuantity = currentStats[productId]?.quantity || 0;
+        const prevQuantity = previousStats[productId].quantity;
+        const growth = ((currentQuantity - prevQuantity) / prevQuantity) * 100;
+        return {
+          id: productId,
+          name: currentStats[productId]?.name || 'Unknown Product',
+          image: currentStats[productId]?.image,
+          quantity: currentQuantity,
+          previousQuantity: prevQuantity,
+          revenue: currentStats[productId]?.revenue || 0,
+          growth
+        };
+      })
+      .filter(p => p.growth < 0)
+      .sort((a, b) => a.growth - b.growth)
+      .slice(0, limit);
+
+    return declining;
+  } catch (error) {
+    console.error('Error fetching declining products:', error);
     throw error;
   }
 };

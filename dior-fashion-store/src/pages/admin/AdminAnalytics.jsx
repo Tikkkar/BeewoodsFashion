@@ -42,6 +42,12 @@ import {
   getCustomerStats,
   getRevenueByHour,
   getComparisonData,
+  // New analytics functions
+  getInventoryStats,
+  getStockStatusDistribution,
+  getSalesByDayOfWeek,
+  getTrendingProducts,
+  getDecliningProducts,
 } from "../../lib/api/analytics";
 
 const AdminAnalytics = () => {
@@ -54,6 +60,12 @@ const AdminAnalytics = () => {
   const [customerStats, setCustomerStats] = useState(null);
   const [hourlyData, setHourlyData] = useState([]);
   const [comparison, setComparison] = useState(null);
+  // New state for additional analytics
+  const [inventoryStats, setInventoryStats] = useState(null);
+  const [stockStatusData, setStockStatusData] = useState([]);
+  const [dayOfWeekData, setDayOfWeekData] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [decliningProducts, setDecliningProducts] = useState([]);
 
   useEffect(() => {
     loadAnalytics();
@@ -88,6 +100,7 @@ const AdminAnalytics = () => {
       setLoading(true);
       const { start, end } = getDateRange();
 
+      // Existing analytics
       const [sales, products, categories, statuses, customers, hourly] =
         await Promise.all([
           getSalesAnalytics(start.toISOString(), end.toISOString()),
@@ -96,6 +109,16 @@ const AdminAnalytics = () => {
           getOrderStatusDistribution(start.toISOString(), end.toISOString()),
           getCustomerStats(start.toISOString(), end.toISOString()),
           getRevenueByHour(new Date()),
+        ]);
+
+      // New analytics
+      const [inventory, stockDist, dayOfWeek, trending, declining] =
+        await Promise.all([
+          getInventoryStats(),
+          getStockStatusDistribution(),
+          getSalesByDayOfWeek(start.toISOString(), end.toISOString()),
+          getTrendingProducts(start.toISOString(), end.toISOString(), 10),
+          getDecliningProducts(start.toISOString(), end.toISOString(), 10),
         ]);
 
       const periodDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
@@ -109,6 +132,7 @@ const AdminAnalytics = () => {
         prevEnd.toISOString()
       );
 
+      // Set existing data
       setSalesData(sales);
       setTopProducts(products);
       setCategoryData(categories);
@@ -116,6 +140,12 @@ const AdminAnalytics = () => {
       setCustomerStats(customers);
       setHourlyData(hourly);
       setComparison(comp);
+      // Set new data
+      setInventoryStats(inventory);
+      setStockStatusData(stockDist);
+      setDayOfWeekData(dayOfWeek);
+      setTrendingProducts(trending);
+      setDecliningProducts(declining);
     } catch (error) {
       console.error("Error loading analytics:", error);
     } finally {
@@ -472,14 +502,14 @@ const AdminAnalytics = () => {
                     d.status === "pending"
                       ? "Chờ xử lý"
                       : d.status === "processing"
-                      ? "Đang xử lý"
-                      : d.status === "shipping"
-                      ? "Đang giao hàng"
-                      : d.status === "completed"
-                      ? "Hoàn thành"
-                      : d.status === "cancelled"
-                      ? "Đã hủy"
-                      : d.status,
+                        ? "Đang xử lý"
+                        : d.status === "shipping"
+                          ? "Đang giao hàng"
+                          : d.status === "completed"
+                            ? "Hoàn thành"
+                            : d.status === "cancelled"
+                              ? "Đã hủy"
+                              : d.status,
                 }))}
                 cx="50%"
                 cy="50%"
@@ -614,21 +644,18 @@ const AdminAnalytics = () => {
                       {index < 3 ? (
                         <div
                           className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-lg
-                          ${
-                            index === 0
+                          ${index === 0
                               ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
                               : ""
-                          }
-                          ${
-                            index === 1
+                            }
+                          ${index === 1
                               ? "bg-gradient-to-br from-gray-300 to-gray-500"
                               : ""
-                          }
-                          ${
-                            index === 2
+                            }
+                          ${index === 2
                               ? "bg-gradient-to-br from-orange-400 to-orange-600"
                               : ""
-                          }
+                            }
                         `}
                         >
                           #{index + 1}

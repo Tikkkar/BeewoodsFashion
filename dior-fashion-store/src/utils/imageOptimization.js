@@ -62,9 +62,9 @@ export const getProductImageSrcSet = (url) => {
   if (!isSupabaseUrl(url)) return url;
 
   const sizes = [
-    { width: 320, quality: 75 },  // Mobile
-    { width: 640, quality: 75 },  // Tablet
-    { width: 960, quality: 80 },  // Desktop
+    { width: 320, quality: 65 },  // Mobile - reduced from 75
+    { width: 640, quality: 70 },  // Tablet - reduced from 75
+    { width: 960, quality: 75 },  // Desktop - reduced from 80
   ];
 
   return sizes
@@ -82,10 +82,10 @@ export const getBannerImageSrcSet = (url) => {
   if (!isSupabaseUrl(url)) return url;
 
   const sizes = [
-    { width: 640, quality: 70 },   // Mobile
-    { width: 1024, quality: 75 },  // Tablet
-    { width: 1920, quality: 80 },  // Desktop
-    { width: 2560, quality: 85 },  // Large screens
+    { width: 640, quality: 60 },   // Mobile - reduced from 70
+    { width: 1024, quality: 65 },  // Tablet - reduced from 75
+    { width: 1920, quality: 70 },  // Desktop - reduced from 80
+    { width: 2560, quality: 75 },  // Large screens - reduced from 85
   ];
 
   return sizes

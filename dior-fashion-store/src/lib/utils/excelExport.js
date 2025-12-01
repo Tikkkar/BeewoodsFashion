@@ -1,103 +1,113 @@
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 
-/**
- * Export shipments to Excel
- */
 export const exportShipmentsToExcel = (shipments, filename = null) => {
     if (!shipments || shipments.length === 0) {
         alert('Không có dữ liệu để xuất');
         return;
     }
 
-    // Prepare data
-    const data = shipments.map((s, index) => {
-        // Get product codes and names from view (already aggregated)
-        const productCodes = s.product_codes || '';
-        const productNames = s.products ?
-            (Array.isArray(s.products) ? s.products.map(p => p.product_name).join(', ') : '') : '';
+    // --- 1. CHUẨN BỊ DỮ LIỆU HEADER (TUYỆT ĐỐI KHÔNG SỬA) ---
 
-        return {
-            'STT': index + 1,
-            'Mã đơn hàng': s.order_number || '',
-            'Khách hàng': s.customer_name || '',
-            'SĐT': s.customer_phone || '',
-            'Địa chỉ': s.full_address || '',
-            'Mã sản phẩm': productCodes,
-            'Tên sản phẩm': productNames,
-            'Mã vận đơn': s.tracking_number || 'Chưa có',
-            'Nhà vận chuyển': s.carrier_code || '',
-            'Trạng thái vận chuyển': getStatusLabel(s.shipment_status),
-            'Trạng thái đơn': getOrderStatusLabel(s.order_status),
-            'COD (VNĐ)': s.cod_amount || 0,
-            'Trọng lượng (kg)': ((s.calculated_weight_g || 0) / 1000).toFixed(2),
-            'Phí ship (VNĐ)': s.shipping_fee_actual || 0,
-            'Ngày tạo': s.shipment_created_at ? format(new Date(s.shipment_created_at), 'dd/MM/yyyy HH:mm') : '',
-            'Ghi chú': s.note_for_shipper || ''
-        };
+    // Dòng 1: Header nhóm (Group Header) - Sẽ được merge
+    const row1 = [
+        "STT",
+        "Thông tin người nhận", "", "", "", // Dành cho merge (Cột 2,3,4,5)
+        "Dịch vụ vận chuyển",
+        "Hình thức lấy hàng",
+        "Phương thức thanh toán Ship",
+        "Hàng hóa", "", "", "", "", "", "", "", "", "", // Dành cho merge (Cột 9->18)
+        "Ghi chú"
+    ];
+
+    // Dòng 2: Header chi tiết (Khớp từng ký tự với mẫu J&T)
+    const row2 = [
+        "STT",
+        "Tên người nhận (*)",
+        "Số điện thoại (*)",
+        "Địa chỉ chi tiết (*)",
+        "Mã đơn hàng riêng",
+        "Loại dịch vụ (*)",
+        "Gửi tại bưu cục",
+        "Phương thức thanh toán (*)",
+        "Tên sản phẩm (*)",
+        "Loại hàng (*)",
+        "Trọng lượng (kg) (*)",
+        "Chiều dài (cm)",
+        "Chiều rộng (cm)",
+        "Chiều cao (cm)",
+        "Số kiện (*)",
+        "Tiền thu hộ COD (VND)",
+        "Giá trị hàng hóa ( Phí khai giá)", // Lưu ý: Có dấu cách sau dấu ngoặc mở
+        "Giao 1 phần",
+        "Ghi chú"
+    ];
+
+    // Dòng 3: Số thứ tự cột
+    const row3 = Array.from({ length: 19 }, (_, i) => (i + 1).toString());
+
+    // --- 2. MAPPING DỮ LIỆU ---
+    const dataRows = shipments.map((s, index) => {
+        // Xử lý an toàn dữ liệu
+        const productNames = s.products && Array.isArray(s.products)
+            ? s.products.map(p => p.product_name).join(', ')
+            : (s.product_name || 'Hàng hóa');
+
+        const weightKg = parseFloat(((s.package_weight_g || 0) / 1000).toFixed(2));
+
+        // Logic ép kiểu dữ liệu chuẩn J&T
+        return [
+            index + 1,                                      // 1. STT
+            s.receiver_name || s.customer_name || '',       // 2. Tên
+            s.receiver_phone || s.customer_phone || '',     // 3. SĐT
+            s.receiver_address_detail || s.full_address || '', // 4. Địa chỉ
+            s.order_number || s.order_id || '',             // 5. Mã đơn
+            s.service_type || "Chuyển phát tiêu chuẩn",     // 6. Dịch vụ
+            'Không',                                        // 7. Gửi tại bưu cục
+            s.payment_method === 'cod' ? "Người nhận thanh toán" : "Người gửi thanh toán", // 8. PT TT
+            productNames,                                   // 9. Tên SP
+            'Hàng hóa',                                     // 10. Loại hàng
+            weightKg > 0 ? weightKg : 0.2,                  // 11. Trọng lượng (Min 0.2kg để tránh lỗi)
+            Number(s.package_length_cm || 0),               // 12. Dài
+            Number(s.package_width_cm || 0),                // 13. Rộng
+            Number(s.package_height_cm || 0),               // 14. Cao
+            Number(s.package_count || 1),                   // 15. Số kiện
+            Number(s.cod_amount || 0),                      // 16. COD
+            Number(s.product_value || 0),                   // 17. Giá trị
+            'Không',                                        // 18. Giao 1 phần
+            s.note || ''                                    // 19. Ghi chú
+        ];
     });
 
-    // Create worksheet
-    const ws = XLSX.utils.json_to_sheet(data);
+    // --- 3. TẠO WORKBOOK ---
+    // Sử dụng aoa_to_sheet để tạo sheet từ mảng dữ liệu
+    const ws = XLSX.utils.aoa_to_sheet([row1, row2, row3, ...dataRows]);
 
-    // Set column widths
-    const colWidths = [
-        { wch: 5 },  // STT
-        { wch: 15 }, // Mã đơn
-        { wch: 20 }, // Khách hàng
-        { wch: 12 }, // SĐT
-        { wch: 50 }, // Địa chỉ
-        { wch: 15 }, // Mã SP
-        { wch: 35 }, // Tên SP
-        { wch: 15 }, // Mã vận đơn
-        { wch: 12 }, // Carrier
-        { wch: 18 }, // Trạng thái VC
-        { wch: 15 }, // Trạng thái đơn
-        { wch: 12 }, // COD
-        { wch: 12 }, // Trọng lượng
-        { wch: 12 }, // Phí ship
-        { wch: 18 }, // Ngày
-        { wch: 30 }  // Ghi chú
+    // --- 4. CẤU HÌNH MERGE (GỘP Ô) - QUAN TRỌNG NHẤT ---
+    // Nếu thiếu phần này, file sẽ bị coi là sai định dạng
+    ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, // Gộp STT
+        { s: { r: 0, c: 1 }, e: { r: 0, c: 3 } }, // Gộp Thông tin người nhận
+        { s: { r: 0, c: 8 }, e: { r: 0, c: 17 } } // Gộp Hàng hóa
     ];
-    ws['!cols'] = colWidths;
 
-    // Create workbook
+    // Cấu hình độ rộng cột cho dễ nhìn
+    ws['!cols'] = [
+        { wch: 5 }, { wch: 20 }, { wch: 12 }, { wch: 45 }, { wch: 15 },
+        { wch: 20 }, { wch: 15 }, { wch: 25 }, { wch: 30 }, { wch: 15 },
+        { wch: 10 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 },
+        { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 25 }
+    ];
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách vận chuyển');
 
-    // Generate filename
-    const defaultFilename = `shipments_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
-    const finalFilename = filename || defaultFilename;
+    // --- 5. ĐẶT TÊN SHEET ---
+    // BẮT BUỘC: Phải là "Danh sách Lên đơn"
+    XLSX.utils.book_append_sheet(wb, ws, "Danh sách Lên đơn");
 
-    // Download
-    XLSX.writeFile(wb, finalFilename);
-};
+    // --- 6. XUẤT FILE ---
+    // Ép buộc bookType là xlsx để đảm bảo định dạng binary chuẩn
+    const exportFileName = filename || `JnT_Import_${format(new Date(), 'ddMMyyyy_HHmm')}.xlsx`;
 
-/**
- * Get status label in Vietnamese
- */
-const getStatusLabel = (status) => {
-    const labels = {
-        'ready_to_pick': 'Chờ lấy hàng',
-        'picking': 'Đang lấy hàng',
-        'delivering': 'Đang giao',
-        'delivered': 'Đã giao',
-        'returned': 'Hoàn trả',
-        'cancelled': 'Đã hủy'
-    };
-    return labels[status] || status;
-};
-
-/**
- * Get order status label in Vietnamese
- */
-const getOrderStatusLabel = (status) => {
-    const labels = {
-        'pending': 'Chờ xác nhận',
-        'processing': 'Đang chuẩn bị',
-        'shipping': 'Đang giao',
-        'completed': 'Hoàn thành',
-        'cancelled': 'Đã hủy'
-    };
-    return labels[status] || status;
+    XLSX.writeFile(wb, exportFileName, { bookType: 'xlsx', type: 'binary' });
 };

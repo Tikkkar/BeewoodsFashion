@@ -59,7 +59,10 @@ const AdminOrderDetail = () => {
 
   const loadOrder = async () => {
     setLoading(true);
-    const { data } = await getAdminOrderDetails(id);
+    const { data, error } = await getAdminOrderDetails(id);
+    if (error) {
+      console.error("❌ Error loading order:", error);
+    }
     setOrder(data || null);
     setLoading(false);
   };
@@ -326,14 +329,15 @@ const AdminOrderDetail = () => {
               <li key={item.id} className="py-3 flex gap-4 items-center">
                 <img
                   src={
+                    item.product_image ||
                     item.products?.product_images?.[0]?.image_url ||
                     "/placeholder.png"
                   }
-                  alt={item.products?.name}
+                  alt={item.product_name || item.products?.name}
                   className="w-14 h-14 rounded-md object-cover border"
                 />
                 <div className="flex-1">
-                  <p className="font-semibold">{item.products?.name}</p>
+                  <p className="font-semibold">{item.product_name || item.products?.name}</p>
                   <p className="text-xs text-gray-500">
                     SL: {item.quantity} | Size: {item.size}
                   </p>

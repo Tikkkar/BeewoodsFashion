@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { callOpenRouterChat } from "../facebook-auto-poster/openRouterClient.ts";
 
-const OpenRouter_Model ="deepseek/deepseek-chat-v3.1:free"
+const OpenRouter_Model ="x-ai/grok-4.1-fast:free"
 
 interface SEOContentRequest {
   productId?: string;

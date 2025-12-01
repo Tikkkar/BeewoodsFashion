@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getOrdersForEmployee } from "../../lib/api/employees";
+import { supabase, adminSupabase } from "../../lib/supabase";
 import { useRBAC } from "../../hooks/useRBAC";
 import { Loader2, Search, Filter, DollarSign, ShoppingBag, Plus, AlertCircle } from "lucide-react";
 import ManualOrderModal from "../../components/admin/ManualOrderModal";
@@ -33,7 +33,7 @@ const getStatusBadge = (status) => {
 };
 
 const AdminOrders = () => {
-  const { userRole, isSale, isWarehouse, canAccessAdmin } = useRBAC();
+  const { userRole: _, isSale, isWarehouse, canAccessAdmin } = useRBAC();
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +51,42 @@ const AdminOrders = () => {
     filterOrders();
   }, [searchTerm, statusFilter, orders]);
 
-  const loadOrders = async () => {
-    setLoading(true);
-    const { data } = await getOrdersForEmployee({ status: statusFilter !== 'all' ? statusFilter : null });
-    if (data) setOrders(data);
-    setLoading(false);
-  };
+  const loadOrders = useCallback(async () => {
+    try {
+      setLoading(true);
 
-  const filterOrders = () => {
+      // Use admin client to bypass RLS and permission issues
+      const client = adminSupabase || supabase;
+      console.log('🔑 Using client:', adminSupabase ? 'adminSupabase (service role)' : 'supabase (authenticated)');
+
+      let query = client
+        .from('orders')
+        .select('id, order_number, customer_name, customer_phone, customer_email, total_amount, status, payment_method, payment_status, notes, created_at, updated_at')
+        .order('created_at', { ascending: false });
+
+      // Apply status filter if needed
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error loading orders:', error);
+        setOrders([]);
+      } else {
+        console.log('✅ Orders loaded successfully:', data?.length || 0);
+        setOrders(data || []);
+      }
+    } catch (error) {
+      console.error('Error in loadOrders:', error);
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter]);
+
+  const filterOrders = useCallback(() => {
     let filtered = orders;
 
     // Filter by status
@@ -70,16 +98,14 @@ const AdminOrders = () => {
     if (searchTerm.trim() !== "") {
       filtered = filtered.filter(
         (order) =>
-          order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.users?.full_name
-            ?.toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          order.users?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+          order.order_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.customer_phone?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     setFilteredOrders(filtered);
-  };
+  }, [orders, searchTerm, statusFilter]);
 
   const calculateStats = () => {
     const totalRevenue = filteredOrders
@@ -306,11 +332,11 @@ const AdminOrders = () => {
                     <td className="px-6 py-4">
                       <div>
                         <div className="font-medium">
-                          {order.users?.full_name || "Khách vãng lai"}
+                          {order.customer_name || "Khách vãng lai"}
                         </div>
-                        {order.users?.email && (
+                        {order.customer_phone && (
                           <div className="text-sm text-gray-500">
-                            {order.users.email}
+                            {order.customer_phone}
                           </div>
                         )}
                       </div>

@@ -6,7 +6,7 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start loading immediately
   const initialized = useRef(false);
   const loadingProfile = useRef(false);
 
@@ -17,6 +17,9 @@ export const AuthProvider = ({ children }) => {
     }
 
     loadingProfile.current = true;
+    // Don't set loading(true) here because we might be in the middle of a session refresh
+    // and we don't want to flash a loading screen if we already have a user.
+
     console.log('🔍 Loading profile for:', authUser.email, 'ID:', authUser.id);
 
     try {
@@ -25,35 +28,39 @@ export const AuthProvider = ({ children }) => {
       console.log('📝 Session exists:', !!session);
       console.log('📝 Access token:', session?.access_token?.substring(0, 20) + '...');
 
-      // ===== Fetch profile =====
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      console.log('📊 Profile fetch result:', { profile, error });
-
-      if (error) {
-        console.error('❌ Profile fetch error:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Error details:', error.details);
-        console.error('Error hint:', error.hint);
+      // ===== Fetch role via RPC first (bypass recursion) =====
+      let role = 'customer';
+      try {
+        const { data: rpcRole } = await supabase.rpc('get_current_user_role');
+        if (rpcRole) role = rpcRole;
+      } catch (rpcError) {
+        console.warn('RPC role fetch failed:', rpcError);
       }
 
-      // ===== Fallback: Dùng metadata từ auth nếu không fetch được profile =====
-      const role = profile?.role
-        || authUser.user_metadata?.role
-        || authUser.raw_user_meta_data?.role
-        || 'customer';
+      // ===== Try profile with specific fields =====
+      let profile;
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('id, email, full_name, role, employee_code, department, is_active')
+          .eq('id', authUser.id)
+          .maybeSingle();
 
+        profile = data;
+        if (error) console.warn('Profile fetch failed, using RPC + metadata:', error);
+      } catch (fetchError) {
+        console.warn('Profile fetch error:', fetchError);
+      }
+
+      // ===== Fallback profile =====
       const finalProfile = profile || {
         id: authUser.id,
         email: authUser.email,
         full_name: authUser.user_metadata?.full_name || authUser.email.split('@')[0],
         role: role
       };
+
+      console.log('✅ Final profile with RPC role:', finalProfile);
 
       console.log('✅ Final profile:', finalProfile);
       console.log('✅ Role:', finalProfile.role);
@@ -93,6 +100,7 @@ export const AuthProvider = ({ children }) => {
 
     const initAuth = async () => {
       console.log('🚀 Initializing auth...');
+      setLoading(true); // Ensure loading is true at start
 
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -112,6 +120,10 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         console.error('❌ Init auth error:', error);
         initialized.current = true;
+      } finally {
+        if (mounted) {
+          setLoading(false); // Only set loading to false when EVERYTHING is done
+        }
       }
     };
 
@@ -135,6 +147,9 @@ export const AuthProvider = ({ children }) => {
           }
 
           if (session?.user && !loadingProfile.current) {
+            // If we are already initialized, we might want to show loading state 
+            // while we fetch the new profile, but it depends on UX preference.
+            // For now, let's keep it simple and just fetch.
             await loadUserProfile(session.user);
           }
         }
@@ -230,7 +245,8 @@ export const AuthProvider = ({ children }) => {
       userEmail: user?.email,
       role,
       isAdmin,
-      isAuthenticated: !!user
+      isAuthenticated: !!user,
+      loading
     });
 
     return {

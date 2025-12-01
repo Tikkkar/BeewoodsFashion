@@ -2,50 +2,62 @@ import { supabase } from '../supabase';
 import { toast } from 'react-hot-toast';
 
 /**
- * Get shipments with filters - Using v_shipments_full view
+ * Get shipments with filters - Direct query from shipments table
  */
 export const getShipments = async (filters = {}) => {
     try {
-        // Use view for better performance and complete data
         let query = supabase
-            .from('v_shipments_full')
-            .select('*')
-            .order('shipment_created_at', { ascending: false });
+            .from('shipments')
+            .select(`
+                *,
+                orders:order_id (
+                    order_number,
+                    customer_name,
+                    customer_phone,
+                    status,
+                    total_amount
+                )
+            `)
+            .order('created_at', { ascending: false });
 
-        // Filter by shipment status
+        // Loại bỏ filter orders.status vì không thể filter nested relation
         if (filters.shipment_status) {
-            query = query.eq('shipment_status', filters.shipment_status);
+            query = query.eq('status', filters.shipment_status);
         }
 
-        // Filter by order status
-        if (filters.order_status) {
-            query = query.eq('order_status', filters.order_status);
-        }
-
-        // Filter by carrier
         if (filters.carrier_code) {
             query = query.eq('carrier_code', filters.carrier_code);
         }
 
-        // Date range
         if (filters.date_from) {
-            query = query.gte('shipment_created_at', filters.date_from);
+            query = query.gte('created_at', filters.date_from);
         }
         if (filters.date_to) {
-            query = query.lte('shipment_created_at', filters.date_to + 'T23:59:59');
+            query = query.lte('created_at', filters.date_to + 'T23:59:59');
         }
 
         const { data, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Shipments query error:', error);
+            throw error;
+        }
 
-        // Client-side filter for product_code and search
-        let filteredData = data;
+        // Transform và filter
+        const transformedData = (data || []).map(shipment => ({
+            ...shipment,
+            order_number: shipment.orders?.order_number,
+            customer_name: shipment.orders?.customer_name,
+            customer_phone: shipment.orders?.customer_phone,
+            order_status: shipment.orders?.status,
+            total_amount: shipment.orders?.total_amount
+        }));
 
-        if (filters.product_code) {
-            filteredData = filteredData.filter(shipment =>
-                shipment.product_codes?.toLowerCase().includes(filters.product_code.toLowerCase())
-            );
+        let filteredData = transformedData;
+
+        // Client-side filters
+        if (filters.order_status) {
+            filteredData = filteredData.filter(s => s.order_status === filters.order_status);
         }
 
         if (filters.search) {
@@ -60,27 +72,47 @@ export const getShipments = async (filters = {}) => {
 
         return { data: filteredData, error: null };
     } catch (error) {
-        console.error('Error fetching shipments:', error);
-        toast.error('Không thể tải danh sách vận chuyển');
-        return { data: null, error };
+        console.error('❌ Error fetching shipments:', error);
+        toast.error('Không thể tải danh sách vận chuyển: ' + error.message);
+        return { data: [], error };
     }
 };
 
 /**
- * Get shipment by ID - Using v_shipments_full view
+ * Get shipment by ID - Direct query from shipments table
  */
 export const getShipmentById = async (id) => {
     try {
         const { data, error } = await supabase
-            .from('v_shipments_full')
-            .select('*')
-            .eq('shipment_id', id)
+            .from('shipments')
+            .select(`
+                *,
+                orders!inner (
+                    order_number,
+                    customer_name,
+                    customer_phone,
+                    status,
+                    total_amount
+                )
+            `)
+            .eq('id', id)
             .single();
 
         if (error) throw error;
-        return { data, error: null };
+
+        // Transform data
+        const transformed = {
+            ...data,
+            order_number: data.orders?.order_number,
+            customer_name: data.orders?.customer_name,
+            customer_phone: data.orders?.customer_phone,
+            order_status: data.orders?.status,
+            total_amount: data.orders?.total_amount
+        };
+
+        return { data: transformed, error: null };
     } catch (error) {
-        console.error('Error fetching shipment:', error);
+        console.error('❌ Error fetching shipment:', error);
         toast.error('Không thể tải thông tin vận chuyển');
         return { data: null, error };
     }

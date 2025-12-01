@@ -3,8 +3,8 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-const ProtectedRoute = ({ children, requiredRole = null }) => {
-  const { user, loading, isAdmin } = useAuth();
+const ProtectedRoute = ({ children, requiredRole = null, allowedRoles = [] }) => {
+  const { user, loading, userRole, isAdmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,16 +19,19 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (!user) {
-    // console.log('❌ No user, redirect to login'); // Đã loại bỏ console.log
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // Backward compatibility for requiredRole="admin"
   if (requiredRole === 'admin' && !isAdmin) {
-    // console.log('❌ Not admin, redirect to home'); // Đã loại bỏ console.log
     return <Navigate to="/" replace />;
   }
 
-  // console.log('✅ Access granted'); // Đã loại bỏ console.log
+  // Check allowedRoles if provided
+  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    return <Navigate to="/" replace />;
+  }
+
   return children;
 };
 

@@ -9,17 +9,12 @@
     <!-- ✅ OPTIMIZATION 1: Preconnect to external domains -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://ftqwpsftzbagidoudwoq.supabase.co" crossorigin />
     <link rel="preconnect" href="https://image2url.com" />
     <link rel="dns-prefetch" href="https://sp.zalo.me" />
 
     <!-- ✅ OPTIMIZATION 2: Preload critical assets -->
-    <!-- Preload logo (LCP image) -->
-    <link 
-      rel="preload" 
-      as="image" 
-      href="https://image2url.com/images/1762405291178-3c948423-ae0b-4be5-8d85-ab843865c994.png"
-      fetchpriority="high"
-    />
+    <!-- Note: Logo preload removed - not LCP element, loaded eagerly in header instead -->
 
     <!-- ✅ OPTIMIZATION 3: Preload fonts with display=swap -->
     <link 

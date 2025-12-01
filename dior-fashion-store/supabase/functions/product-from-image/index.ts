@@ -169,7 +169,7 @@ serve(async (req: Request) => {
     const prompt = buildPrompt(body);
 
     const { content } = await callOpenRouterChat({
-      model: "openrouter/polaris-alpha",
+      model: "x-ai/grok-4.1-fast:free",
       messages: [
         {
           role: "system",

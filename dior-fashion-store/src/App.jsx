@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
+import { lazyRetry } from "./utils/lazyRetry";
 import {
   BrowserRouter as Router,
   Routes,
@@ -34,6 +35,7 @@ const ProductsPage = lazy(() => import("./pages/ProductsPage"));
 const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
 const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const OrderSuccessPage = lazy(() => import("./pages/OrderSuccessPage"));
+const WeddingPage = lazy(() => import("./pages/WeddingPage"));
 
 // Policy pages - lazy
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -51,27 +53,28 @@ const ProtectedRoute = lazy(() => import("./components/auth/ProtectedRoute"));
 const RoleBasedRoute = lazy(() => import("./components/auth/RoleBasedRoute"));
 
 // Admin pages - Heavy, nên lazy load
-const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
-const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
-const AdminProductForm = lazy(() => import("./pages/admin/AdminProductForm"));
-const AdminCategories = lazy(() => import("./pages/admin/AdminCategories"));
-const AdminBanners = lazy(() => import("./pages/admin/AdminBanners"));
-const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
-const AdminOrderDetail = lazy(() => import("./pages/admin/AdminOrderDetail"));
-const AdminShipments = lazy(() => import("./pages/admin/AdminShipments"));
-const SEOManagerPage = lazy(() => import("./pages/admin/SEOManager"));
-const AdminAnalytics = lazy(() => import("./pages/admin/AdminAnalytics"));
-const FacebookSettingsPage = lazy(() => import("./pages/admin/chatbot/FacebookSettingsPage"));
-const ConversationsPage = lazy(() => import("./pages/admin/chatbot/ConversationsPage"));
-const ScenariosTab = lazy(() => import("./pages/admin/chatbot/ScenariosTab"));
-const FacebookPostsPage = lazy(() => import("./pages/admin/chatbot/FacebookPostsPage"));
-const AdminFeedbackManagement = lazy(() => import("./components/admin/AdminFeedbackManagement"));
-const FacebookAutoPostSettings = lazy(() => import("./pages/admin/FacebookAutoPostSettings"));
-const FacebookPostsHistory = lazy(() => import("./pages/admin/FacebookPostsHistory"));
-const InventoryManagement = lazy(() => import("./pages/admin/InventoryManagement"));
-const AdTargeting = lazy(() => import("./pages/admin/AdTargeting"));
-const EmployeeManagement = lazy(() => import("./pages/admin/EmployeeManagement"));
+
+const AdminLayout = lazyRetry(() => import("./pages/admin/AdminLayout"));
+const AdminDashboard = lazyRetry(() => import("./pages/admin/AdminDashboard"));
+const AdminProducts = lazyRetry(() => import("./pages/admin/AdminProducts"));
+const AdminProductForm = lazyRetry(() => import("./pages/admin/AdminProductForm"));
+const AdminCategories = lazyRetry(() => import("./pages/admin/AdminCategories"));
+const AdminBanners = lazyRetry(() => import("./pages/admin/AdminBanners"));
+const AdminOrders = lazyRetry(() => import("./pages/admin/AdminOrders"));
+const AdminOrderDetail = lazyRetry(() => import("./pages/admin/AdminOrderDetail"));
+const AdminShipments = lazyRetry(() => import("./pages/admin/AdminShipments"));
+const SEOManagerPage = lazyRetry(() => import("./pages/admin/SEOManager"));
+const AdminAnalytics = lazyRetry(() => import("./pages/admin/AdminAnalytics"));
+const FacebookSettingsPage = lazyRetry(() => import("./pages/admin/chatbot/FacebookSettingsPage"));
+const ConversationsPage = lazyRetry(() => import("./pages/admin/chatbot/ConversationsPage"));
+const ScenariosTab = lazyRetry(() => import("./pages/admin/chatbot/ScenariosTab"));
+const FacebookPostsPage = lazyRetry(() => import("./pages/admin/chatbot/FacebookPostsPage"));
+const AdminFeedbackManagement = lazyRetry(() => import("./components/admin/AdminFeedbackManagement"));
+const FacebookAutoPostSettings = lazyRetry(() => import("./pages/admin/FacebookAutoPostSettings"));
+const FacebookPostsHistory = lazyRetry(() => import("./pages/admin/FacebookPostsHistory"));
+const InventoryManagement = lazyRetry(() => import("./pages/admin/InventoryManagement"));
+const AdTargeting = lazyRetry(() => import("./pages/admin/AdTargeting"));
+const EmployeeManagement = lazyRetry(() => import("./pages/admin/EmployeeManagement"));
 
 // Employee pages
 const SaleDashboard = lazy(() => import("./pages/employee/SaleDashboard"));
@@ -123,6 +126,7 @@ function AppContent({
 }) {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith("/admin");
+  const isWeddingPage = location.pathname === "/wedding";
 
   return (
     <>
@@ -130,7 +134,7 @@ function AppContent({
       <ScrollToTop />
 
       {/* ✅ ChatWidget - Lazy loaded */}
-      {!isAdminRoute && (
+      {!isAdminRoute && !isWeddingPage && (
         <Suspense fallback={null}>
           <ChatWidget />
         </Suspense>
@@ -138,10 +142,10 @@ function AppContent({
 
       <div className="min-h-screen flex flex-col">
         {/* Top Bar */}
-        {!isAdminRoute && <TopBar message={brandData.topBarMessage} />}
+        {!isAdminRoute && !isWeddingPage && <TopBar message={brandData.topBarMessage} />}
 
         {/* Header */}
-        {!isAdminRoute && (
+        {!isAdminRoute && !isWeddingPage && (
           <Header
             brandName={brandData.brand.name}
             cart={cart}
@@ -162,6 +166,11 @@ function AppContent({
               <Route
                 path="/"
                 element={<HomePage onAddToCart={handleAddToCart} />}
+              />
+
+              <Route
+                path="/wedding"
+                element={<WeddingPage />}
               />
 
               <Route
@@ -273,7 +282,7 @@ function AppContent({
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute requiredRole="admin">
+                  <ProtectedRoute allowedRoles={['admin', 'sale', 'warehouse']}>
                     <AdminLayout />
                   </ProtectedRoute>
                 }
@@ -322,7 +331,7 @@ function AppContent({
         </main>
 
         {/* Footer */}
-        {!isAdminRoute && (
+        {!isAdminRoute && !isWeddingPage && (
           <Footer brand={brandData.brand} sections={brandData.footerSections} />
         )}
 

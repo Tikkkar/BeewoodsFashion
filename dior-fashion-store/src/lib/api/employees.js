@@ -18,13 +18,39 @@ export const getCurrentUserRole = async () => {
         return { data: null, error: { message: 'Not authenticated' } };
     }
 
-    const { data: profile, error } = await supabase
-        .from('users')
-        .select('id, email, full_name, role, employee_code, department, is_active')
-        .eq('id', user.id)
-        .single();
+    let role;
+    let profile;
+    try {
+        // Use RPC to bypass RLS recursion
+        const { data: rpcRole } = await supabase.rpc('get_current_user_role');
+        role = rpcRole || user.user_metadata?.role || 'customer';
 
-    return { data: profile, error };
+        // Try direct profile fetch with specific fields (fallback)
+        const { data, error } = await supabase
+            .from('users')
+            .select('id, email, full_name, role, employee_code, department, is_active')
+            .eq('id', user.id)
+            .single();
+
+        if (data) {
+            profile = { ...data, role }; // Use RPC role if available
+        } else {
+            console.warn('Users fetch failed, using RPC + metadata:', error);
+        }
+    } catch (e) {
+        console.warn('Users fetch error, using RPC/metadata:', e);
+        role = user.user_metadata?.role || 'customer';
+    }
+
+    // Fallback profile
+    profile = profile || {
+        id: user.id,
+        email: user.email,
+        role: role,
+        full_name: user.user_metadata?.full_name || user.email.split('@')[0]
+    };
+
+    return { data: profile, error: null };
 };
 
 /**
@@ -39,7 +65,7 @@ export const getOrdersForEmployee = async (filters = {}) => {
         const { data: userProfile } = await getCurrentUserRole();
 
         if (!userProfile) {
-            throw new Error('User not found');
+            throw new Error('User profile not found');
         }
 
         const { role, id: userId } = userProfile;
@@ -49,7 +75,9 @@ export const getOrdersForEmployee = async (filters = {}) => {
             .from('orders')
             .select(`
         *,
-        order_items(*)
+        order_items(*),
+        users:user_id(id, email, full_name),
+        created_by_user:created_by(id, email, full_name)
       `)
             .order('created_at', { ascending: false });
 

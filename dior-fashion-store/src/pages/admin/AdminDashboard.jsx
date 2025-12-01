@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { supabase, adminSupabase } from "../../lib/supabase";
 import { BarChart3, MessageSquare, Star } from "lucide-react";
 import {
   TrendingUp,
   ShoppingBag,
   Package,
-  DollarSign, 
+  DollarSign,
   Clock,
   Loader2,
   Search,
@@ -37,72 +37,52 @@ const AdminDashboard = () => {
     try {
       setLoading(true);
 
-      // Orders query
-      const { data: orders, error: ordersError } = await supabase
+      // 1. Call RPC for all stats (Fast & Secure)
+      const { data: rpcStats, error: rpcError } = await supabase
+        .rpc('get_admin_dashboard_stats');
+
+      if (rpcError) {
+        console.error("RPC Error:", rpcError);
+        // Fallback or throw? Let's log and continue if possible, but stats will be 0
+      }
+
+      if (rpcStats) {
+        setStats({
+          totalRevenue: rpcStats.totalRevenue || 0,
+          totalOrders: rpcStats.totalOrders || 0,
+          pendingOrders: rpcStats.pendingOrders || 0,
+          completedOrders: rpcStats.completedOrders || 0,
+          totalProducts: rpcStats.totalProducts || 0,
+          activeProducts: rpcStats.activeProducts || 0,
+          productsWithSEO: rpcStats.productsWithSEO || 0,
+          totalFeedbacks: rpcStats.totalFeedbacks || 0,
+          averageRating: rpcStats.averageRating || 0,
+        });
+      }
+
+      // 2. Fetch Recent Orders (Admin bypass RLS)
+      const client = adminSupabase || supabase;
+      const { data: orders, error: ordersError } = await client
         .from("orders")
         .select("id, total_amount, status, created_at, order_number")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(5);
 
-      if (ordersError) throw ordersError;
+      if (!ordersError) {
+        setRecentOrders(orders || []);
+      }
 
-      // Calculate order stats
-      const totalRevenue =
-        orders
-          ?.filter((o) => o.status === "completed")
-          .reduce((sum, order) => sum + (order.total_amount || 0), 0) || 0;
-
-      const totalOrders = orders?.length || 0;
-      const pendingOrders =
-        orders?.filter((o) => o.status === "pending").length || 0;
-      const completedOrders =
-        orders?.filter((o) => o.status === "completed").length || 0;
-
-      // Products count
-      const { count: totalProducts } = await supabase
-        .from("products")
-        .select("*", { count: "exact", head: true });
-
-      const { count: activeProducts } = await supabase
-        .from("products")
-        .select("*", { count: "exact", head: true })
-        .eq("is_active", true);
-
-      // Products with SEO
-      const { data: productsWithSEO } = await supabase
-        .from("products")
-        .select("id")
-        .not("seo_title", "is", null)
-        .not("seo_description", "is", null);
-
-      // ✅ Feedbacks stats
-      const { data: feedbacks, error: feedbacksError } = await supabase
+      // 3. Fetch Recent Feedbacks (Admin bypass RLS)
+      const { data: feedbacks, error: feedbacksError } = await client
         .from("customer_feedbacks")
-        .select("id, customer_name, customer_image, rating_average, total_responses, created_at")
+        .select("id, customer_name, customer_image, rating_average, total_responses")
         .order("created_at", { ascending: false })
         .limit(5);
 
-      if (feedbacksError) throw feedbacksError;
+      if (!feedbacksError) {
+        setRecentFeedbacks(feedbacks || []);
+      }
 
-      const totalFeedbacks = feedbacks?.length || 0;
-      const averageRating = totalFeedbacks > 0
-        ? feedbacks.reduce((sum, f) => sum + (f.rating_average || 0), 0) / totalFeedbacks
-        : 0;
-
-      setStats({
-        totalRevenue,
-        totalOrders,
-        pendingOrders,
-        completedOrders,
-        totalProducts: totalProducts || 0,
-        activeProducts: activeProducts || 0,
-        productsWithSEO: productsWithSEO?.length || 0,
-        totalFeedbacks,
-        averageRating: averageRating.toFixed(1),
-      });
-
-      setRecentOrders(orders?.slice(0, 5) || []);
-      setRecentFeedbacks(feedbacks || []);
     } catch (error) {
       console.error("Error loading dashboard:", error);
     } finally {
@@ -499,9 +479,8 @@ const AdminDashboard = () => {
                   <div
                     className="bg-gradient-to-r from-blue-500 to-indigo-500 h-3 rounded-full transition-all duration-500"
                     style={{
-                      width: `${
-                        (stats.productsWithSEO / stats.totalProducts) * 100
-                      }%`,
+                      width: `${(stats.productsWithSEO / stats.totalProducts) * 100
+                        }%`,
                     }}
                   />
                 </div>

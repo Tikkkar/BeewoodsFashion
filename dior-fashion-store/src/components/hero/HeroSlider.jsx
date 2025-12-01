@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ImageOptimized from '../common/Imageoptimized';
+import { getOptimizedImageUrl } from '../../utils/imageOptimization';
 
 const HeroSlider = ({ banners }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -27,7 +28,7 @@ const HeroSlider = ({ banners }) => {
     };
   }, []);
 
-  // ✅ Filter active banners - Memoized
+  // ✅ Filter active banners - Memoized (MUST BE BEFORE OTHER useEffects)
   const activeBanners = useMemo(() => {
     if (!banners || !Array.isArray(banners)) return [];
     if (banners.length === 0) return [];
@@ -46,6 +47,48 @@ const HeroSlider = ({ banners }) => {
     
     return filtered.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
   }, [banners]);
+
+  // ✅ CRITICAL: Preload first banner image (LCP optimization)
+  useEffect(() => {
+    if (!activeBanners || activeBanners.length === 0) return;
+    
+    const firstBanner = activeBanners[0];
+    const imageUrl = isMobile && firstBanner.mobile_image_url 
+      ? firstBanner.mobile_image_url 
+      : (firstBanner.image_url || firstBanner.image);
+    
+    if (!imageUrl) return;
+
+    // Get optimized URL for preload
+    const optimizedUrl = getOptimizedImageUrl(imageUrl, {
+      width: isMobile ? 640 : 1920,
+      quality: isMobile ? 70 : 75,
+      format: 'webp'
+    });
+
+    // Create preload link
+    const preloadLink = document.createElement('link');
+    preloadLink.rel = 'preload';
+    preloadLink.as = 'image';
+    preloadLink.href = optimizedUrl;
+    preloadLink.type = 'image/webp';
+    preloadLink.fetchpriority = 'high';
+    preloadLink.id = 'hero-banner-preload';
+    
+    // Remove existing preload if any
+    const existing = document.getElementById('hero-banner-preload');
+    if (existing) {
+      existing.remove();
+    }
+    
+    document.head.appendChild(preloadLink);
+
+    return () => {
+      if (preloadLink.parentNode) {
+        preloadLink.parentNode.removeChild(preloadLink);
+      }
+    };
+  }, [activeBanners, isMobile]);
 
   // ✅ Auto-play
   useEffect(() => {
