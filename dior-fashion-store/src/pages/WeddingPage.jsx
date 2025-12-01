@@ -405,7 +405,7 @@ const WeddingInvitation = () => {
             />
             <div className="story-text">
               <h3 className="story-year">2020 • Gặp Gỡ Đầu Tiên</h3>
-              <p>Duyên số bắt đầu từ lời mời của cô Thy.</p>
+              <p>Duyên số bắt đầu từ lời mời của cô Mai Thy.</p>
               <p>Buổi tối hôm ấy, anh đã gặp em - định mệnh của đời mình.</p>
             </div>
           </div>
@@ -432,7 +432,7 @@ const WeddingInvitation = () => {
             />
             <div className="story-text">
               <h3 className="story-year">2025 • Hành Trình Mới</h3>
-              <p>Và giờ đây, chúng tôi chuẩn bị bước vào chặng đường mới cùng nhau, với tình yêu và lời hứa sẽ luôn bên nhau trọn đời.</p>
+              <p>Và giờ đây, chúng ta chuẩn bị bước vào chặng đường mới cùng nhau, với tình yêu và lời hứa sẽ luôn bên nhau trọn đời.</p>
             </div>
           </div>
         </div>
