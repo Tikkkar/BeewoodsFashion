@@ -1,6 +1,6 @@
-/* WeddingInvitation.css - Đã chỉnh sửa vị trí hero-content */
+/* WeddingInvitation.css - Optimized Version */
 
-/* Import Fonts */
+/* Import Fonts - Optimized with display=swap */
 @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Montserrat:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
 
 :root {
@@ -81,19 +81,21 @@
     padding: 80px 0;
 }
 
-/* Scroll Animation */
+/* Scroll Animation - Optimized */
 .reveal {
     opacity: 0;
     transform: translateY(50px);
-    transition: all 1s ease;
+    transition: opacity 1s ease, transform 1s ease;
+    will-change: opacity, transform;
 }
 
 .reveal.active {
     opacity: 1;
     transform: translateY(0);
+    will-change: auto;
 }
 
-/* Flower Falling Effect */
+/* Flower Falling Effect - Optimized */
 #flower-container {
     position: fixed;
     top: 0;
@@ -110,6 +112,8 @@
     top: -50px;
     animation: fall linear forwards;
     user-select: none;
+    will-change: transform, opacity;
+    pointer-events: none;
 }
 
 @keyframes fall {
@@ -145,7 +149,7 @@
     color: var(--text-gray);
     text-decoration: none;
     font-size: 1.2rem;
-    transition: 0.3s;
+    transition: color 0.3s ease, transform 0.3s ease;
     position: relative;
 }
 
@@ -155,7 +159,7 @@
     transform: translateY(-3px);
 }
 
-/* Hero Section - ĐÃ CHỈNH SỬA */
+/* Hero Section */
 .hero {
     height: 100vh;
     background-size: cover;
@@ -164,11 +168,9 @@
     position: relative;
     display: flex;
     align-items: flex-end;
-    /* Thay đổi từ center sang flex-end */
     justify-content: center;
     text-align: center;
     padding-bottom: 120px;
-    /* Thêm padding để tạo khoảng cách từ bottom */
 }
 
 .hero::before {
@@ -186,14 +188,12 @@
     z-index: 2;
     background: rgba(255, 255, 255, 0.85);
     padding: 2.5rem 3.5rem;
-    /* Giảm padding để box nhỏ gọn hơn */
     border-radius: 10px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
     border: 2px solid var(--primary-pink);
     outline: 5px solid rgba(255, 255, 255, 0.5);
     animation: zoomIn 1.2s ease;
     max-width: 90%;
-    /* Đảm bảo responsive */
 }
 
 @keyframes zoomIn {
@@ -211,7 +211,6 @@
 .hero-names {
     font-family: 'Great Vibes', cursive;
     font-size: 4.5rem;
-    /* Giảm size một chút */
     color: var(--primary-pink);
     margin: 10px 0;
     line-height: 1.2;
@@ -320,7 +319,8 @@
     border: 5px solid white;
     box-shadow: 0 10px 25px rgba(232, 140, 166, 0.3);
     margin-bottom: 1.5rem;
-    transition: transform 0.5s;
+    transition: transform 0.5s ease;
+    content-visibility: auto;
 }
 
 .couple-card:hover .img-arch {
@@ -347,16 +347,14 @@
 }
 
 @keyframes pulse {
-    0% {
+
+    0%,
+    100% {
         transform: scale(1);
     }
 
     50% {
         transform: scale(1.2);
-    }
-
-    100% {
-        transform: scale(1);
     }
 }
 
@@ -384,7 +382,8 @@
     object-fit: cover;
     border-radius: 10px;
     box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1);
-    transition: transform 0.5s;
+    transition: transform 0.5s ease;
+    content-visibility: auto;
 }
 
 .timeline-item:hover .story-img {
@@ -415,7 +414,7 @@
     border: 1px solid var(--secondary-pink);
     position: relative;
     overflow: hidden;
-    transition: transform 0.3s;
+    transition: transform 0.3s ease;
 }
 
 .event-card:hover {
@@ -447,7 +446,7 @@
     text-decoration: none;
     border-radius: 30px;
     font-size: 0.9rem;
-    transition: 0.3s;
+    transition: all 0.3s ease;
 }
 
 .btn-map:hover {
@@ -455,18 +454,11 @@
     box-shadow: 0 5px 15px rgba(232, 140, 166, 0.4);
 }
 
-/* Gallery Section */
+/* Gallery Section - Optimized */
 .gallery-section {
     position: relative;
 }
 
-.gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-}
-
-/* Masonry Layout for Gallery */
 .gallery-masonry {
     column-count: 3;
     column-gap: 20px;
@@ -481,7 +473,7 @@
     overflow: hidden;
     border-radius: 15px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
 }
 
 .gallery-item:hover {
@@ -501,8 +493,7 @@
     display: block;
     object-fit: cover;
     transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    image-rendering: -webkit-optimize-contrast;
-    image-rendering: crisp-edges;
+    content-visibility: auto;
 }
 
 .gallery-item:hover .gallery-img {
@@ -555,7 +546,7 @@
     letter-spacing: 2px;
 }
 
-/* Lightbox Modal */
+/* Lightbox Modal - Optimized */
 .lightbox-modal {
     position: fixed;
     top: 0;
@@ -568,6 +559,7 @@
     justify-content: center;
     align-items: center;
     animation: fadeIn 0.3s ease;
+    will-change: opacity;
 }
 
 @keyframes fadeIn {
@@ -608,6 +600,7 @@
     object-fit: contain;
     border-radius: 10px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    will-change: transform;
 }
 
 .lightbox-close {
@@ -697,7 +690,7 @@
     flex: 1;
     min-width: 300px;
     max-width: 400px;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, border-color 0.3s ease;
 }
 
 .gift-card:hover {
@@ -714,6 +707,7 @@
     padding: 10px;
     border-radius: 10px;
     display: block;
+    content-visibility: auto;
 }
 
 .bank-info {
@@ -735,7 +729,7 @@
     cursor: pointer;
     font-size: 0.8rem;
     margin-left: 5px;
-    transition: 0.2s;
+    transition: background 0.2s ease;
 }
 
 .btn-copy:hover {
@@ -765,6 +759,12 @@
     border: 1px solid #ddd;
     border-radius: 5px;
     font-family: 'Montserrat', sans-serif;
+    transition: border-color 0.3s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-pink);
 }
 
 .btn-submit {
@@ -775,11 +775,17 @@
     border-radius: 30px;
     font-size: 1rem;
     cursor: pointer;
-    transition: 0.3s;
+    transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
     background: #d66d8a;
+    transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* Footer */
@@ -791,16 +797,31 @@ footer {
     padding-bottom: 90px;
 }
 
+/* Performance Optimizations */
+img {
+    content-visibility: auto;
+}
+
+/* Reduce animation for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .hero {
         padding-bottom: 80px;
-        /* Giảm padding bottom trên mobile */
     }
 
     .hero-names {
         font-size: 3rem;
-        /* Giảm size trên mobile */
     }
 
     .hero-content {
@@ -838,10 +859,6 @@ footer {
 
     .gallery-masonry {
         column-count: 1;
-    }
-
-    .gallery-grid {
-        grid-template-columns: 1fr;
     }
 
     .lightbox-nav {
@@ -890,53 +907,13 @@ footer {
     }
 }
 
-/* Music Button */
-.music-btn {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: white;
-    border: 2px solid var(--primary-pink);
-    color: var(--primary-pink);
-    font-size: 1.2rem;
-    cursor: pointer;
-    z-index: 1000;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.music-btn:hover {
-    transform: scale(1.1);
-    background: var(--primary-pink);
-    color: white;
-}
-
-.music-btn.playing {
-    animation: spin 3s linear infinite;
-}
-
-@keyframes spin {
-    0% {
-        transform: rotate(0deg);
+/* Tablet optimizations */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .gallery-masonry {
+        column-count: 2;
     }
 
-    100% {
-        transform: rotate(360deg);
-    }
-}
-
-@media (max-width: 768px) {
-    .music-btn {
-        bottom: 15px;
-        left: 15px;
-        width: 40px;
-        height: 40px;
-        font-size: 1rem;
+    .hero-names {
+        font-size: 4rem;
     }
 }
