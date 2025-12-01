@@ -319,7 +319,7 @@ const WeddingInvitation = () => {
       >
         <div className="hero-content">
           <p style={{ textTransform: 'uppercase', letterSpacing: '2px' }}>
-            Trân Trọng Kính Mời. Bạn bè, Cô chú, Bác bà, Anh chị em, và mọi người thân yêu nhất.
+            Trân Trọng Kính Mời. Ông bà, Cô chú, Các Bác, Các Anh , Các Chị và Bạn bè, cùng mọi người thân yêu nhất.
           </p>
           <p style={{ textTransform: 'uppercase', letterSpacing: '2px' }}>
             Đến dự lễ cưới
